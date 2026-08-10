@@ -134,12 +134,13 @@
           <div class="tab active" data-zone="1">ZONA 1 (Y1)</div>
           <div class="tab" data-zone="2">ZONA 2 (Y2)</div>
         </div>
-        <div class="setpoint-grid" id="setpoint-grid"></div>
 
-        <div class="button-row">
+        <div class="setpoint-actions">
           <a class="btn btn-back" href="#home"><i data-lucide="chevron-left"></i> VOLTAR</a>
           <a class="btn btn-teal" href="#home" id="save-setpoints"><i data-lucide="save"></i> GUARDAR</a>
         </div>
+
+        <div class="setpoint-grid" id="setpoint-grid"></div>
       </div>
     </section>
 
@@ -273,12 +274,14 @@
         { icon: 'droplet', label: 'HUMIDADE MÍNIMA', value: 40, unit: '%', step: 1, min: 0, max: 100 },
         { icon: 'thermometer', label: 'TEMPERATURA MÍNIMA', value: 18, unit: '°C', step: 1, min: 0, max: 50 },
         { icon: 'clock', label: 'DURAÇÃO DA REGA', value: 60, unit: 's', step: 5, min: 5, max: 600 },
+        { icon: 'zap', label: 'DELAY BOMBA → ELETROVÁLVULAS', value: 5, unit: 's', step: 1, min: 0, max: 120 },
         { icon: 'rotate-cw', label: 'INTERVALO ENTRE CICLOS', value: 30, unit: 'min', step: 5, min: 5, max: 240 }
       ],
       2: [
         { icon: 'droplet', label: 'HUMIDADE MÍNIMA', value: 45, unit: '%', step: 1, min: 0, max: 100 },
         { icon: 'thermometer', label: 'TEMPERATURA MÍNIMA', value: 16, unit: '°C', step: 1, min: 0, max: 50 },
         { icon: 'clock', label: 'DURAÇÃO DA REGA', value: 45, unit: 's', step: 5, min: 5, max: 600 },
+        { icon: 'zap', label: 'DELAY BOMBA → ELETROVÁLVULAS', value: 5, unit: 's', step: 1, min: 0, max: 120 },
         { icon: 'rotate-cw', label: 'INTERVALO ENTRE CICLOS', value: 20, unit: 'min', step: 5, min: 5, max: 240 }
       ]
     };
@@ -289,10 +292,12 @@
       setpointData[zone].forEach((sp, i) => {
         const row = document.createElement('div');
         row.className = 'setpoint-row';
-        row.innerHTML = `<span><i data-lucide="${sp.icon}"></i> ${sp.label}</span>
+        row.innerHTML = `
+          <span class="setpoint-label"><i data-lucide="${sp.icon}"></i> ${sp.label}</span>
           <div class="counter">
             <button class="btn-step" data-dir="-1" data-idx="${i}">-</button>
-            <strong data-val="${i}">${sp.value} ${sp.unit}</strong>
+            <input type="number" inputmode="numeric" pattern="[0-9]*" class="setpoint-input" data-idx="${i}" value="${sp.value}" min="${sp.min}" max="${sp.max}" />
+            <span class="unit">${sp.unit}</span>
             <button class="btn-step" data-dir="1" data-idx="${i}">+</button>
           </div>`;
         grid.appendChild(row);
@@ -316,8 +321,20 @@
       const dir = parseInt(btn.dataset.dir, 10);
       const sp = setpointData[zone][idx];
       sp.value = Math.max(sp.min, Math.min(sp.max, sp.value + dir * sp.step));
-      const valEl = document.querySelector(`#setpoint-grid strong[data-val="${idx}"]`);
-      if (valEl) valEl.textContent = `${sp.value} ${sp.unit}`;
+      const inputEl = document.querySelector(`#setpoint-grid .setpoint-input[data-idx="${idx}"]`);
+      if (inputEl) inputEl.value = sp.value;
+    });
+
+    document.getElementById('setpoint-grid').addEventListener('input', (e) => {
+      const input = e.target.closest('.setpoint-input');
+      if (!input) return;
+      const zone = document.querySelector('#setpoint-tabs .tab.active').dataset.zone;
+      const idx = parseInt(input.dataset.idx, 10);
+      const sp = setpointData[zone][idx];
+      let value = parseInt(input.value, 10);
+      if (Number.isNaN(value)) value = sp.min;
+      sp.value = Math.max(sp.min, Math.min(sp.max, value));
+      input.value = sp.value;
     });
 
     // Filter bar
