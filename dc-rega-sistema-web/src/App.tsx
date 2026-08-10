@@ -191,7 +191,7 @@ function App() {
         <footer className="app-footer">
           <span>Desenvolvido por <strong>Deogracia de Castro</strong></span>
           <span className="footer-divider">·</span>
-          <span>GTC Rega v2.5 · ESP32-S3</span>
+          <span>GTC Rega v2.6 · ESP32-S3 · Build 2026-08-10</span>
         </footer>
       </main>
       {notice && <div className="toast"><CheckCircle2 size={18} />{notice}</div>}
