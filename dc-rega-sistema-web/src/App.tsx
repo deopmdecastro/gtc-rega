@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-import { useMemo, useState } from 'react';
-=======
 import { useEffect, useMemo, useRef, useState } from 'react';
->>>>>>> 4db08a9 (feat: sequencia Start, modo Manual/Auto, modal apagar sensor, scroll, espacamento)
 import {
   Activity,
   AlertTriangle,
@@ -15,9 +11,12 @@ import {
   Delete,
   Droplets,
   Gauge,
+  Globe2,
   History,
   Home,
   Leaf,
+  LockKeyhole,
+  Map as MapIcon,
   Menu,
   Play,
   PlayCircle,
@@ -25,17 +24,19 @@ import {
   Power,
   Radio,
   RotateCcw,
+  Save,
   Settings2,
   SlidersHorizontal,
   Sparkles,
   Square,
   TimerReset,
   Trash2,
+  UserRound,
   Waves,
   X,
 } from 'lucide-react';
 
-type Page = 'Resumo' | 'Estado' | 'Setpoints' | 'Histórico' | 'Comandos' | 'Alarmes';
+type Page = 'Resumo' | 'Estado' | 'Setpoints' | 'Mapa' | 'Histórico' | 'Comandos' | 'Alarmes';
 type Zone = {
   id: string;
   name: string;
@@ -44,6 +45,8 @@ type Zone = {
   lastWatered: string;
   on: boolean;
   waterDuration: number;
+  x: number;
+  y: number;
 };
 
 type ErrorEvent = {
@@ -55,18 +58,21 @@ type ErrorEvent = {
   resolved: boolean;
 };
 
+type Language = 'PT' | 'EN';
+
 const pages: { label: Page; icon: typeof Home }[] = [
   { label: 'Resumo', icon: Home },
   { label: 'Estado', icon: Activity },
   { label: 'Setpoints', icon: SlidersHorizontal },
+  { label: 'Mapa', icon: MapIcon },
   { label: 'Histórico', icon: History },
   { label: 'Comandos', icon: PlayCircle },
   { label: 'Alarmes', icon: Bell },
 ];
 
 const initialZones: Zone[] = [
-  { id: 'Y1', name: 'Zona 1', moisture: 64, target: 55, lastWatered: 'Hoje, 18:12', on: false, waterDuration: 60 },
-  { id: 'Y2', name: 'Zona 2', moisture: 57, target: 52, lastWatered: 'Hoje, 17:48', on: false, waterDuration: 45 },
+  { id: 'Y1', name: 'Zona 1', moisture: 64, target: 55, lastWatered: 'Hoje, 18:12', on: false, waterDuration: 60, x: 28, y: 36 },
+  { id: 'Y2', name: 'Zona 2', moisture: 57, target: 52, lastWatered: 'Hoje, 17:48', on: false, waterDuration: 45, x: 56, y: 62 },
 ];
 
 const initialErrors: ErrorEvent[] = [
@@ -88,6 +94,11 @@ function makeZoneId() {
   return `Y${nextZoneId++}`;
 }
 
+function sensorStatus(zone: Zone): 'ok' | 'warning' | 'offline' {
+  if (zone.moisture >= zone.target) return 'ok';
+  return 'warning';
+}
+
 function App() {
   const [activePage, setActivePage] = useState<Page>('Resumo');
   const [zones, setZones] = useState(initialZones);
@@ -98,15 +109,17 @@ function App() {
   const [notice, setNotice] = useState('');
   const [errors, setErrors] = useState<ErrorEvent[]>(initialErrors);
   const [systemRunning, setSystemRunning] = useState(false);
-<<<<<<< HEAD
-=======
   const [starting, setStarting] = useState(false);
   const [startStep, setStartStep] = useState('');
   const [zoneToDelete, setZoneToDelete] = useState<Zone | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [language, setLanguage] = useState<Language>('PT');
+  const [username, setUsername] = useState('operador');
+  const [password, setPassword] = useState('');
+  const [settingsSaved, setSettingsSaved] = useState(false);
   const startTimers = useRef<number[]>([]);
 
   useEffect(() => () => startTimers.current.forEach((t) => clearTimeout(t)), []);
->>>>>>> 4db08a9 (feat: sequencia Start, modo Manual/Auto, modal apagar sensor, scroll, espacamento)
 
   const activeZones = useMemo(() => zones.filter((z) => z.on).length, [zones]);
   const alarmCount = useMemo(() => errors.filter((e) => !e.resolved).length, [errors]);
@@ -120,26 +133,10 @@ function App() {
   const addZone = () => {
     const id = makeZoneId();
     const num = zones.length + 1;
-    setZones((cur) => [...cur, { id, name: `Zona ${num}`, moisture: 50, target: 50, lastWatered: '—', on: false, waterDuration: 30 }]);
+    setZones((cur) => [...cur, { id, name: `Zona ${num}`, moisture: 50, target: 50, lastWatered: '—', on: false, waterDuration: 30, x: 30 + Math.random() * 40, y: 30 + Math.random() * 40 }]);
     showNotice(`Sensor ${id} adicionado`);
   };
 
-<<<<<<< HEAD
-  const removeZone = (id: string) => {
-    setZones((cur) => cur.filter((z) => z.id !== id));
-    showNotice(`Sensor ${id} removido`);
-  };
-
-  const handleStart = () => {
-    setSystemRunning(true);
-    setPumpOn(true);
-    setAutoMode(true);
-    setZones((cur) => cur.map((z, i) => (i === 0 ? { ...z, on: true } : z)));
-    showNotice('Sistema iniciado');
-  };
-  const handleStop = () => {
-    setSystemRunning(false);
-=======
   const handleStart = () => {
     if (starting || systemRunning) return;
     startTimers.current.forEach((t) => clearTimeout(t));
@@ -148,12 +145,10 @@ function App() {
     setSystemRunning(true);
     setAutoMode(true);
 
-    // Step 1: liga a bomba
     setPumpOn(true);
     setStartStep('A ligar bomba…');
     showNotice('Bomba ligada');
 
-    // Step 2: após o delay, abre as válvulas
     const t1 = window.setTimeout(() => {
       setStartStep('A abrir válvulas…');
       setZones((cur) => cur.map((z) => ({ ...z, on: true })));
@@ -174,37 +169,22 @@ function App() {
     setSystemRunning(false);
     setStarting(false);
     setStartStep('');
->>>>>>> 4db08a9 (feat: sequencia Start, modo Manual/Auto, modal apagar sensor, scroll, espacamento)
     setPumpOn(false);
     setZones((cur) => cur.map((z) => ({ ...z, on: false })));
     showNotice('Sistema parado');
   };
   const handleReset = () => {
-<<<<<<< HEAD
-    setSystemRunning(false);
-=======
     startTimers.current.forEach((t) => clearTimeout(t));
     startTimers.current = [];
     setSystemRunning(false);
     setStarting(false);
     setStartStep('');
->>>>>>> 4db08a9 (feat: sequencia Start, modo Manual/Auto, modal apagar sensor, scroll, espacamento)
     setPumpOn(false);
     setZones((cur) => cur.map((z) => ({ ...z, on: false, moisture: Math.max(20, Math.min(90, Math.round(z.moisture))) })));
     setErrors((cur) => cur.map((e) => ({ ...e, resolved: true })));
     showNotice('Sistema reiniciado');
   };
 
-<<<<<<< HEAD
-  const renderPage = () => {
-    if (activePage === 'Resumo') {
-      return <Overview zones={zones} pumpOn={pumpOn} autoMode={autoMode} activeZones={activeZones} onToggleZone={toggleZone} onTogglePump={() => setPumpOn((v) => !v)} />;
-    }
-    if (activePage === 'Estado') return <StateView zones={zones} pumpOn={pumpOn} autoMode={autoMode} />;
-    if (activePage === 'Setpoints') return <SetpointsView zones={zones} pumpDelay={pumpDelay} setPumpDelay={setPumpDelay} onChange={(id, target) => setZones((cur) => cur.map((z) => (z.id === id ? { ...z, target } : z)))} onUpdateZone={(id, patch) => setZones((cur) => cur.map((z) => (z.id === id ? { ...z, ...patch } : z)))} onAddZone={addZone} onRemoveZone={removeZone} />;
-    if (activePage === 'Histórico') return <HistoryView errors={errors} />;
-    if (activePage === 'Comandos') return <CommandsView zones={zones} pumpOn={pumpOn} systemRunning={systemRunning} onToggleZone={toggleZone} onTogglePump={() => setPumpOn((v) => !v)} onAction={showNotice} onStart={handleStart} onStop={handleStop} onReset={handleReset} />;
-=======
   const toggleAutoMode = () => {
     const next = !autoMode;
     setAutoMode(next);
@@ -218,15 +198,21 @@ function App() {
     setZoneToDelete(null);
   };
 
+  const saveSettings = () => {
+    setSettingsSaved(true);
+    showNotice('Definições guardadas');
+    window.setTimeout(() => setSettingsSaved(false), 2200);
+  };
+
   const renderPage = () => {
     if (activePage === 'Resumo') {
-      return <Overview zones={zones} pumpOn={pumpOn} autoMode={autoMode} activeZones={activeZones} onToggleZone={toggleZone} onTogglePump={() => setPumpOn((v) => !v)} onToggleMode={toggleAutoMode} />;
+      return <Overview zones={zones} pumpOn={pumpOn} autoMode={autoMode} activeZones={activeZones} onToggleZone={toggleZone} onTogglePump={() => setPumpOn((v) => !v)} onToggleMode={toggleAutoMode} onOpenMap={() => setActivePage('Mapa')} />;
     }
     if (activePage === 'Estado') return <StateView zones={zones} pumpOn={pumpOn} autoMode={autoMode} onToggleMode={toggleAutoMode} />;
     if (activePage === 'Setpoints') return <SetpointsView zones={zones} pumpDelay={pumpDelay} setPumpDelay={setPumpDelay} onChange={(id, target) => setZones((cur) => cur.map((z) => (z.id === id ? { ...z, target } : z)))} onUpdateZone={(id, patch) => setZones((cur) => cur.map((z) => (z.id === id ? { ...z, ...patch } : z)))} onAddZone={addZone} onRemoveZone={(z) => setZoneToDelete(z)} />;
+    if (activePage === 'Mapa') return <MapView zones={zones} />;
     if (activePage === 'Histórico') return <HistoryView errors={errors} />;
     if (activePage === 'Comandos') return <CommandsView zones={zones} pumpOn={pumpOn} systemRunning={systemRunning} starting={starting} startStep={startStep} autoMode={autoMode} onToggleZone={toggleZone} onTogglePump={() => setPumpOn((v) => !v)} onToggleMode={toggleAutoMode} onAction={showNotice} onStart={handleStart} onStop={handleStop} onReset={handleReset} />;
->>>>>>> 4db08a9 (feat: sequencia Start, modo Manual/Auto, modal apagar sensor, scroll, espacamento)
     return <AlarmsView errors={errors} onResolve={(id) => setErrors((cur) => cur.map((e) => (e.id === id ? { ...e, resolved: true } : e)))} />;
   };
 
@@ -250,7 +236,7 @@ function App() {
         <div className="sidebar-footer">
           <StatusBadge tone="success">Sistema em operação</StatusBadge>
           <div className="footer-reading"><TimerReset size={17} /><div><strong>21:16</strong><span>10/08/2026</span></div></div>
-          <div className="footer-reading"><CloudSun size={19} /><div><strong>24°C</strong><span>Parcialmente nublado</span></div></div>
+          <div className="footer-reading"><CloudSun size={19} /><div><strong>24°C</strong><span>Leiria · Parcialmente nublado</span></div></div>
           <div className="footer-reading"><Cpu size={17} /><div><strong>ESP32-S3</strong><span>Controlador principal</span></div></div>
         </div>
       </aside>
@@ -263,7 +249,10 @@ function App() {
             <h1>GTC <span>—</span> Sistema de Rega Automatizada</h1>
             <p>Monitorização e controlo do sistema de rega · ESP32-S3</p>
           </div>
-          <div className="weather"><CloudSun size={28} /><div><strong>24°C</strong><span>Parcialmente nublado</span></div></div>
+          <div className="topbar-right">
+            <div className="weather"><CloudSun size={28} /><div><strong>24°C</strong><span>Leiria, Portugal · Parcialmente nublado</span></div></div>
+            <button className="settings-btn" onClick={() => setSettingsOpen(true)} aria-label="Abrir definições"><Settings2 size={20} /></button>
+          </div>
         </header>
         <div className="page-heading">
           <div><span className="section-kicker">VISÃO GERAL</span><h2>{activePage}</h2></div>
@@ -277,20 +266,14 @@ function App() {
         </footer>
       </main>
       {notice && <div className="toast"><CheckCircle2 size={18} />{notice}</div>}
-<<<<<<< HEAD
-=======
       {zoneToDelete && <ConfirmDeleteModal zone={zoneToDelete} onCancel={() => setZoneToDelete(null)} onConfirm={confirmDeleteZone} />}
->>>>>>> 4db08a9 (feat: sequencia Start, modo Manual/Auto, modal apagar sensor, scroll, espacamento)
+      {settingsOpen && <SettingsPanel language={language} setLanguage={setLanguage} username={username} setUsername={setUsername} password={password} setPassword={setPassword} saved={settingsSaved} onSave={saveSettings} onClose={() => setSettingsOpen(false)} />}
     </div>
   );
 }
 
 /* ---------- Overview ---------- */
-<<<<<<< HEAD
-function Overview({ zones, pumpOn, autoMode, activeZones, onToggleZone, onTogglePump }: { zones: Zone[]; pumpOn: boolean; autoMode: boolean; activeZones: number; onToggleZone: (id: string) => void; onTogglePump: () => void }) {
-=======
-function Overview({ zones, pumpOn, autoMode, activeZones, onToggleZone, onTogglePump, onToggleMode }: { zones: Zone[]; pumpOn: boolean; autoMode: boolean; activeZones: number; onToggleZone: (id: string) => void; onTogglePump: () => void; onToggleMode: () => void }) {
->>>>>>> 4db08a9 (feat: sequencia Start, modo Manual/Auto, modal apagar sensor, scroll, espacamento)
+function Overview({ zones, pumpOn, autoMode, activeZones, onToggleZone, onTogglePump, onToggleMode, onOpenMap }: { zones: Zone[]; pumpOn: boolean; autoMode: boolean; activeZones: number; onToggleZone: (id: string) => void; onTogglePump: () => void; onToggleMode: () => void; onOpenMap: () => void }) {
   return (
     <div className="content-stack">
       <Panel className="hero-panel">
@@ -299,13 +282,9 @@ function Overview({ zones, pumpOn, autoMode, activeZones, onToggleZone, onToggle
           <div>
             <span className="label">ESTADO DO SISTEMA</span>
             <h3>{autoMode ? 'Automático' : 'Manual'}</h3>
-<<<<<<< HEAD
-            <StatusBadge tone="success">Funcionamento normal</StatusBadge>
-=======
             <button className={`mode-toggle-btn ${autoMode ? 'mode-auto' : 'mode-manual'}`} onClick={onToggleMode}>
               <Settings2 size={14} />{autoMode ? 'Automático' : 'Manual'}<span className="mode-pulse" />
             </button>
->>>>>>> 4db08a9 (feat: sequencia Start, modo Manual/Auto, modal apagar sensor, scroll, espacamento)
           </div>
         </div>
         <div className="hero-divider" />
@@ -330,6 +309,12 @@ function Overview({ zones, pumpOn, autoMode, activeZones, onToggleZone, onToggle
         <Panel className="quick-panel alarm-preview">
           <div className="panel-title-row"><div><span className="section-kicker">SISTEMA</span><h3>Alertas recentes</h3></div><AlertTriangle size={20} /></div>
           <div className="alert-line"><span className="alert-icon"><AlertTriangle size={15} /></span><div><strong>Sensor B2</strong><span>Leitura dentro do intervalo normal</span></div><small>há 4 min</small></div>
+        </Panel>
+      </div>
+      <div className="overview-map-link">
+        <Panel className="quick-panel">
+          <div className="panel-title-row"><div><span className="section-kicker">LOCALIZAÇÃO</span><h3>Mapa dos sensores</h3></div><MapIcon size={20} /></div>
+          <button className="action-button" onClick={onOpenMap}><MapIcon size={20} /><span><strong>Ver mapa completo</strong><small>Localização e estado de cada sensor na propriedade</small></span><ChevronRight size={17} /></button>
         </Panel>
       </div>
     </div>
@@ -363,11 +348,7 @@ function Metric({ icon, label, value, detail, accent }: { icon: React.ReactNode;
 }
 
 /* ---------- Estado ---------- */
-<<<<<<< HEAD
-function StateView({ zones, pumpOn, autoMode }: { zones: Zone[]; pumpOn: boolean; autoMode: boolean }) {
-=======
 function StateView({ zones, pumpOn, autoMode, onToggleMode }: { zones: Zone[]; pumpOn: boolean; autoMode: boolean; onToggleMode: () => void }) {
->>>>>>> 4db08a9 (feat: sequencia Start, modo Manual/Auto, modal apagar sensor, scroll, espacamento)
   return (
     <div className="two-column">
       <Panel>
@@ -385,12 +366,9 @@ function StateView({ zones, pumpOn, autoMode, onToggleMode }: { zones: Zone[]; p
           <div><strong>{autoMode ? 'Automático' : 'Manual'}</strong><p>{autoMode ? 'O sistema gere a rega com base nos setpoints.' : 'Os atuadores aguardam comandos manuais.'}</p></div>
           <StatusBadge tone="cyan">Ativo</StatusBadge>
         </div>
-<<<<<<< HEAD
-=======
         <button className={`mode-toggle-btn ${autoMode ? 'mode-auto' : 'mode-manual'}`} onClick={onToggleMode}>
           <Settings2 size={15} />{autoMode ? 'Passar para Manual' : 'Passar para Automático'}
         </button>
->>>>>>> 4db08a9 (feat: sequencia Start, modo Manual/Auto, modal apagar sensor, scroll, espacamento)
         <div className="info-list">
           <div><span>Última sincronização</span><strong>há 12 segundos</strong></div>
           <div><span>Tempo de atividade</span><strong>14 dias, 08h 32m</strong></div>
@@ -418,7 +396,7 @@ function SetpointsView({ zones, onChange, onUpdateZone, pumpDelay, setPumpDelay,
   pumpDelay: number;
   setPumpDelay: (n: number) => void;
   onAddZone: () => void;
-  onRemoveZone: (id: string) => void;
+  onRemoveZone: (zone: Zone) => void;
 }) {
   const [keyboard, setKeyboard] = useState<{ target: 'pump' | string; value: string } | null>(null);
 
@@ -460,32 +438,69 @@ function SetpointsView({ zones, onChange, onUpdateZone, pumpDelay, setPumpDelay,
           <button className="add-sensor-btn" onClick={onAddZone}><Plus size={18} /><span>Adicionar sensor</span></button>
         </Panel>
       </div>
-      {zones.map((zone) => (
-        <Panel key={zone.id} className="setpoint-card">
-          <PanelHeader eyebrow={`CONFIGURAÇÃO · SENSOR ${zone.id}`} title={zone.name} />
-          <button className="remove-sensor-btn" onClick={() => onRemoveZone(zone.id)} aria-label={`Remover ${zone.name}`}><Trash2 size={16} /></button>
-          <div className="setpoint-value"><strong>{zone.target}<small>%</small></strong><span>Humidade mínima desejada</span></div>
-          <input type="range" min="20" max="90" value={zone.target} onChange={(e) => onChange(zone.id, Number(e.target.value))} />
-          <div className="range-labels"><span>20%</span><span>90%</span></div>
-          <div className="setpoint-note"><Gauge size={16} /><span>Atual: <b>{zone.moisture}%</b> · {zone.moisture >= zone.target ? 'acima do mínimo' : 'abaixo do mínimo'}</span></div>
-          <div className="time-controls">
-            <label>Tempo de rega da válvula</label>
-            <div className="time-input">
-              <button className="btn-step" onClick={() => onUpdateZone(zone.id, { waterDuration: Math.max(5, zone.waterDuration - 5) })}>-</button>
-              <button className="time-display" onClick={() => openKeyboard(zone.id, zone.waterDuration)}>{zone.waterDuration}<span>s</span></button>
-              <button className="btn-step" onClick={() => onUpdateZone(zone.id, { waterDuration: zone.waterDuration + 5 })}>+</button>
+      <div className="setpoint-grid">
+        {zones.map((zone) => (
+          <Panel key={zone.id} className="setpoint-card">
+            <PanelHeader eyebrow={`CONFIGURAÇÃO · SENSOR ${zone.id}`} title={zone.name} />
+            <button className="remove-sensor-btn" onClick={() => onRemoveZone(zone)} aria-label={`Remover ${zone.name}`}><Trash2 size={16} /></button>
+            <div className="setpoint-value"><strong>{zone.target}<small>%</small></strong><span>Humidade mínima desejada</span></div>
+            <input type="range" min="20" max="90" value={zone.target} onChange={(e) => onChange(zone.id, Number(e.target.value))} />
+            <div className="range-labels"><span>20%</span><span>90%</span></div>
+            <div className="setpoint-note"><Gauge size={16} /><span>Atual: <b>{zone.moisture}%</b> · {zone.moisture >= zone.target ? 'acima do mínimo' : 'abaixo do mínimo'}</span></div>
+            <div className="time-controls">
+              <label>Tempo de rega da válvula</label>
+              <div className="time-input">
+                <button className="btn-step" onClick={() => onUpdateZone(zone.id, { waterDuration: Math.max(5, zone.waterDuration - 5) })}>-</button>
+                <button className="time-display" onClick={() => openKeyboard(zone.id, zone.waterDuration)}>{zone.waterDuration}<span>s</span></button>
+                <button className="btn-step" onClick={() => onUpdateZone(zone.id, { waterDuration: zone.waterDuration + 5 })}>+</button>
+              </div>
+              <small>Toque no valor para abrir o teclado numérico</small>
             </div>
-            <small>Toque no valor para abrir o teclado numérico</small>
-          </div>
-        </Panel>
-      ))}
+          </Panel>
+        ))}
+      </div>
       {keyboard && <NumericKeyboard value={keyboard.value} onChange={(v) => setKeyboard((k) => (k ? { ...k, value: v } : k))} onSubmit={submitKeyboard} onClose={() => setKeyboard(null)} />}
     </>
   );
 }
 
-<<<<<<< HEAD
-=======
+/* ---------- Mapa ---------- */
+function MapView({ zones }: { zones: Zone[] }) {
+  return (
+    <Panel className="map-panel">
+      <div className="panel-heading">
+        <div><span className="section-kicker">LOCALIZAÇÃO EM TEMPO REAL</span><h3>Quinta GTC · Leiria</h3></div>
+        <div className="map-legend">
+          <span><i className="legend-dot legend-ok" /> Normal</span>
+          <span><i className="legend-dot legend-warning" /> Atenção</span>
+          <span><i className="legend-dot legend-offline" /> Offline</span>
+        </div>
+      </div>
+      <div className="map-canvas">
+        <div className="map-grid-bg" />
+        <div className="map-road road-h" />
+        <div className="map-road road-v" />
+        <div className="map-field field-a" />
+        <div className="map-field field-b" />
+        <div className="map-water" />
+        {zones.map((zone) => {
+          const status = sensorStatus(zone);
+          return (
+            <div key={zone.id} className={`map-marker marker-${status}`} style={{ left: `${zone.x}%`, top: `${zone.y}%` }}>
+              <span className="marker-pin">{zone.id}</span>
+              <div className="marker-label">
+                <strong>{zone.name}</strong>
+                <span>{status === 'ok' ? 'Normal' : 'Atenção'} · {zone.moisture}%</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Panel>
+  );
+}
+
+/* ---------- Confirm delete modal ---------- */
 function ConfirmDeleteModal({ zone, onCancel, onConfirm }: { zone: Zone; onCancel: () => void; onConfirm: () => void }) {
   return (
     <div className="modal-overlay" onClick={onCancel}>
@@ -502,7 +517,6 @@ function ConfirmDeleteModal({ zone, onCancel, onConfirm }: { zone: Zone; onCance
   );
 }
 
->>>>>>> 4db08a9 (feat: sequencia Start, modo Manual/Auto, modal apagar sensor, scroll, espacamento)
 function NumericKeyboard({ value, onChange, onSubmit, onClose }: { value: string; onChange: (v: string) => void; onSubmit: () => void; onClose: () => void }) {
   const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '00'];
   return (
@@ -524,6 +538,46 @@ function NumericKeyboard({ value, onChange, onSubmit, onClose }: { value: string
           <button className="kb-confirm" onClick={onSubmit}>Confirmar</button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ---------- Settings panel ---------- */
+function SettingsPanel({ language, setLanguage, username, setUsername, password, setPassword, saved, onSave, onClose }: {
+  language: Language;
+  setLanguage: (l: Language) => void;
+  username: string;
+  setUsername: (v: string) => void;
+  password: string;
+  setPassword: (v: string) => void;
+  saved: boolean;
+  onSave: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <aside className="settings-drawer" onClick={(e) => e.stopPropagation()}>
+        <div className="drawer-header">
+          <div><span className="section-kicker">PREFERÊNCIAS</span><h3>Definições</h3></div>
+          <button className="drawer-close" onClick={onClose} aria-label="Fechar"><X size={19} /></button>
+        </div>
+        <div className="settings-section">
+          <div className="settings-label"><Globe2 size={18} /><div><strong>Idioma</strong><span>Escolha o idioma do painel.</span></div></div>
+          <div className="language-toggle">
+            <button className={language === 'PT' ? 'selected' : ''} onClick={() => setLanguage('PT')}>Português</button>
+            <button className={language === 'EN' ? 'selected' : ''} onClick={() => setLanguage('EN')}>English</button>
+          </div>
+        </div>
+        <div className="settings-section">
+          <div className="settings-label"><UserRound size={18} /><div><strong>Conta do operador</strong><span>Atualize os dados de acesso ao painel.</span></div></div>
+          <label className="field-label">Utilizador<input value={username} onChange={(e) => setUsername(e.target.value)} /></label>
+          <label className="field-label">Nova palavra-passe<input type="password" placeholder="Deixe vazio para manter" value={password} onChange={(e) => setPassword(e.target.value)} /></label>
+          <div className="security-note"><LockKeyhole size={15} /> Os dados de acesso ficam protegidos neste dispositivo.</div>
+        </div>
+        <div className="drawer-footer">
+          <button className={`save-btn ${saved ? 'saved' : ''}`} onClick={onSave}><Save size={17} /> {saved ? 'Definições guardadas' : 'Guardar alterações'}</button>
+        </div>
+      </aside>
     </div>
   );
 }
@@ -584,14 +638,6 @@ function ErrorItem({ event }: { event: ErrorEvent }) {
 }
 
 /* ---------- Comandos com Start/Stop/Reset ---------- */
-<<<<<<< HEAD
-function CommandsView({ zones, pumpOn, systemRunning, onToggleZone, onTogglePump, onAction, onStart, onStop, onReset }: {
-  zones: Zone[];
-  pumpOn: boolean;
-  systemRunning: boolean;
-  onToggleZone: (id: string) => void;
-  onTogglePump: () => void;
-=======
 function CommandsView({ zones, pumpOn, systemRunning, starting, startStep, autoMode, onToggleZone, onTogglePump, onToggleMode, onAction, onStart, onStop, onReset }: {
   zones: Zone[];
   pumpOn: boolean;
@@ -602,7 +648,6 @@ function CommandsView({ zones, pumpOn, systemRunning, starting, startStep, autoM
   onToggleZone: (id: string) => void;
   onTogglePump: () => void;
   onToggleMode: () => void;
->>>>>>> 4db08a9 (feat: sequencia Start, modo Manual/Auto, modal apagar sensor, scroll, espacamento)
   onAction: (m: string) => void;
   onStart: () => void;
   onStop: () => void;
@@ -613,15 +658,9 @@ function CommandsView({ zones, pumpOn, systemRunning, starting, startStep, autoM
       <Panel>
         <PanelHeader eyebrow="CONTROLO DO SISTEMA" title="Comandos principais" />
         <div className="command-actions">
-<<<<<<< HEAD
-          <button className={`cmd-btn cmd-start ${systemRunning ? 'active' : ''}`} onClick={onStart}>
-            <Play size={24} />
-            <span><strong>Start</strong><small>Inicia o sistema de rega</small></span>
-=======
           <button className={`cmd-btn cmd-start ${systemRunning ? 'active' : ''}`} onClick={onStart} disabled={starting}>
             <Play size={24} />
             <span><strong>Start</strong><small>{starting ? startStep : 'Inicia o sistema de rega'}</small></span>
->>>>>>> 4db08a9 (feat: sequencia Start, modo Manual/Auto, modal apagar sensor, scroll, espacamento)
           </button>
           <button className="cmd-btn cmd-stop" onClick={onStop}>
             <Square size={24} />
@@ -632,15 +671,12 @@ function CommandsView({ zones, pumpOn, systemRunning, starting, startStep, autoM
             <span><strong>Reset</strong><small>Reinicia o sistema</small></span>
           </button>
         </div>
-<<<<<<< HEAD
-=======
         <div className="mode-toggle-wrapper">
           <span className="section-kicker">MODO DE OPERAÇÃO</span>
           <button className={`mode-toggle-btn ${autoMode ? 'mode-auto' : 'mode-manual'}`} onClick={onToggleMode}>
             <Settings2 size={15} />{autoMode ? 'Automático' : 'Manual'}<span className="mode-pulse" />
           </button>
         </div>
->>>>>>> 4db08a9 (feat: sequencia Start, modo Manual/Auto, modal apagar sensor, scroll, espacamento)
       </Panel>
       <Panel>
         <PanelHeader eyebrow="CONTROLO MANUAL" title="Atuadores" />
