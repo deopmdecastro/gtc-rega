@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import { useMemo, useState } from 'react';
+=======
+import { useEffect, useMemo, useRef, useState } from 'react';
+>>>>>>> 4db08a9 (feat: sequencia Start, modo Manual/Auto, modal apagar sensor, scroll, espacamento)
 import {
   Activity,
   AlertTriangle,
@@ -94,6 +98,15 @@ function App() {
   const [notice, setNotice] = useState('');
   const [errors, setErrors] = useState<ErrorEvent[]>(initialErrors);
   const [systemRunning, setSystemRunning] = useState(false);
+<<<<<<< HEAD
+=======
+  const [starting, setStarting] = useState(false);
+  const [startStep, setStartStep] = useState('');
+  const [zoneToDelete, setZoneToDelete] = useState<Zone | null>(null);
+  const startTimers = useRef<number[]>([]);
+
+  useEffect(() => () => startTimers.current.forEach((t) => clearTimeout(t)), []);
+>>>>>>> 4db08a9 (feat: sequencia Start, modo Manual/Auto, modal apagar sensor, scroll, espacamento)
 
   const activeZones = useMemo(() => zones.filter((z) => z.on).length, [zones]);
   const alarmCount = useMemo(() => errors.filter((e) => !e.resolved).length, [errors]);
@@ -111,6 +124,7 @@ function App() {
     showNotice(`Sensor ${id} adicionado`);
   };
 
+<<<<<<< HEAD
   const removeZone = (id: string) => {
     setZones((cur) => cur.filter((z) => z.id !== id));
     showNotice(`Sensor ${id} removido`);
@@ -125,18 +139,63 @@ function App() {
   };
   const handleStop = () => {
     setSystemRunning(false);
+=======
+  const handleStart = () => {
+    if (starting || systemRunning) return;
+    startTimers.current.forEach((t) => clearTimeout(t));
+    startTimers.current = [];
+    setStarting(true);
+    setSystemRunning(true);
+    setAutoMode(true);
+
+    // Step 1: liga a bomba
+    setPumpOn(true);
+    setStartStep('A ligar bomba…');
+    showNotice('Bomba ligada');
+
+    // Step 2: após o delay, abre as válvulas
+    const t1 = window.setTimeout(() => {
+      setStartStep('A abrir válvulas…');
+      setZones((cur) => cur.map((z) => ({ ...z, on: true })));
+      showNotice('Válvulas abertas');
+      const t2 = window.setTimeout(() => {
+        setStarting(false);
+        setStartStep('');
+        showNotice('Sistema iniciado');
+        startTimers.current.push(t2);
+      }, 600);
+      startTimers.current.push(t2);
+    }, pumpDelay * 1000);
+    startTimers.current.push(t1);
+  };
+  const handleStop = () => {
+    startTimers.current.forEach((t) => clearTimeout(t));
+    startTimers.current = [];
+    setSystemRunning(false);
+    setStarting(false);
+    setStartStep('');
+>>>>>>> 4db08a9 (feat: sequencia Start, modo Manual/Auto, modal apagar sensor, scroll, espacamento)
     setPumpOn(false);
     setZones((cur) => cur.map((z) => ({ ...z, on: false })));
     showNotice('Sistema parado');
   };
   const handleReset = () => {
+<<<<<<< HEAD
     setSystemRunning(false);
+=======
+    startTimers.current.forEach((t) => clearTimeout(t));
+    startTimers.current = [];
+    setSystemRunning(false);
+    setStarting(false);
+    setStartStep('');
+>>>>>>> 4db08a9 (feat: sequencia Start, modo Manual/Auto, modal apagar sensor, scroll, espacamento)
     setPumpOn(false);
     setZones((cur) => cur.map((z) => ({ ...z, on: false, moisture: Math.max(20, Math.min(90, Math.round(z.moisture))) })));
     setErrors((cur) => cur.map((e) => ({ ...e, resolved: true })));
     showNotice('Sistema reiniciado');
   };
 
+<<<<<<< HEAD
   const renderPage = () => {
     if (activePage === 'Resumo') {
       return <Overview zones={zones} pumpOn={pumpOn} autoMode={autoMode} activeZones={activeZones} onToggleZone={toggleZone} onTogglePump={() => setPumpOn((v) => !v)} />;
@@ -145,6 +204,29 @@ function App() {
     if (activePage === 'Setpoints') return <SetpointsView zones={zones} pumpDelay={pumpDelay} setPumpDelay={setPumpDelay} onChange={(id, target) => setZones((cur) => cur.map((z) => (z.id === id ? { ...z, target } : z)))} onUpdateZone={(id, patch) => setZones((cur) => cur.map((z) => (z.id === id ? { ...z, ...patch } : z)))} onAddZone={addZone} onRemoveZone={removeZone} />;
     if (activePage === 'Histórico') return <HistoryView errors={errors} />;
     if (activePage === 'Comandos') return <CommandsView zones={zones} pumpOn={pumpOn} systemRunning={systemRunning} onToggleZone={toggleZone} onTogglePump={() => setPumpOn((v) => !v)} onAction={showNotice} onStart={handleStart} onStop={handleStop} onReset={handleReset} />;
+=======
+  const toggleAutoMode = () => {
+    const next = !autoMode;
+    setAutoMode(next);
+    showNotice(next ? 'Modo automático ativado' : 'Modo manual ativado');
+  };
+
+  const confirmDeleteZone = () => {
+    if (!zoneToDelete) return;
+    setZones((cur) => cur.filter((z) => z.id !== zoneToDelete.id));
+    showNotice(`Sensor ${zoneToDelete.id} removido`);
+    setZoneToDelete(null);
+  };
+
+  const renderPage = () => {
+    if (activePage === 'Resumo') {
+      return <Overview zones={zones} pumpOn={pumpOn} autoMode={autoMode} activeZones={activeZones} onToggleZone={toggleZone} onTogglePump={() => setPumpOn((v) => !v)} onToggleMode={toggleAutoMode} />;
+    }
+    if (activePage === 'Estado') return <StateView zones={zones} pumpOn={pumpOn} autoMode={autoMode} onToggleMode={toggleAutoMode} />;
+    if (activePage === 'Setpoints') return <SetpointsView zones={zones} pumpDelay={pumpDelay} setPumpDelay={setPumpDelay} onChange={(id, target) => setZones((cur) => cur.map((z) => (z.id === id ? { ...z, target } : z)))} onUpdateZone={(id, patch) => setZones((cur) => cur.map((z) => (z.id === id ? { ...z, ...patch } : z)))} onAddZone={addZone} onRemoveZone={(z) => setZoneToDelete(z)} />;
+    if (activePage === 'Histórico') return <HistoryView errors={errors} />;
+    if (activePage === 'Comandos') return <CommandsView zones={zones} pumpOn={pumpOn} systemRunning={systemRunning} starting={starting} startStep={startStep} autoMode={autoMode} onToggleZone={toggleZone} onTogglePump={() => setPumpOn((v) => !v)} onToggleMode={toggleAutoMode} onAction={showNotice} onStart={handleStart} onStop={handleStop} onReset={handleReset} />;
+>>>>>>> 4db08a9 (feat: sequencia Start, modo Manual/Auto, modal apagar sensor, scroll, espacamento)
     return <AlarmsView errors={errors} onResolve={(id) => setErrors((cur) => cur.map((e) => (e.id === id ? { ...e, resolved: true } : e)))} />;
   };
 
@@ -195,12 +277,20 @@ function App() {
         </footer>
       </main>
       {notice && <div className="toast"><CheckCircle2 size={18} />{notice}</div>}
+<<<<<<< HEAD
+=======
+      {zoneToDelete && <ConfirmDeleteModal zone={zoneToDelete} onCancel={() => setZoneToDelete(null)} onConfirm={confirmDeleteZone} />}
+>>>>>>> 4db08a9 (feat: sequencia Start, modo Manual/Auto, modal apagar sensor, scroll, espacamento)
     </div>
   );
 }
 
 /* ---------- Overview ---------- */
+<<<<<<< HEAD
 function Overview({ zones, pumpOn, autoMode, activeZones, onToggleZone, onTogglePump }: { zones: Zone[]; pumpOn: boolean; autoMode: boolean; activeZones: number; onToggleZone: (id: string) => void; onTogglePump: () => void }) {
+=======
+function Overview({ zones, pumpOn, autoMode, activeZones, onToggleZone, onTogglePump, onToggleMode }: { zones: Zone[]; pumpOn: boolean; autoMode: boolean; activeZones: number; onToggleZone: (id: string) => void; onTogglePump: () => void; onToggleMode: () => void }) {
+>>>>>>> 4db08a9 (feat: sequencia Start, modo Manual/Auto, modal apagar sensor, scroll, espacamento)
   return (
     <div className="content-stack">
       <Panel className="hero-panel">
@@ -209,7 +299,13 @@ function Overview({ zones, pumpOn, autoMode, activeZones, onToggleZone, onToggle
           <div>
             <span className="label">ESTADO DO SISTEMA</span>
             <h3>{autoMode ? 'Automático' : 'Manual'}</h3>
+<<<<<<< HEAD
             <StatusBadge tone="success">Funcionamento normal</StatusBadge>
+=======
+            <button className={`mode-toggle-btn ${autoMode ? 'mode-auto' : 'mode-manual'}`} onClick={onToggleMode}>
+              <Settings2 size={14} />{autoMode ? 'Automático' : 'Manual'}<span className="mode-pulse" />
+            </button>
+>>>>>>> 4db08a9 (feat: sequencia Start, modo Manual/Auto, modal apagar sensor, scroll, espacamento)
           </div>
         </div>
         <div className="hero-divider" />
@@ -267,7 +363,11 @@ function Metric({ icon, label, value, detail, accent }: { icon: React.ReactNode;
 }
 
 /* ---------- Estado ---------- */
+<<<<<<< HEAD
 function StateView({ zones, pumpOn, autoMode }: { zones: Zone[]; pumpOn: boolean; autoMode: boolean }) {
+=======
+function StateView({ zones, pumpOn, autoMode, onToggleMode }: { zones: Zone[]; pumpOn: boolean; autoMode: boolean; onToggleMode: () => void }) {
+>>>>>>> 4db08a9 (feat: sequencia Start, modo Manual/Auto, modal apagar sensor, scroll, espacamento)
   return (
     <div className="two-column">
       <Panel>
@@ -285,6 +385,12 @@ function StateView({ zones, pumpOn, autoMode }: { zones: Zone[]; pumpOn: boolean
           <div><strong>{autoMode ? 'Automático' : 'Manual'}</strong><p>{autoMode ? 'O sistema gere a rega com base nos setpoints.' : 'Os atuadores aguardam comandos manuais.'}</p></div>
           <StatusBadge tone="cyan">Ativo</StatusBadge>
         </div>
+<<<<<<< HEAD
+=======
+        <button className={`mode-toggle-btn ${autoMode ? 'mode-auto' : 'mode-manual'}`} onClick={onToggleMode}>
+          <Settings2 size={15} />{autoMode ? 'Passar para Manual' : 'Passar para Automático'}
+        </button>
+>>>>>>> 4db08a9 (feat: sequencia Start, modo Manual/Auto, modal apagar sensor, scroll, espacamento)
         <div className="info-list">
           <div><span>Última sincronização</span><strong>há 12 segundos</strong></div>
           <div><span>Tempo de atividade</span><strong>14 dias, 08h 32m</strong></div>
@@ -378,6 +484,25 @@ function SetpointsView({ zones, onChange, onUpdateZone, pumpDelay, setPumpDelay,
   );
 }
 
+<<<<<<< HEAD
+=======
+function ConfirmDeleteModal({ zone, onCancel, onConfirm }: { zone: Zone; onCancel: () => void; onConfirm: () => void }) {
+  return (
+    <div className="modal-overlay" onClick={onCancel}>
+      <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="confirm-modal-icon"><Leaf size={32} /></div>
+        <h3>Remover sensor {zone.id}?</h3>
+        <p>Tem a certeza que pretende remover o sensor <strong>{zone.name}</strong> ({zone.id})? Esta ação não pode ser desfeita.</p>
+        <div className="confirm-modal-actions">
+          <button className="kb-clear" onClick={onCancel}>Cancelar</button>
+          <button className="confirm-delete-btn" onClick={onConfirm}><Trash2 size={15} />Remover</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+>>>>>>> 4db08a9 (feat: sequencia Start, modo Manual/Auto, modal apagar sensor, scroll, espacamento)
 function NumericKeyboard({ value, onChange, onSubmit, onClose }: { value: string; onChange: (v: string) => void; onSubmit: () => void; onClose: () => void }) {
   const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '00'];
   return (
@@ -459,12 +584,25 @@ function ErrorItem({ event }: { event: ErrorEvent }) {
 }
 
 /* ---------- Comandos com Start/Stop/Reset ---------- */
+<<<<<<< HEAD
 function CommandsView({ zones, pumpOn, systemRunning, onToggleZone, onTogglePump, onAction, onStart, onStop, onReset }: {
   zones: Zone[];
   pumpOn: boolean;
   systemRunning: boolean;
   onToggleZone: (id: string) => void;
   onTogglePump: () => void;
+=======
+function CommandsView({ zones, pumpOn, systemRunning, starting, startStep, autoMode, onToggleZone, onTogglePump, onToggleMode, onAction, onStart, onStop, onReset }: {
+  zones: Zone[];
+  pumpOn: boolean;
+  systemRunning: boolean;
+  starting: boolean;
+  startStep: string;
+  autoMode: boolean;
+  onToggleZone: (id: string) => void;
+  onTogglePump: () => void;
+  onToggleMode: () => void;
+>>>>>>> 4db08a9 (feat: sequencia Start, modo Manual/Auto, modal apagar sensor, scroll, espacamento)
   onAction: (m: string) => void;
   onStart: () => void;
   onStop: () => void;
@@ -475,9 +613,15 @@ function CommandsView({ zones, pumpOn, systemRunning, onToggleZone, onTogglePump
       <Panel>
         <PanelHeader eyebrow="CONTROLO DO SISTEMA" title="Comandos principais" />
         <div className="command-actions">
+<<<<<<< HEAD
           <button className={`cmd-btn cmd-start ${systemRunning ? 'active' : ''}`} onClick={onStart}>
             <Play size={24} />
             <span><strong>Start</strong><small>Inicia o sistema de rega</small></span>
+=======
+          <button className={`cmd-btn cmd-start ${systemRunning ? 'active' : ''}`} onClick={onStart} disabled={starting}>
+            <Play size={24} />
+            <span><strong>Start</strong><small>{starting ? startStep : 'Inicia o sistema de rega'}</small></span>
+>>>>>>> 4db08a9 (feat: sequencia Start, modo Manual/Auto, modal apagar sensor, scroll, espacamento)
           </button>
           <button className="cmd-btn cmd-stop" onClick={onStop}>
             <Square size={24} />
@@ -488,6 +632,15 @@ function CommandsView({ zones, pumpOn, systemRunning, onToggleZone, onTogglePump
             <span><strong>Reset</strong><small>Reinicia o sistema</small></span>
           </button>
         </div>
+<<<<<<< HEAD
+=======
+        <div className="mode-toggle-wrapper">
+          <span className="section-kicker">MODO DE OPERAÇÃO</span>
+          <button className={`mode-toggle-btn ${autoMode ? 'mode-auto' : 'mode-manual'}`} onClick={onToggleMode}>
+            <Settings2 size={15} />{autoMode ? 'Automático' : 'Manual'}<span className="mode-pulse" />
+          </button>
+        </div>
+>>>>>>> 4db08a9 (feat: sequencia Start, modo Manual/Auto, modal apagar sensor, scroll, espacamento)
       </Panel>
       <Panel>
         <PanelHeader eyebrow="CONTROLO MANUAL" title="Atuadores" />
