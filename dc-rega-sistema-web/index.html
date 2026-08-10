@@ -2,11 +2,63 @@
 <html lang="pt-PT">
   <head>
     <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#060b10" />
+    <meta name="description" content="GTC — Sistema de Rega Automatizada para ESP32-S3" />
     <title>GTC — Sistema de Rega Automatizada</title>
+    <style>
+      #splash {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 28px;
+        background: radial-gradient(circle at 50% 40%, rgba(0,190,190,.07), transparent 50%), #060b10;
+        transition: opacity .5s ease, visibility .5s ease;
+      }
+      #splash.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+      .splash-logo {
+        width: 88px; height: 88px;
+        display: grid; place-items: center;
+        border: 1px solid rgba(20,221,214,.42);
+        border-radius: 22px;
+        background: rgba(20,221,214,.1);
+        animation: splash-pulse 1.8s ease-in-out infinite;
+      }
+      .splash-logo svg { color: #14ddd6; }
+      .splash-title { font-family: 'Manrope', system-ui, sans-serif; font-weight: 800; font-size: 26px; letter-spacing: .12em; color: #eef3f4; }
+      .splash-sub { font-family: 'Manrope', system-ui, sans-serif; font-size: 11px; letter-spacing: .25em; color: #526875; text-transform: uppercase; }
+      .splash-bar { width: 200px; height: 3px; border-radius: 99px; background: #17232c; overflow: hidden; }
+      .splash-bar span { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, #0cb4aa, #19dfd5); animation: splash-load 1.6s ease forwards; }
+      @keyframes splash-pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(20,221,214,.3); } 50% { box-shadow: 0 0 0 14px rgba(20,221,214,0); } }
+      @keyframes splash-load { from { width: 0; } to { width: 100%; } }
+    </style>
   </head>
   <body>
+    <div id="splash">
+      <div class="splash-logo">
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6"/></svg>
+      </div>
+      <div style="text-align:center">
+        <div class="splash-title">GTC REGA</div>
+        <div class="splash-sub">Sistema de Rega Automatizada</div>
+      </div>
+      <div class="splash-bar"><span></span></div>
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      window.addEventListener('load', function() {
+        setTimeout(function() {
+          var s = document.getElementById('splash');
+          if (s) s.classList.add('hidden');
+          setTimeout(function() { if (s) s.remove(); }, 600);
+        }, 1700);
+      });
+    </script>
   </body>
 </html>
