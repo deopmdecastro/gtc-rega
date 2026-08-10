@@ -39,6 +39,7 @@ import {
 type Page = 'Resumo' | 'Estado' | 'Setpoints' | 'Mapa' | 'Histórico' | 'Comandos' | 'Alarmes';
 type Zone = {
   id: string;
+  sensorId: string;
   name: string;
   moisture: number;
   target: number;
@@ -71,14 +72,14 @@ const pages: { label: Page; icon: typeof Home }[] = [
 ];
 
 const initialZones: Zone[] = [
-  { id: 'Y1', name: 'Zona 1', moisture: 64, target: 55, lastWatered: 'Hoje, 18:12', on: false, waterDuration: 60, x: 28, y: 36 },
-  { id: 'Y2', name: 'Zona 2', moisture: 57, target: 52, lastWatered: 'Hoje, 17:48', on: false, waterDuration: 45, x: 56, y: 62 },
+  { id: 'Y1', sensorId: 'B1', name: 'Zona 1', moisture: 64, target: 55, lastWatered: 'Hoje, 18:12', on: false, waterDuration: 60, x: 28, y: 36 },
+  { id: 'Y2', sensorId: 'B2', name: 'Zona 2', moisture: 57, target: 52, lastWatered: 'Hoje, 17:48', on: false, waterDuration: 45, x: 56, y: 62 },
 ];
 
 const initialErrors: ErrorEvent[] = [
   { id: 'E001', time: 'Hoje, 21:12', source: 'Sensor B2', message: 'Leitura recebida dentro do intervalo esperado.', severity: 'info', resolved: true },
   { id: 'E002', time: 'Hoje, 14:03', source: 'Bomba K1', message: 'Sobrecorrente detectada no relé K1 durante o arranque.', severity: 'warning', resolved: true },
-  { id: 'E003', time: 'Ontem, 06:30', source: 'Comunicação', message: 'Timeout Modbus no barramento RS485 — sensor Y1.', severity: 'critical', resolved: true },
+  { id: 'E003', time: 'Ontem, 06:30', source: 'Comunicação', message: 'Timeout Modbus no barramento RS485 — sensor B1.', severity: 'critical', resolved: true },
 ];
 
 function StatusBadge({ children, tone = 'neutral' }: { children: React.ReactNode; tone?: 'success' | 'warning' | 'error' | 'neutral' | 'cyan' }) {
@@ -90,8 +91,12 @@ function Panel({ children, className = '' }: { children: React.ReactNode; classN
 }
 
 let nextZoneId = 3;
+let nextSensorId = 3;
 function makeZoneId() {
   return `Y${nextZoneId++}`;
+}
+function makeSensorId() {
+  return `B${nextSensorId++}`;
 }
 
 function sensorStatus(zone: Zone): 'ok' | 'warning' | 'offline' {
@@ -132,9 +137,10 @@ function App() {
 
   const addZone = () => {
     const id = makeZoneId();
+    const sensorId = makeSensorId();
     const num = zones.length + 1;
-    setZones((cur) => [...cur, { id, name: `Zona ${num}`, moisture: 50, target: 50, lastWatered: '—', on: false, waterDuration: 30, x: 30 + Math.random() * 40, y: 30 + Math.random() * 40 }]);
-    showNotice(`Sensor ${id} adicionado`);
+    setZones((cur) => [...cur, { id, sensorId, name: `Zona ${num}`, moisture: 50, target: 50, lastWatered: '—', on: false, waterDuration: 30, x: 30 + Math.random() * 40, y: 30 + Math.random() * 40 }]);
+    showNotice(`Sensor ${sensorId} adicionado`);
   };
 
   const handleStart = () => {
@@ -194,7 +200,7 @@ function App() {
   const confirmDeleteZone = () => {
     if (!zoneToDelete) return;
     setZones((cur) => cur.filter((z) => z.id !== zoneToDelete.id));
-    showNotice(`Sensor ${zoneToDelete.id} removido`);
+    showNotice(`Sensor ${zoneToDelete.sensorId} removido`);
     setZoneToDelete(null);
   };
 
@@ -291,7 +297,7 @@ function Overview({ zones, pumpOn, autoMode, activeZones, onToggleZone, onToggle
         <div className="actuator-list">
           <div className="panel-title-row"><span>ATUADORES</span><small>{activeZones} ativos</small></div>
           <ActuatorRow icon={<Waves />} label="Bomba" on={pumpOn} onToggle={onTogglePump} />
-          {zones.map((z) => <ActuatorRow key={z.id} icon={<Droplets />} label={`${z.name} · ${z.id}`} on={z.on} onToggle={() => onToggleZone(z.id)} />)}
+          {zones.map((z) => <ActuatorRow key={z.id} icon={<Droplets />} label={`${z.name} · Válvula ${z.id}`} on={z.on} onToggle={() => onToggleZone(z.id)} />)}
         </div>
       </Panel>
       <div className="sensor-grid">{zones.map((z) => <SensorCard key={z.id} zone={z} />)}</div>
@@ -329,7 +335,7 @@ function SensorCard({ zone }: { zone: Zone }) {
   return (
     <Panel className="sensor-card">
       <div className="sensor-header">
-        <div><span className="section-kicker">SENSOR {zone.id}</span><h3>{zone.name}</h3></div>
+        <div><span className="section-kicker">SENSOR {zone.sensorId}</span><h3>{zone.name}</h3></div>
         <StatusBadge tone={zone.moisture >= zone.target ? 'success' : 'warning'}>{zone.moisture >= zone.target ? 'Normal' : 'Atenção'}</StatusBadge>
       </div>
       <div className="sensor-reading">
@@ -357,6 +363,7 @@ function StateView({ zones, pumpOn, autoMode, onToggleMode }: { zones: Zone[]; p
           <StateRow icon={<Cpu />} title="Controlador central" detail="ESP32-S3 · Wi-Fi · RS485" status="Online" />
           <StateRow icon={<Power />} title="Bomba principal" detail="Relé K1 · Saída digital" status={pumpOn ? 'Ligada' : 'Desligada'} active={pumpOn} />
           {zones.map((z) => <StateRow key={z.id} icon={<Droplets />} title={`${z.name} · Válvula ${z.id}`} detail="Válvula solenóide" status={z.on ? 'Ligada' : 'Desligada'} active={z.on} />)}
+          {zones.map((z) => <StateRow key={`s-${z.sensorId}`} icon={<Radio />} title={`${z.name} · Sensor ${z.sensorId}`} detail={`Humidade do solo · ${z.moisture}%`} status="Online" active />)}
         </div>
       </Panel>
       <Panel>
@@ -441,7 +448,8 @@ function SetpointsView({ zones, onChange, onUpdateZone, pumpDelay, setPumpDelay,
       <div className="setpoint-grid">
         {zones.map((zone) => (
           <Panel key={zone.id} className="setpoint-card">
-            <PanelHeader eyebrow={`CONFIGURAÇÃO · SENSOR ${zone.id}`} title={zone.name} />
+            <PanelHeader eyebrow={`CONFIGURAÇÃO · SENSOR ${zone.sensorId}`} title={zone.name} />
+            <div className="setpoint-ids"><span><Droplets size={13} /> Válvula {zone.id}</span><span><Radio size={13} /> Sensor {zone.sensorId}</span></div>
             <button className="remove-sensor-btn" onClick={() => onRemoveZone(zone)} aria-label={`Remover ${zone.name}`}><Trash2 size={16} /></button>
             <div className="setpoint-value"><strong>{zone.target}<small>%</small></strong><span>Humidade mínima desejada</span></div>
             <input type="range" min="20" max="90" value={zone.target} onChange={(e) => onChange(zone.id, Number(e.target.value))} />
@@ -487,7 +495,7 @@ function MapView({ zones }: { zones: Zone[] }) {
           const status = sensorStatus(zone);
           return (
             <div key={zone.id} className={`map-marker marker-${status}`} style={{ left: `${zone.x}%`, top: `${zone.y}%` }}>
-              <span className="marker-pin">{zone.id}</span>
+              <span className="marker-pin">{zone.sensorId}</span>
               <div className="marker-label">
                 <strong>{zone.name}</strong>
                 <span>{status === 'ok' ? 'Normal' : 'Atenção'} · {zone.moisture}%</span>
@@ -506,8 +514,8 @@ function ConfirmDeleteModal({ zone, onCancel, onConfirm }: { zone: Zone; onCance
     <div className="modal-overlay" onClick={onCancel}>
       <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
         <div className="confirm-modal-icon"><Leaf size={32} /></div>
-        <h3>Remover sensor {zone.id}?</h3>
-        <p>Tem a certeza que pretende remover o sensor <strong>{zone.name}</strong> ({zone.id})? Esta ação não pode ser desfeita.</p>
+        <h3>Remover sensor {zone.sensorId}?</h3>
+        <p>Tem a certeza que pretende remover o sensor <strong>{zone.name}</strong> ({zone.sensorId})? Esta ação não pode ser desfeita.</p>
         <div className="confirm-modal-actions">
           <button className="kb-clear" onClick={onCancel}>Cancelar</button>
           <button className="confirm-delete-btn" onClick={onConfirm}><Trash2 size={15} />Remover</button>
@@ -601,9 +609,9 @@ function HistoryView({ errors }: { errors: ErrorEvent[] }) {
       <Panel>
         <PanelHeader eyebrow="REGISTO DE ATIVIDADE" title="Últimas regas" />
         <div className="history-list">
-          <HistoryItem time="18:12" zone="Zona 1 · Y1" duration="08 min" />
-          <HistoryItem time="17:48" zone="Zona 2 · Y2" duration="06 min" />
-          <HistoryItem time="06:30" zone="Zona 1 · Y1" duration="10 min" />
+          <HistoryItem time="18:12" zone="Zona 1 · Válvula Y1" duration="08 min" />
+          <HistoryItem time="17:48" zone="Zona 2 · Válvula Y2" duration="06 min" />
+          <HistoryItem time="06:30" zone="Zona 1 · Válvula Y1" duration="10 min" />
         </div>
       </Panel>
       <Panel className="error-history-panel">
@@ -682,13 +690,13 @@ function CommandsView({ zones, pumpOn, systemRunning, starting, startStep, autoM
         <PanelHeader eyebrow="CONTROLO MANUAL" title="Atuadores" />
         <div className="command-list">
           <CommandRow icon={<Waves />} label="Bomba principal" description="Relé K1" on={pumpOn} onToggle={onTogglePump} />
-          {zones.map((z) => <CommandRow key={z.id} icon={<Droplets />} label={`${z.name} · ${z.id}`} description="Válvula solenóide" on={z.on} onToggle={() => onToggleZone(z.id)} />)}
+          {zones.map((z) => <CommandRow key={z.id} icon={<Droplets />} label={`${z.name} · Válvula ${z.id}`} description="Válvula solenóide" on={z.on} onToggle={() => onToggleZone(z.id)} />)}
         </div>
       </Panel>
       <Panel>
         <PanelHeader eyebrow="AÇÃO RÁPIDA" title="Rotinas do sistema" />
         <button className="action-button" onClick={() => onAction('Ciclo de teste iniciado')}><PlayCircle size={20} /><span><strong>Executar ciclo de teste</strong><small>Verifica bomba e válvulas durante 30 segundos</small></span><ChevronRight size={17} /></button>
-        <button className="action-button" onClick={() => onAction('Todas as zonas foram desligadas')}><Power size={20} /><span><strong>Paragem de emergência</strong><small>Desliga todos os atuadores ativos</small></span><ChevronRight size={17} /></button>
+        <button className="action-button action-emergency" onClick={() => onAction('Todas as zonas foram desligadas')}><Power size={20} /><span><strong>Paragem de emergência</strong><small>Desliga todos os atuadores ativos</small></span><ChevronRight size={17} /></button>
       </Panel>
     </div>
   );
