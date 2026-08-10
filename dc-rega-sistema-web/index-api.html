@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>GTC - API Prototype</title>
+  <style>
+    body{font-family:Arial,Helvetica,sans-serif;background:#121417;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;margin:0}
+    .card{background:#1B1B1B;padding:20px;border-radius:8px;width:360px}
+    .row{display:flex;justify-content:space-between;margin:8px 0}
+    .btn{padding:8px 12px;border-radius:6px;border:none;cursor:pointer}
+    .btn-green{background:#4CAF50;color:#000}
+    .btn-red{background:#FF3B30;color:#fff}
+    .btn-amber{background:#FFB000;color:#000}
+    .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:8px}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h3>GTC — API Prototype</h3>
+    <div class="row"><span>Modo</span><strong id="mode">--</strong></div>
+    <div class="row"><span><span id="pump-dot" class="dot" style="background:#555"></span>Bomba</span><strong id="pump">--</strong></div>
+    <div class="row"><span><span id="zone1-dot" class="dot" style="background:#555"></span>Zona 1</span><strong id="zone1">--</strong></div>
+    <div class="row"><span><span id="zone2-dot" class="dot" style="background:#555"></span>Zona 2</span><strong id="zone2">--</strong></div>
+    <div class="row"><span>Humidade B1</span><strong id="h1">--</strong></div>
+    <div class="row"><span>Humidade B2</span><strong id="h2">--</strong></div>
+
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button id="start" class="btn btn-green">START</button>
+      <button id="stop" class="btn btn-red">STOP</button>
+      <button id="reset" class="btn btn-amber">RESET</button>
+    </div>
+
+    <div style="font-size:12px;color:#A0AAB0;margin-top:12px">API: <code>/api/status</code>  — Socket.IO: <code>/ (event update)</code></div>
+  </div>
+
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script>
+    const apiBase = (location.protocol === 'https:' ? 'https://' : 'http://') + location.hostname + ':3000';
+
+    async function fetchStatus(){
+      try{
+        const r = await fetch(apiBase + '/api/status');
+        const j = await r.json();
+        applyState(j);
+      }catch(e){console.error('fetchStatus',e)}
+    }
+
+    function applyState(s){
+      document.getElementById('mode').textContent = s.mode || '--';
+      document.getElementById('pump').textContent = s.pump ? 'ON' : 'OFF';
+      document.getElementById('zone1').textContent = s.zone1 ? 'ON' : 'OFF';
+      document.getElementById('zone2').textContent = s.zone2 ? 'ON' : 'OFF';
+      document.getElementById('h1').textContent = s.humidity?.zone1 != null ? s.humidity.zone1 + '%' : '--';
+      document.getElementById('h2').textContent = s.humidity?.zone2 != null ? s.humidity.zone2 + '%' : '--';
+
+      // dots
+      document.getElementById('pump-dot').style.background = s.pump ? '#4CAF50' : '#555';
+      document.getElementById('zone1-dot').style.background = s.zone1 ? '#FFB000' : '#555';
+      document.getElementById('zone2-dot').style.background = s.zone2 ? '#FFB000' : '#555';
+    }
+
+    document.getElementById('start').addEventListener('click', async ()=>{
+      await sendCommand('START');
+    });
+    document.getElementById('stop').addEventListener('click', async ()=>{
+      await sendCommand('STOP');
+    });
+    document.getElementById('reset').addEventListener('click', async ()=>{
+      await sendCommand('RESET');
+    });
+
+    async function sendCommand(cmd){
+      try{
+        const r = await fetch(apiBase + '/api/command', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({command:cmd})});
+        const j = await r.json();
+        applyState(j);
+      }catch(e){console.error('sendCommand',e)}
+    }
+
+    // Socket.IO
+    try{
+      const socket = io(apiBase);
+      socket.on('connect', ()=>console.log('socket connected'));
+      socket.on('update', (s)=>{ applyState(s); });
+    }catch(e){console.warn('socket.io not available',e)}
+
+    // initial load
+    fetchStatus();
+  </script>
+</body>
+</html>

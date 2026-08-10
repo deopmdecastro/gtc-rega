@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GTC - Sistema de Rega Automatizada (LVGL Interface)</title>
+  <!-- Google Fonts: Inter e Montserrat -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    /* VARIABLES & PALETTE */
+    :root {
+      --color-teal: #00B4A6;
+      --color-dark-bg: #121417;
+      --color-card-bg: #1B1B1B;
+      --color-panel-bg: #22252A;
+      --color-btn-bg: #2E2E2E;
+      --color-btn-hover: #3E3E3E;
+      --color-white: #FFFFFF;
+      --color-text-muted: #A0AAB0;
+      --color-green: #4CAF50;
+      --color-amber: #FFB000;
+      --color-red: #FF3B30;
+      --color-inactive: #555555;
+      --border-radius: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', sans-serif;
+      user-select: none;
+    }
+
+    body {
+      background-color: var(--color-dark-bg);
+      color: var(--color-white);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    h1.page-title {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 22px;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      text-align: center;
+    }
+
+    .page-subtitle {
+      font-size: 13px;
+      color: var(--color-teal);
+      margin-bottom: 20px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+    }
+
+    /* GRID DAS TELAS */
+    .screens-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      gap: 20px;
+      width: 100%;
+      max-width: 1200px;
+    }
+
+    /* FRAME DA TELA LVGL (Simula a tela de um display) */
+    .lvgl-screen {
+      background-color: var(--color-card-bg);
+      border: 2px solid #2B2F36;
+      border-radius: 12px;
+      width: 100%;
+      height: 380px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 12px;
+      position: relative;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    }
+
+    .screen-label {
+      position: absolute;
+      top: -24px;
+      left: 10px;
+      font-size: 11px;
+      font-weight: bold;
+      color: var(--color-text-muted);
+      text-transform: uppercase;
+    }
+
+    /* HEADER DAS TELAS */
+    .screen-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #2D323A;
+      padding-bottom: 8px;
+    }
+
+    .logo-area {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .logo-area .gtc {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--color-teal);
+      line-height: 1;
+    }
+
+    .logo-area .sub {
+      font-size: 8px;
+      letter-spacing: 2px;
+      color: var(--color-white);
+    }
+
+    .header-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .header-info {
+      text-align: right;
+      font-size: 10px;
+      color: var(--color-text-muted);
+    }
+
+    .header-info .time {
+      font-weight: 700;
+      color: var(--color-white);
+    }
+
+    .header-weather {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+    }
+
+    /* COMPONENTES GERAIS */
+    .btn {
+      background-color: var(--color-btn-bg);
+      color: var(--color-white);
+      border: none;
+      border-radius: var(--border-radius);
+      padding: 8px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: background 0.2s;
+    }
+
+    .btn:hover {
+      background-color: var(--color-btn-hover);
+    }
+
+    .btn-teal {
+      background-color: var(--color-teal);
+      color: #000;
+      font-weight: 700;
+    }
+
+    .btn-teal:hover {
+      background-color: #00998d;
+    }
+
+    .btn-green { background-color: var(--color-green); }
+    .btn-red { background-color: var(--color-red); }
+    .btn-amber { background-color: var(--color-amber); color: #000; }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .dot-off { background-color: var(--color-inactive); }
+    .dot-on { background-color: var(--color-green); }
+    .dot-amber { background-color: var(--color-amber); }
+    .dot-red { background-color: var(--color-red); }
+
+    /* --- TELA 1: HOME --- */
+    .home-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 8px;
+    }
+
+    .status-box {
+      background-color: var(--color-panel-bg);
+      border-radius: var(--border-radius);
+      padding: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .circle-status {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      border: 4px solid var(--color-green);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--color-green);
+    }
+
+    .equip-list {
+      background-color: var(--color-panel-bg);
+      border-radius: var(--border-radius);
+      padding: 8px 12px;
+      font-size: 10px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-around;
+    }
+
+    .equip-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .sensor-card {
+      background-color: var(--color-panel-bg);
+      border-radius: var(--border-radius);
+      padding: 8px;
+      text-align: center;
+    }
+
+    .sensor-card .val {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--color-teal);
+      margin: 2px 0;
+    }
+
+    .nav-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      margin-top: auto;
+    }
+
+    .nav-btn {
+      flex-direction: column;
+      padding: 6px 2px;
+      font-size: 9px;
+    }
+
+    /* --- TELA 2: ESTADO --- */
+    .estado-content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      font-size: 10px;
+      margin-top: 8px;
+    }
+
+    .panel {
+      background: var(--color-panel-bg);
+      padding: 8px;
+      border-radius: var(--border-radius);
+    }
+
+    .panel-title {
+      color: var(--color-teal);
+      font-weight: 700;
+      margin-bottom: 6px;
+      font-size: 9px;
+      text-transform: uppercase;
+    }
+
+    .state-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    /* --- TELA 3: SETPOINTS --- */
+    .setpoint-tabs {
+      display: flex;
+      gap: 6px;
+      margin: 6px 0;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 6px;
+      font-size: 10px;
+      background: var(--color-btn-bg);
+      border-radius: 4px;
+      text-align: center;
+      cursor: pointer;
+    }
+    .tab.active {
+      background: var(--color-teal);
+      color: #000;
+      font-weight: 700;
+    }
+
+    .setpoint-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--color-panel-bg);
+      padding: 5px 8px;
+      border-radius: 6px;
+      margin-bottom: 5px;
+      font-size: 10px;
+    }
+
+    .counter {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-step {
+      width: 22px;
+      height: 22px;
+      border-radius: 4px;
+      background: var(--color-btn-bg);
+      border: none;
+      color: var(--color-white);
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    /* --- TELA 4: HISTÓRICO --- */
+    .filter-bar {
+      display: flex;
+      gap: 4px;
+      margin: 6px 0;
+    }
+    .filter-btn {
+      padding: 4px 8px;
+      font-size: 9px;
+      border-radius: 4px;
+      background: var(--color-btn-bg);
+      color: #fff;
+    }
+    .filter-btn.active {
+      background: var(--color-teal);
+      color: #000;
+    }
+
+    .table-container {
+      background: var(--color-panel-bg);
+      border-radius: 6px;
+      height: 180px;
+      overflow-y: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 9px;
+      text-align: left;
+    }
+
+    th {
+      background: #181A1D;
+      padding: 4px 6px;
+      color: var(--color-text-muted);
+    }
+
+    td {
+      padding: 4px 6px;
+      border-bottom: 1px solid #2A2E35;
+    }
+
+    /* --- TELA 5: COMANDOS --- */
+    .mode-selector {
+      display: flex;
+      background: var(--color-panel-bg);
+      border-radius: 8px;
+      padding: 4px;
+      gap: 4px;
+      margin: 8px 0;
+    }
+    .mode-btn {
+      flex: 1;
+      padding: 8px;
+      text-align: center;
+      font-size: 10px;
+      font-weight: bold;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+    }
+    .mode-btn.active {
+      background: var(--color-teal);
+      color: #000;
+    }
+
+    .cmd-actions {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .cmd-btn {
+      height: 60px;
+      flex-direction: column;
+      font-size: 11px;
+      border-radius: 8px;
+    }
+
+    /* --- TELA 6: ALARMES --- */
+    .alarm-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .alarm-item {
+      background: var(--color-panel-bg);
+      border-left: 4px solid var(--color-red);
+      padding: 8px;
+      border-radius: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .alarm-item.warning {
+      border-left-color: var(--color-amber);
+    }
+
+    .alarm-info h4 {
+      font-size: 10px;
+      color: var(--color-white);
+    }
+    .alarm-info p {
+      font-size: 8px;
+      color: var(--color-text-muted);
+    }
+
+    /* BOTÃO VOLTAR PADRÃO */
+    .btn-back {
+      width: max-content;
+      font-size: 9px;
+      padding: 4px 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1 class="page-title">GTC — Sistema de Rega Automatizada</h1>
+  <div class="page-subtitle">Interface Gráfica LVGL — Telas Previstas</div>
+
+  <div class="screens-grid">
+
+    <!-- 1. TELA PRINCIPAL (HOME) -->
+    <div class="lvgl-screen">
+      <span class="screen-label">1. Tela Principal (Home)</span>
+      <div class="screen-header">
+        <div class="logo-area">
+          <span class="gtc">GTC</span>
+          <span class="sub">REGA</span>
+        </div>
+        <div class="header-info">
+          <div class="time">14:35:27</div>
+          <div>10/08/2026</div>
+        </div>
+        <div class="header-weather">
+          <i data-lucide="sun-cloud" style="color: var(--color-amber);"></i>
+          <span>24°C<br><small style="font-size: 7px;">Parcialmente nublado</small></span>
+        </div>
+      </div>
+
+      <div class="home-grid">
+        <div class="status-box">
+          <div class="circle-status"><i data-lucide="sprout"></i></div>
+          <div>
+            <div style="font-size: 9px; color: var(--color-text-muted);">SISTEMA</div>
+            <div style="font-size: 11px; font-weight: 800; color: var(--color-green);">AUTOMÁTICO</div>
+          </div>
+        </div>
+
+        <div class="equip-list">
+          <div class="equip-item">
+            <span><span class="status-dot dot-off"></span> BOMBA</span>
+            <strong style="color: var(--color-red);">OFF</strong>
+          </div>
+          <div class="equip-item">
+            <span><span class="status-dot dot-off"></span> ZONA 1 (Y1)</span>
+            <strong style="color: var(--color-red);">OFF</strong>
+          </div>
+          <div class="equip-item">
+            <span><span class="status-dot dot-off"></span> ZONA 2 (Y2)</span>
+            <strong style="color: var(--color-red);">OFF</strong>
+          </div>
+        </div>
+
+        <div class="sensor-card">
+          <div style="font-size: 9px; color: var(--color-text-muted);">SENSOR B1 (ZONA 1)</div>
+          <i data-lucide="droplet" style="color: var(--color-teal); margin-top:4px;"></i>
+          <div class="val">62%</div>
+          <div style="font-size: 8px; color: var(--color-text-muted);">Humidade</div>
+        </div>
+
+        <div class="sensor-card">
+          <div style="font-size: 9px; color: var(--color-text-muted);">SENSOR B2 (ZONA 2)</div>
+          <i data-lucide="droplet" style="color: var(--color-teal); margin-top:4px;"></i>
+          <div class="val">58%</div>
+          <div style="font-size: 8px; color: var(--color-text-muted);">Humidade</div>
+        </div>
+      </div>
+
+      <div class="nav-bar">
+        <button class="btn nav-btn"><i data-lucide="monitor"></i>ESTADO</button>
+        <button class="btn nav-btn"><i data-lucide="sliders"></i>SETPOINTS</button>
+        <button class="btn nav-btn"><i data-lucide="history"></i>HISTÓRICO</button>
+        <button class="btn nav-btn"><i data-lucide="play-circle"></i>COMANDOS</button>
+      </div>
+    </div>
+
+    <!-- 2. TELA DE ESTADO -->
+    <div class="lvgl-screen">
+      <span class="screen-label">2. Tela de Estado</span>
+      <div class="screen-header">
+        <div class="logo-area">
+          <span class="gtc">GTC</span>
+          <span class="sub">REGA</span>
+        </div>
+        <div class="header-title">ESTADO DO SISTEMA</div>
+        <div class="header-info">
+          <div class="time">14:35</div>
+          <div>10/08/2026</div>
+        </div>
+      </div>
+
+      <div class="estado-content">
+        <div>
+          <div class="panel">
+            <div class="panel-title">EQUIPAMENTOS</div>
+            <div class="state-row">
+              <span><i data-lucide="waves" style="width:12px;"></i> BOMBA (KM1)</span>
+              <span><span class="status-dot dot-off"></span> OFF</span>
+            </div>
+            <div class="state-row">
+              <span><i data-lucide="pipette" style="width:12px;"></i> ELETROVÁLVULA Y1</span>
+              <span><span class="status-dot dot-off"></span> OFF</span>
+            </div>
+            <div class="state-row">
+              <span><i data-lucide="pipette" style="width:12px;"></i> ELETROVÁLVULA Y2</span>
+              <span><span class="status-dot dot-off"></span> OFF</span>
+            </div>
+          </div>
+
+          <div class="panel" style="margin-top: 6px;">
+            <div class="panel-title">SENSORES</div>
+            <div class="state-row">
+              <span><i data-lucide="droplet" style="width:12px; color:var(--color-teal)"></i> B1 (ZONA 1)</span>
+              <strong style="color:var(--color-green)">64%</strong>
+            </div>
+            <div class="state-row">
+              <span><i data-lucide="droplet" style="width:12px; color:var(--color-teal)"></i> B2 (ZONA 2)</span>
+              <strong style="color:var(--color-green)">57%</strong>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="panel">
+            <div class="panel-title">TEMPORIZADORES</div>
+            <div class="state-row">
+              <span><i data-lucide="clock" style="width:12px;"></i> KT1 (DURAÇÃO)</span>
+            </div>
+            <div style="color: var(--color-text-muted); font-size: 8px; margin-bottom:6px;">Inativo</div>
+
+            <div class="state-row">
+              <span><i data-lucide="timer" style="width:12px;"></i> KT2 (INTERVALO)</span>
+            </div>
+            <div style="color: var(--color-text-muted); font-size: 8px;">Inativo</div>
+          </div>
+
+          <div class="panel" style="margin-top: 6px;">
+            <div class="panel-title">ÚLTIMA REGA</div>
+            <div style="font-size: 8px; line-height: 1.4;">
+              <div>ZONA: <span style="float:right;">1 (Y1)</span></div>
+              <div>SENSOR: <span style="float:right;">B1</span></div>
+              <div>DATA / HORA: <span style="float:right;">10/08/2026 14:12</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn btn-back"><i data-lucide="chevron-left" style="width:12px;"></i> VOLTAR</button>
+    </div>
+
+    <!-- 3. TELA DE SETPOINTS -->
+    <div class="lvgl-screen">
+      <span class="screen-label">3. Tela de Setpoints</span>
+      <div class="screen-header">
+        <div class="logo-area">
+          <span class="gtc">GTC</span>
+          <span class="sub">REGA</span>
+        </div>
+        <div class="header-title">SETPOINTS</div>
+        <div class="header-info">
+          <div class="time">14:35</div>
+          <div>10/08/2026</div>
+        </div>
+      </div>
+
+      <div class="setpoint-tabs">
+        <div class="tab active">ZONA 1 (Y1)</div>
+        <div class="tab">ZONA 2 (Y2)</div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:4px;">
+        <div class="setpoint-row">
+          <span><i data-lucide="droplet" style="width:12px; color:var(--color-teal)"></i> HUMIDADE MÍNIMA</span>
+          <div class="counter">
+            <button class="btn-step">-</button>
+            <strong>40 %</strong>
+            <button class="btn-step">+</button>
+          </div>
+        </div>
+
+        <div class="setpoint-row">
+          <span><i data-lucide="thermometer" style="width:12px; color:var(--color-teal)"></i> TEMPERATURA MÍNIMA</span>
+          <div class="counter">
+            <button class="btn-step">-</button>
+            <strong>18 °C</strong>
+            <button class="btn-step">+</button>
+          </div>
+        </div>
+
+        <div class="setpoint-row">
+          <span><i data-lucide="clock" style="width:12px; color:var(--color-teal)"></i> DURAÇÃO DA REGA</span>
+          <div class="counter">
+            <button class="btn-step">-</button>
+            <strong>60 s</strong>
+            <button class="btn-step">+</button>
+          </div>
+        </div>
+
+        <div class="setpoint-row">
+          <span><i data-lucide="rotate-cw" style="width:12px; color:var(--color-teal)"></i> INTERVALO ENTRE CICLOS</span>
+          <div class="counter">
+            <button class="btn-step">-</button>
+            <strong>30 min</strong>
+            <button class="btn-step">+</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; margin-top:auto;">
+        <button class="btn btn-back"><i data-lucide="chevron-left" style="width:12px;"></i> VOLTAR</button>
+        <button class="btn btn-teal" style="font-size:10px;"><i data-lucide="save" style="width:12px;"></i> GUARDAR</button>
+      </div>
+    </div>
+
+    <!-- 4. TELA DE HISTÓRICO -->
+    <div class="lvgl-screen">
+      <span class="screen-label">4. Tela de Histórico</span>
+      <div class="screen-header">
+        <div class="logo-area">
+          <span class="gtc">GTC</span>
+          <span class="sub">REGA</span>
+        </div>
+        <div class="header-title">HISTÓRICO</div>
+        <div class="header-info">
+          <div class="time">14:35</div>
+          <div>10/08/2026</div>
+        </div>
+      </div>
+
+      <div class="filter-bar">
+        <div class="filter-btn active">TODOS</div>
+        <div class="filter-btn">REGA</div>
+        <div class="filter-btn">ALARMES</div>
+        <div class="filter-btn">SENSORES</div>
+      </div>
+
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>DATA / HORA</th>
+              <th>EVENTO</th>
+              <th>ZONA</th>
+              <th>DETALHE</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="status-dot dot-on"></span> 10/08/2026 14:32:15</td>
+              <td>INÍCIO REGA</td>
+              <td>ZONA 1</td>
+              <td>Sensor B1 - 34%</td>
+            </tr>
+            <tr>
+              <td><span class="status-dot dot-on"></span> 10/08/2026 14:33:05</td>
+              <td>BOMBA LIGADA</td>
+              <td>ZONA 1</td>
+              <td>KM1 - ON</td>
+            </tr>
+            <tr>
+              <td><span class="status-dot dot-amber"></span> 10/08/2026 14:33:06</td>
+              <td>Y1 ABERTA</td>
+              <td>ZONA 1</td>
+              <td>Válvula Y1 - ON</td>
+            </tr>
+            <tr>
+              <td><span class="status-dot dot-amber"></span> 10/08/2026 14:34:06</td>
+              <td>FIM REGA</td>
+              <td>ZONA 1</td>
+              <td>Duração 60 s</td>
+            </tr>
+            <tr>
+              <td><span class="status-dot dot-red"></span> 10/08/2026 14:34:07</td>
+              <td>Y1 FECHADA</td>
+              <td>ZONA 1</td>
+              <td>Válvula Y1 - OFF</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; margin-top:auto;">
+        <button class="btn btn-back"><i data-lucide="chevron-left" style="width:12px;"></i> VOLTAR</button>
+        <div style="display:flex; gap: 4px;">
+          <button class="btn" style="font-size:9px;"><i data-lucide="download" style="width:10px;"></i> EXPORTAR</button>
+          <button class="btn btn-red" style="font-size:9px;"><i data-lucide="trash-2" style="width:10px;"></i> LIMPAR</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. TELA DE COMANDOS -->
+    <div class="lvgl-screen">
+      <span class="screen-label">5. Tela de Comandos</span>
+      <div class="screen-header">
+        <div class="logo-area">
+          <span class="gtc">GTC</span>
+          <span class="sub">REGA</span>
+        </div>
+        <div class="header-title">COMANDOS</div>
+        <div class="header-info">
+          <div class="time">14:35</div>
+          <div>10/08/2026</div>
+        </div>
+      </div>
+
+      <div style="font-size: 9px; font-weight:bold; color:var(--color-text-muted); margin-top: 5px;">MODO DE OPERAÇÃO</div>
+      <div class="mode-selector">
+        <div class="mode-btn"><i data-lucide="hand" style="width:14px;"></i> MANUAL</div>
+        <div class="mode-btn active"><i data-lucide="rotate-cw" style="width:14px;"></i> AUTOMÁTICO</div>
+      </div>
+
+      <div class="cmd-actions">
+        <button class="btn btn-green cmd-btn"><i data-lucide="play" style="width:20px;"></i>START</button>
+        <button class="btn btn-red cmd-btn"><i data-lucide="square" style="width:20px;"></i>STOP</button>
+        <button class="btn btn-amber cmd-btn"><i data-lucide="refresh-cw" style="width:20px;"></i>RESET</button>
+      </div>
+
+      <div style="display:flex; justify-content:space-around; background:var(--color-panel-bg); padding:6px; border-radius:6px; margin-top:8px; font-size:9px;">
+        <span>Estado Atual: <strong style="color:var(--color-green);">AUTOMÁTICO</strong></span>
+        <span>Sistema: <strong style="color:var(--color-green);">PRONTO</strong></span>
+      </div>
+
+      <button class="btn btn-back" style="margin-top:auto;"><i data-lucide="chevron-left" style="width:12px;"></i> VOLTAR</button>
+    </div>
+
+    <!-- 6. TELA DE ALARMES -->
+    <div class="lvgl-screen">
+      <span class="screen-label">6. Tela de Alarmes (Exemplo)</span>
+      <div class="screen-header">
+        <div class="logo-area">
+          <span class="gtc">GTC</span>
+          <span class="sub">REGA</span>
+        </div>
+        <div class="header-title">ALARMES</div>
+        <div class="header-info">
+          <div class="time">14:35</div>
+          <div>10/08/2026</div>
+        </div>
+      </div>
+
+      <div class="alarm-list">
+        <div class="alarm-item">
+          <div style="display:flex; gap:8px; align-items:center;">
+            <i data-lucide="alert-triangle" style="color:var(--color-red); width:18px;"></i>
+            <div class="alarm-info">
+              <h4>EMERGÊNCIA ATIVADA</h4>
+              <p>Paragem de emergência acionada</p>
+            </div>
+          </div>
+          <span style="font-size:8px; color:var(--color-text-muted);">10/08/2026 14:30:12</span>
+        </div>
+
+        <div class="alarm-item warning">
+          <div style="display:flex; gap:8px; align-items:center;">
+            <i data-lucide="alert-triangle" style="color:var(--color-amber); width:18px;"></i>
+            <div class="alarm-info">
+              <h4>SENSOR B1 FALHA</h4>
+              <p>Leitura fora do intervalo</p>
+            </div>
+          </div>
+          <span style="font-size:8px; color:var(--color-text-muted);">10/08/2026 13:22:05</span>
+        </div>
+
+        <div class="alarm-item warning">
+          <div style="display:flex; gap:8px; align-items:center;">
+            <i data-lucide="alert-triangle" style="color:var(--color-amber); width:18px;"></i>
+            <div class="alarm-info">
+              <h4>HUMIDADE BAIXA</h4>
+              <p>Zona 2 - Abaixo do setpoint</p>
+            </div>
+          </div>
+          <span style="font-size:8px; color:var(--color-text-muted);">10/08/2026 11:45:33</span>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; margin-top:auto;">
+        <button class="btn btn-back"><i data-lucide="chevron-left" style="width:12px;"></i> VOLTAR</button>
+        <button class="btn" style="font-size:9px;"><i data-lucide="list" style="width:10px;"></i> HISTÓRICO ALARMES</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // Inicializa todos os ícones dinâmicos via Lucide Icons
+    lucide.createIcons();
+  </script>
+</body>
+</html>
