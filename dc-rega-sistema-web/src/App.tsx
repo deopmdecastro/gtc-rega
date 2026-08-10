@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 
 type Page = 'Resumo' | 'Estado' | 'Setpoints' | 'Histórico' | 'Comandos' | 'Alarmes';
-type Zone = { id: string; name: string; moisture: number; target: number; lastWatered: string; on: boolean };
+type Zone = { id: string; name: string; moisture: number; target: number; lastWatered: string; on: boolean; waterDuration: number };
 
 const pages: { label: Page; icon: typeof Home }[] = [
   { label: 'Resumo', icon: Home },
@@ -38,8 +38,8 @@ const pages: { label: Page; icon: typeof Home }[] = [
 ];
 
 const initialZones: Zone[] = [
-  { id: 'Y1', name: 'Zona 1', moisture: 64, target: 55, lastWatered: 'Hoje, 18:12', on: false },
-  { id: 'Y2', name: 'Zona 2', moisture: 57, target: 52, lastWatered: 'Hoje, 17:48', on: false },
+  { id: 'Y1', name: 'Zona 1', moisture: 64, target: 55, lastWatered: 'Hoje, 18:12', on: false, waterDuration: 60 },
+  { id: 'Y2', name: 'Zona 2', moisture: 57, target: 52, lastWatered: 'Hoje, 17:48', on: false, waterDuration: 45 },
 ];
 
 function StatusBadge({ children, tone = 'neutral' }: { children: React.ReactNode; tone?: 'success' | 'warning' | 'neutral' | 'cyan' }) {
@@ -54,6 +54,7 @@ function App() {
   const [activePage, setActivePage] = useState<Page>('Resumo');
   const [zones, setZones] = useState(initialZones);
   const [pumpOn, setPumpOn] = useState(false);
+  const [pumpDelay, setPumpDelay] = useState(5);
   const [autoMode] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [notice, setNotice] = useState('');
@@ -70,7 +71,7 @@ function App() {
       return <Overview zones={zones} pumpOn={pumpOn} autoMode={autoMode} activeZones={activeZones} onToggleZone={toggleZone} onTogglePump={() => setPumpOn((value) => !value)} />;
     }
     if (activePage === 'Estado') return <StateView zones={zones} pumpOn={pumpOn} autoMode={autoMode} />;
-    if (activePage === 'Setpoints') return <SetpointsView zones={zones} onChange={(id, target) => setZones((current) => current.map((zone) => zone.id === id ? { ...zone, target } : zone))} />;
+    if (activePage === 'Setpoints') return <SetpointsView zones={zones} pumpDelay={pumpDelay} setPumpDelay={setPumpDelay} onChange={(id, target) => setZones((current) => current.map((zone) => zone.id === id ? { ...zone, target } : zone))} onUpdateZone={(id, patch) => setZones((current) => current.map((z) => z.id === id ? { ...z, ...patch } : z))} />;
     if (activePage === 'Histórico') return <HistoryView />;
     if (activePage === 'Comandos') return <CommandsView zones={zones} pumpOn={pumpOn} onToggleZone={toggleZone} onTogglePump={() => setPumpOn((value) => !value)} onAction={showNotice} />;
     return <AlarmsView />;
@@ -109,7 +110,23 @@ function StateView({ zones, pumpOn, autoMode }: { zones: Zone[]; pumpOn: boolean
 function StateRow({ icon, title, detail, status, active }: { icon: React.ReactNode; title: string; detail: string; status: string; active?: boolean }) { return <div className="state-row"><span className="state-icon">{icon}</span><div><strong>{title}</strong><span>{detail}</span></div><StatusBadge tone={active ? 'cyan' : 'neutral'}>{status}</StatusBadge></div>; }
 function PanelHeader({ eyebrow, title }: { eyebrow: string; title: string }) { return <div className="panel-heading"><div><span className="section-kicker">{eyebrow}</span><h3>{title}</h3></div><Settings2 size={19} /></div>; }
 
-function SetpointsView({ zones, onChange }: { zones: Zone[]; onChange: (id: string, target: number) => void }) { return <div className="two-column">{zones.map((zone) => <Panel key={zone.id} className="setpoint-card"><PanelHeader eyebrow={`CONFIGURAÇÃO · SENSOR ${zone.id}`} title={zone.name} /><div className="setpoint-value"><strong>{zone.target}<small>%</small></strong><span>Humidade mínima desejada</span></div><input type="range" min="20" max="90" value={zone.target} onChange={(event) => onChange(zone.id, Number(event.target.value))} /><div className="range-labels"><span>20%</span><span>90%</span></div><div className="setpoint-note"><Gauge size={16} /><span>Atual: <b>{zone.moisture}%</b> · {zone.moisture >= zone.target ? 'acima do mínimo' : 'abaixo do mínimo'}</span></div></Panel>)}</div>; }
+function SetpointsView({ zones, onChange, onUpdateZone, pumpDelay, setPumpDelay }: { zones: Zone[]; onChange: (id: string, target: number) => void; onUpdateZone: (id: string, patch: Partial<Zone>) => void; pumpDelay: number; setPumpDelay: (n: number) => void }) {
+  return <div className="two-column">
+    <Panel className="pump-panel">
+      <PanelHeader eyebrow="CONFIGURAÇÃO" title="Delay bomba → válvulas" />
+      <div className="pump-control">
+        <div className="time-input">
+          <button className="btn-step" onClick={() => setPumpDelay(Math.max(0, pumpDelay - 1))}>-</button>
+          <input type="number" value={pumpDelay} onChange={(e) => setPumpDelay(Math.max(0, Number(e.target.value) || 0))} />
+          <span>s</span>
+          <button className="btn-step" onClick={() => setPumpDelay(pumpDelay + 1)}>+</button>
+        </div>
+        <small>Delay entre ligar a bomba e abrir as válvulas</small>
+      </div>
+    </Panel>
+    {zones.map((zone) => <Panel key={zone.id} className="setpoint-card"><PanelHeader eyebrow={`CONFIGURAÇÃO · SENSOR ${zone.id}`} title={zone.name} /><div className="setpoint-value"><strong>{zone.target}<small>%</small></strong><span>Humidade mínima desejada</span></div><input type="range" min="20" max="90" value={zone.target} onChange={(event) => onChange(zone.id, Number(event.target.value))} /><div className="range-labels"><span>20%</span><span>90%</span></div><div className="setpoint-note"><Gauge size={16} /><span>Atual: <b>{zone.moisture}%</b> · {zone.moisture >= zone.target ? 'acima do mínimo' : 'abaixo do mínimo'}</span></div><div className="time-controls"><label>Tempo de rega da válvula</label><div className="time-input"><button className="btn-step" onClick={() => onUpdateZone(zone.id, { waterDuration: Math.max(5, zone.waterDuration - 5) })}>-</button><input type="number" value={zone.waterDuration} onChange={(e) => onUpdateZone(zone.id, { waterDuration: Math.max(0, Number(e.target.value) || 0) })} /><span>s</span><button className="btn-step" onClick={() => onUpdateZone(zone.id, { waterDuration: zone.waterDuration + 5 })}>+</button></div><small>Tempo que a válvula ficará aberta quando acionada</small></div></Panel>) }
+  </div>;
+}
 function HistoryView() { return <div className="two-column"><Panel className="chart-panel"><PanelHeader eyebrow="ÚLTIMAS 24 HORAS" title="Humidade por zona" /><div className="chart"><div className="chart-grid"><span>80%</span><span>60%</span><span>40%</span><span>20%</span></div><div className="chart-lines"><div className="line line-a" /><div className="line line-b" /><div className="chart-labels"><span>00h</span><span>06h</span><span>12h</span><span>18h</span><span>Agora</span></div></div></div><div className="legend"><span><i className="legend-a" />Zona 1</span><span><i className="legend-b" />Zona 2</span></div></Panel><Panel><PanelHeader eyebrow="REGISTO DE ATIVIDADE" title="Últimas regas" /><div className="history-list"><HistoryItem time="18:12" zone="Zona 1 · Y1" duration="08 min" /><HistoryItem time="17:48" zone="Zona 2 · Y2" duration="06 min" /><HistoryItem time="06:30" zone="Zona 1 · Y1" duration="10 min" /></div></Panel></div>; }
 function HistoryItem({ time, zone, duration }: { time: string; zone: string; duration: string }) { return <div className="history-item"><span className="history-time">{time}</span><div><strong>{zone}</strong><span>Rega concluída</span></div><small>{duration}</small></div>; }
 function CommandsView({ zones, pumpOn, onToggleZone, onTogglePump, onAction }: { zones: Zone[]; pumpOn: boolean; onToggleZone: (id: string) => void; onTogglePump: () => void; onAction: (message: string) => void }) { return <div className="commands-layout"><Panel><PanelHeader eyebrow="CONTROLO MANUAL" title="Atuadores" /><div className="command-list"><CommandRow icon={<Waves />} label="Bomba principal" description="Relé K1" on={pumpOn} onToggle={onTogglePump} /><CommandRow icon={<Droplets />} label="Zona 1 · Y1" description="Válvula solenóide" on={zones[0].on} onToggle={() => onToggleZone('Y1')} /><CommandRow icon={<Droplets />} label="Zona 2 · Y2" description="Válvula solenóide" on={zones[1].on} onToggle={() => onToggleZone('Y2')} /></div></Panel><Panel><PanelHeader eyebrow="AÇÃO RÁPIDA" title="Rotinas do sistema" /><button className="action-button" onClick={() => onAction('Ciclo de teste iniciado')}><PlayCircle size={20} /><span><strong>Executar ciclo de teste</strong><small>Verifica bomba e válvulas durante 30 segundos</small></span><ChevronRight size={17} /></button><button className="action-button" onClick={() => onAction('Todas as zonas foram desligadas')}><Power size={20} /><span><strong>Paragem de emergência</strong><small>Desliga todos os atuadores ativos</small></span><ChevronRight size={17} /></button></Panel></div>; }
