@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>GTC - Sistema de Rega Automatizada</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Montserrat:wght@600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
@@ -18,23 +18,41 @@
     </div>
   </div>
 
-  <header class="app-header">
-    <div>
-      <div class="brand-row">
-        <div class="bubble-logo"><span>GTC REGA</span></div>
-        <div>
-          <h1 class="page-title">GTC — Sistema de Rega Automatizada</h1>
-          <div class="page-subtitle">Interface Gráfica LVGL — Navegação por telas</div>
-        </div>
+  <div class="app-layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark"><i data-lucide="sprout"></i></div>
+        <div class="brand-text"><strong>GTC</strong><span>REGA</span></div>
       </div>
-      <div class="dashboard-tag">
-        <span class="dot"></span>
-        Sistema em operação
+      <div class="sidebar-label">CONTROLO CENTRAL</div>
+      <nav class="side-nav">
+        <a class="nav-item route-link" href="#home"><i data-lucide="home"></i><span>Resumo</span></a>
+        <a class="nav-item route-link" href="#estado"><i data-lucide="monitor"></i><span>Estado</span></a>
+        <a class="nav-item route-link" href="#setpoints"><i data-lucide="sliders"></i><span>Setpoints</span></a>
+        <a class="nav-item route-link" href="#historico"><i data-lucide="history"></i><span>Histórico</span></a>
+        <a class="nav-item route-link" href="#comandos"><i data-lucide="play-circle"></i><span>Comandos</span></a>
+        <a class="nav-item route-link" href="#alarmes"><i data-lucide="alert-triangle"></i><span>Alarmes</span><span class="nav-badge">3</span></a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="footer-status"><span class="status-dot dot-on"></span> Sistema em operação</div>
+        <div class="footer-reading"><i data-lucide="cloud-sun"></i><div><strong>24°C</strong><span>Parcialmente nublado</span></div></div>
       </div>
-    </div>
-  </header>
+    </aside>
 
-  <main class="app-shell">
+    <main class="main-content">
+      <header class="topbar">
+        <div>
+          <div class="eyebrow">CENTRO DE OPERAÇÕES <span class="dot-sep">•</span> SISTEMA DE REGA</div>
+          <h1 class="page-title">GTC <span class="title-sep">—</span> Sistema de Rega Automatizada</h1>
+          <div class="page-subtitle">Interface de Controlo — Navegação por telas</div>
+        </div>
+        <div class="topbar-weather">
+          <i data-lucide="cloud-sun" style="color: var(--color-amber);"></i>
+          <div><strong>24°C</strong><span>Parcialmente nublado</span></div>
+        </div>
+      </header>
+
+      <div class="view-host">
     <section id="home" class="view">
       <div class="lvgl-screen view-card">
         <span class="screen-label">1. Tela Principal (Home)</span>
@@ -48,7 +66,7 @@
             <div id="home-date">--/--/----</div>
           </div>
           <div class="header-weather">
-            <i data-lucide="sun-cloud" style="color: var(--color-amber);"></i>
+            <i data-lucide="cloud-sun" style="color: var(--color-amber);"></i>
             <span>24°C<br><small style="font-size: 9px;">Parcialmente nublado</small></span>
           </div>
         </div>
@@ -224,7 +242,9 @@
         <div class="button-row"><a class="btn btn-back" href="#home"><i data-lucide="chevron-left"></i> VOLTAR</a><a class="btn" href="#historico"><i data-lucide="list"></i> HISTÓRICO ALARMES</a></div>
       </div>
     </section>
-  </main>
+      </div>
+    </main>
+  </div>
 
   <footer class="bottom-nav">
     <a class="bottom-nav-button route-link" href="#home"><i data-lucide="home"></i><span>Home</span></a>
