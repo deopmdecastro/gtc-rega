@@ -1635,6 +1635,18 @@ const preventFocusSteal = (e: React.MouseEvent) => e.preventDefault();
 function NumericKeyboard({ value, onChange, onSubmit, onClose }: { value: string; onChange: (v: string) => void; onSubmit: () => void; onClose: () => void }) {
   useCloseOnEscape(onClose);
   const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '00'];
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (/^[0-9]$/.test(e.key)) onChange(value + e.key);
+      else if (e.key === 'Backspace') onChange(value.slice(0, -1));
+      else if (e.key === 'Enter') onSubmit();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
   return (
     <div className="keyboard-overlay" onClick={onClose}>
       <div className="keyboard" onClick={(e) => e.stopPropagation()}>
@@ -1643,6 +1655,7 @@ function NumericKeyboard({ value, onChange, onSubmit, onClose }: { value: string
           <button onClick={onClose} aria-label="Fechar teclado"><X size={18} /></button>
         </div>
         <div className="keyboard-display">{value || '0'}<span>s</span></div>
+        <div className="keyboard-hint">Também pode escrever com o teclado físico</div>
         <div className="keyboard-keys">
           {keys.map((k) => (
             <button key={k} className="kb-key" onMouseDown={preventFocusSteal} onClick={() => onChange(value + k)}>{k}</button>
@@ -2073,8 +2086,36 @@ function LoginScreen({ language, onSubmit }: { language: Language; onSubmit: (us
 
 /* ---------- Time keyboard for schedules ---------- */
 function TimeKeyboard({ value, onChange, onSubmit, onClose, preview, language }: { value: string; onChange: (v: string) => void; onSubmit: () => void; onClose: () => void; preview: string; language?: Language }) {
-  const keys = ['1','2','3','4','5','6','7','8','9','0'];
   useCloseOnEscape(onClose);
+
+  const appendDigit = (d: string) => {
+    if (!value.includes(':')) {
+      const next = value + d;
+      if (next.length > 2) return;
+      // Insere ":" automaticamente assim que as horas ficam completas (2 dígitos)
+      onChange(next.length === 2 ? next + ':' : next);
+    } else {
+      if (value.length >= 5) return;
+      onChange(value + d);
+    }
+  };
+  const appendColon = () => {
+    if (value.length > 0 && !value.includes(':')) onChange(value + ':');
+  };
+  const backspace = () => onChange(value.slice(0, -1));
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (/^[0-9]$/.test(e.key)) appendDigit(e.key);
+      else if (e.key === ':') appendColon();
+      else if (e.key === 'Backspace') backspace();
+      else if (e.key === 'Enter') onSubmit();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
   return (
     <div className="keyboard-overlay" onClick={onClose}>
       <div className="keyboard full-keyboard" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 320 }}>
@@ -2083,13 +2124,14 @@ function TimeKeyboard({ value, onChange, onSubmit, onClose, preview, language }:
           <button onClick={onClose} aria-label="Fechar"><X size={18} /></button>
         </div>
         <div className="keyboard-display">{value || preview || '00:00'}</div>
-        {value.length >= 2 && !value.includes(':') && (
-          <div className="time-hint">{language === 'PT' ? 'Toque ":" para separar horas e minutos' : 'Tap ":" to separate hours and minutes'}</div>
-        )}
-        <div className="text-kb-nums">{keys.map(n => <button key={n} className="kb-key" onMouseDown={preventFocusSteal} onClick={() => onChange(value + n)}>{n}</button>)}</div>
-        <div className="text-kb-actions" style={{ padding: '4px 12px' }}>
-          <button className="kb-key" onMouseDown={preventFocusSteal} onClick={() => { if (!value.includes(':')) onChange(value + ':'); }}>:</button>
-          <button className="kb-key kb-backspace" onMouseDown={preventFocusSteal} onClick={() => onChange(value.slice(0, -1))}><Delete size={16} /></button>
+        <div className="keyboard-hint">{language === 'PT' ? 'Também pode escrever com o teclado físico' : 'You can also type using your physical keyboard'}</div>
+        <div className="keyboard-keys">
+          {['1','2','3','4','5','6','7','8','9'].map(n => (
+            <button key={n} className="kb-key" onMouseDown={preventFocusSteal} onClick={() => appendDigit(n)}>{n}</button>
+          ))}
+          <button className="kb-key" onMouseDown={preventFocusSteal} onClick={appendColon}>:</button>
+          <button className="kb-key" onMouseDown={preventFocusSteal} onClick={() => appendDigit('0')}>0</button>
+          <button className="kb-key kb-backspace" onMouseDown={preventFocusSteal} onClick={backspace} aria-label={language === 'PT' ? 'Apagar' : 'Backspace'}><Delete size={18} /></button>
         </div>
         <div className="keyboard-actions">
           <button className="kb-clear" onClick={onClose}>{language === 'PT' ? 'Cancelar' : 'Cancel'}</button>
@@ -2174,9 +2216,10 @@ function ScheduleEditor({ zone, onChange, language }: { zone: Zone; onChange: (s
           onChange={setTimeStr}
           onSubmit={() => {
             const parts = timeStr.split(':');
-            if (parts.length === 2) {
-              const h = Math.max(0, Math.min(23, parseInt(parts[0]) || 0));
-              const m = Math.max(0, Math.min(59, parseInt(parts[1]) || 0));
+            const hasHour = parts[0] !== undefined && parts[0] !== '';
+            if (hasHour) {
+              const h = Math.max(0, Math.min(23, parseInt(parts[0], 10) || 0));
+              const m = parts[1] ? Math.max(0, Math.min(59, parseInt(parts[1], 10) || 0)) : 0;
               setTime(timeEditing.day, h, m);
             }
             setKeyboardForTime(false);
