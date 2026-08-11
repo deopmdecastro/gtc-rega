@@ -97,6 +97,11 @@ function saveLayoutToFile(layout) {
 const persisted = loadPersistedState();
 if (persisted) {
   appState = { eventLog: persisted.eventLog || [] };
+  // Restore engine state from last session
+  if (persisted.controlState && persisted.controlState.zones && persisted.controlState.zones.length > 0) {
+    engine.restoreState(persisted);
+    console.log(`Engine restored: ${engine.zones.length} zones, state=${engine.state}`);
+  }
 }
 
 // ── API Routes ──
@@ -106,8 +111,14 @@ app.get('/api/health', (_req, res) => {
   res.json({
     ok: true,
     uptime: process.uptime(),
+    engineUptime: engine.uptime,
     engineState: engine.state,
     zones: engine.zones.length,
+    cycleActive: engine.cycleActive,
+    testCycleActive: engine.testCycleActive,
+    currentZone: engine.currentZoneIndex,
+    watchdogActive: !!engine.watchdogTimer,
+    gpio: engine.gpio,
   });
 });
 

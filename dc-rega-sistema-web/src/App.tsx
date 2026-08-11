@@ -155,6 +155,8 @@ function App() {
   const [systemRunning, setSystemRunning] = useState(false);
   const [starting, setStarting] = useState(false);
   const [startStep, setStartStep] = useState('');
+  const [engineState, setEngineState] = useState('idle');
+  const [currentWateringZone, setCurrentWateringZone] = useState(-1);
   const [zoneToDelete, setZoneToDelete] = useState<Zone | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [language, setLanguage] = useState<Language>('PT');
@@ -291,7 +293,9 @@ function App() {
       if (typeof cs.pump === 'boolean') setPumpOn(cs.pump);
       if (typeof cs.autoMode === 'boolean') setAutoMode(cs.autoMode);
       if (typeof cs.state === 'string') {
-        if (cs.state === 'idle') {
+        setEngineState(cs.state as string);
+        setCurrentWateringZone((cs.currentZoneIndex as number) ?? -1);
+        if (cs.state === 'idle' || cs.state === 'stopping') {
           setSystemRunning(false);
           setStarting(false);
           setStartStep('');
@@ -300,12 +304,13 @@ function App() {
           setStarting(true);
           setStartStep('A ligar bomba…');
         } else if (cs.state === 'watering') {
+          setSystemRunning(true);
           setStarting(false);
-          setStartStep('');
+          setStartStep(cs.cycleActive ? 'Ciclo de rega em curso' : '');
         } else if (cs.state === 'emergency') {
           setSystemRunning(false);
           setStarting(false);
-          setStartStep('');
+          setStartStep('EMERGÊNCIA');
         }
       }
     });
@@ -527,7 +532,7 @@ function App() {
       return <Overview zones={zones} pumpOn={pumpOn} autoMode={autoMode} activeZones={activeZones} onToggleZone={toggleZone} onTogglePump={togglePump} onToggleMode={toggleAutoMode} onOpenMap={() => requireAuth('Mapa')} weather={weather} language={language} />;
     }
     if (activePage === 'Estado') return <StateView zones={zones} pumpOn={pumpOn} autoMode={autoMode} onToggleMode={toggleAutoMode} language={language} />;
-    if (activePage === 'Setpoints') return <SetpointsView zones={zones} pumpDelay={pumpDelay} setPumpDelay={setPumpDelay} onChange={(id, target) => setZones((cur) => cur.map((z) => (z.id === id ? { ...z, target } : z)))} onUpdateZone={(id, patch) => setZones((cur) => cur.map((z) => (z.id === id ? { ...z, ...patch } : z)))} onAddZone={addZone} onRemoveZone={(z) => setZoneToDelete(z)} language={language} />;
+    if (activePage === 'Setpoints') return <SetpointsView zones={zones} pumpDelay={pumpDelay} setPumpDelay={setPumpDelay} onChange={(id, target) => { setZones((cur) => { const next = cur.map((z) => (z.id === id ? { ...z, target } : z)); setTimeout(() => getControllerClient().updateZones(next), 200); return next; }); }} onUpdateZone={(id, patch) => { setZones((cur) => { const next = cur.map((z) => (z.id === id ? { ...z, ...patch } : z)); setTimeout(() => getControllerClient().updateZones(next), 200); return next; }); }} onAddZone={addZone} onRemoveZone={(z) => setZoneToDelete(z)} language={language} />;
     if (activePage === 'Mapa') return <MapView zones={zones} pumpOn={pumpOn} onAddZone={addZoneFromMap} onDuplicateZone={duplicateZoneFromMap} onDragZone={updateZonePosition} onRenameZone={renameZone} onRemoveZone={(z) => setZoneToDelete(z)} onClearAll={clearAllZones} onToggleZone={toggleZone} weather={weather} language={language} />;
     if (activePage === 'Histórico') return <HistoryView errors={errors} eventLog={eventLog} eventLogLoading={eventLogLoading} onRefresh={loadEvents} language={language} />;
     if (activePage === 'Comandos') return <CommandsView zones={zones} pumpOn={pumpOn} systemRunning={systemRunning} starting={starting} startStep={startStep} autoMode={autoMode} onToggleZone={toggleZone} onTogglePump={togglePump} onToggleMode={toggleAutoMode} onEmergencyStop={handleEmergencyStop} onTestCycle={handleTestCycle} onStart={handleStart} onStop={handleStop} onReset={handleReset} language={language} />;
