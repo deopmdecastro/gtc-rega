@@ -281,7 +281,7 @@ export function createControllerClient() {
     fetchDeviceStatus: async (): Promise<{
       deviceOnline: boolean;
       lastContact: string | null;
-      deviceInfo: { deviceId?: string; firmware?: string; ip?: string; rssi?: number } | null;
+      deviceInfo: { deviceId?: string; firmware?: string; ip?: string; rssi?: number; uptime?: number } | null;
       sensors: { sensorId: string; lastSeen: number | null; stale: boolean }[];
     } | null> => {
       try {

@@ -140,6 +140,16 @@ const SYSTEM_RELAYS = [
   { relay: 'K10', gpio: 13, inChannel: '', func: 'Reserva' },
 ];
 
+// Formata o uptime real do ESP32-S3 (segundos desde o último arranque, vindo da telemetria)
+function formatUptime(seconds?: number): string | null {
+  if (typeof seconds !== 'number' || seconds < 0) return null;
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (h > 0) return `${h}h${String(m).padStart(2, '0')}m`;
+  const s = Math.floor(seconds % 60);
+  return m > 0 ? `${m}m${String(s).padStart(2, '0')}s` : `${s}s`;
+}
+
 function StatusBadge({ children, tone = 'neutral' }: { children: React.ReactNode; tone?: 'success' | 'warning' | 'error' | 'neutral' | 'cyan' }) {
   return <span className={`status-badge status-${tone}`}><span className="status-dot" />{children}</span>;
 }
@@ -233,7 +243,7 @@ function App() {
   const [weather, setWeather] = useState({ temp: 24, desc: 'Parcialmente nublado', city: 'Leiria', country: 'Portugal', icon: '⛅' });
   const [weatherLoading, setWeatherLoading] = useState(false);
   const [deviceOnline, setDeviceOnline] = useState(false);
-  const [deviceInfo, setDeviceInfo] = useState<{ deviceId?: string; firmware?: string; ip?: string; rssi?: number } | null>(null);
+  const [deviceInfo, setDeviceInfo] = useState<{ deviceId?: string; firmware?: string; ip?: string; rssi?: number; uptime?: number } | null>(null);
   const [sensorHealth, setSensorHealth] = useState<Record<string, { stale: boolean; lastSeen: number | null }>>({});
   const [clock, setClock] = useState('');
   const [dateStr, setDateStr] = useState('');
@@ -755,7 +765,7 @@ function App() {
 function Overview({ zones, pumpOn, autoMode, activeZones, onToggleZone, onTogglePump, onToggleMode, onOpenMap, weather, language, deviceOnline, deviceInfo, sensorHealth, clock, dateStr, latestAlert }: {
   zones: Zone[]; pumpOn: boolean; autoMode: boolean; activeZones: number; onToggleZone: (id: string) => void; onTogglePump: () => void; onToggleMode: () => void; onOpenMap: () => void; weather: { temp: number; desc: string; city: string; country: string; icon: string }; language: Language;
   deviceOnline: boolean;
-  deviceInfo: { deviceId?: string; firmware?: string; ip?: string; rssi?: number } | null;
+  deviceInfo: { deviceId?: string; firmware?: string; ip?: string; rssi?: number; uptime?: number } | null;
   sensorHealth: Record<string, { stale: boolean; lastSeen: number | null }>;
   clock: string;
   dateStr: string;
@@ -771,7 +781,7 @@ function Overview({ zones, pumpOn, autoMode, activeZones, onToggleZone, onToggle
             <strong>{deviceOnline ? 'Controlador reconhecido' : 'Controlador não detetado — a simular'}</strong>
             <span>
               {deviceOnline && deviceInfo
-                ? `${deviceInfo.deviceId || 'ESP32-S3'} · fw ${deviceInfo.firmware || '—'} · ${deviceInfo.ip || '—'}${typeof deviceInfo.rssi === 'number' ? ` · ${deviceInfo.rssi} dBm` : ''}`
+                ? `${deviceInfo.deviceId || 'ESP32-S3'} · fw ${deviceInfo.firmware || '—'} · ${deviceInfo.ip || '—'}${typeof deviceInfo.rssi === 'number' ? ` · ${deviceInfo.rssi} dBm` : ''}${formatUptime(deviceInfo.uptime) ? ` · online há ${formatUptime(deviceInfo.uptime)}` : ''}`
                 : 'Ligue o firmware gtc-esp32s3 à rede para ativar dados reais'}
             </span>
           </div>

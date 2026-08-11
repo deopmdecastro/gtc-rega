@@ -262,9 +262,11 @@ app.post('/api/device/telemetry', checkDeviceToken, (req, res) => {
   if (!wasOnline) {
     engine._log('device_reconnected', 'ESP32-S3',
       `Dispositivo ${deviceId || 'desconhecido'} voltou a comunicar`, 'info', { deviceId, firmware, ip, rssi });
-    broadcastDeviceStatus();
   }
-  
+  // Reenviar sempre (não só na reconexão) para que RSSI/uptime na UI
+  // acompanhem a telemetria real, que chega a cada TELEMETRY_INTERVAL_MS.
+  broadcastDeviceStatus();
+
   // Update sensor readings from real device
   if (sensors && Array.isArray(sensors)) {
     sensors.forEach(s => {
@@ -316,8 +318,10 @@ app.get('/api/device/outputs', checkDeviceToken, (req, res) => {
   });
 });
 
-// GET /api/device/status — estado completo do dispositivo (para debug/UI)
-app.get('/api/device/status', checkDeviceToken, (req, res) => {
+// GET /api/device/status — estado completo do dispositivo (consumido pela UI web,
+// não pelo firmware — por isso não leva checkDeviceToken, senão a app falha a
+// carregar o estado inicial assim que um DEVICE_TOKEN é configurado)
+app.get('/api/device/status', (req, res) => {
   res.json({
     deviceOnline,
     lastContact: lastDeviceContact ? new Date(lastDeviceContact).toISOString() : null,
