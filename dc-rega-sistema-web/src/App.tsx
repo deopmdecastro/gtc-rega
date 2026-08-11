@@ -517,6 +517,15 @@ function App() {
     setZoneToDelete(null);
   };
 
+  const handleLogout = () => {
+    setAuthenticated(false);
+    sessionStorage.removeItem('gtc-auth');
+    setAuthChecked(false);
+    setLoginOpen(true);
+    setLoginReason('startup');
+    showNotice(language === 'PT' ? 'Sessão terminada' : 'Signed out');
+  };
+
   const handleLogin = (pass: string) => {
     if (pass === '1234') {
       setAuthenticated(true);
@@ -609,14 +618,14 @@ function App() {
           <footer className="app-footer">
             <span>Desenvolvido por <strong>Deogracia de Castro</strong></span>
             <span className="footer-divider">·</span>
-            <span>GTC Rega v2.7 · ESP32-S3 · Build 2026-08-12</span>
+            <span>GTC Rega v2.7 · ESP32-S3 · Build 2026-08-14</span>
           </footer>
         </div>
       </main>
       {notice && <div className="toast"><CheckCircle2 size={18} />{notice}</div>}
       {zoneToDelete && <ConfirmDeleteModal zone={zoneToDelete} onCancel={() => setZoneToDelete(null)} onConfirm={confirmDeleteZone} />}
-      {loginOpen && <LoginModal language={language} reason={loginReason} onSubmit={handleLogin} onClose={() => { if (!authChecked || authenticated) setLoginOpen(false); }} />}
-      {settingsOpen && <SettingsPanel language={language} setLanguage={setLanguage} username={username} setUsername={setUsername} password={password} setPassword={setPassword} saved={settingsSaved} onSave={saveSettings} onClose={() => setSettingsOpen(false)} />}
+      {loginOpen && !authenticated && <LoginScreen language={language} onSubmit={handleLogin} />}
+      {settingsOpen && <SettingsPanel language={language} setLanguage={setLanguage} username={username} setUsername={setUsername} password={password} setPassword={setPassword} saved={settingsSaved} onSave={saveSettings} onClose={() => setSettingsOpen(false)} onLogout={handleLogout} authenticated={authenticated} />}
     </div>
   );
 }
@@ -1535,7 +1544,7 @@ function TextKeyboard({ value, onChange, onSubmit, onClose }: { value: string; o
 }
 
 /* ---------- Settings panel ---------- */
-function SettingsPanel({ language, setLanguage, username, setUsername, password, setPassword, saved, onSave, onClose }: {
+function SettingsPanel({ language, setLanguage, username, setUsername, password, setPassword, saved, onSave, onClose, onLogout, authenticated }: {
   language: Language;
   setLanguage: (l: Language) => void;
   username: string;
@@ -1545,29 +1554,37 @@ function SettingsPanel({ language, setLanguage, username, setUsername, password,
   saved: boolean;
   onSave: () => void;
   onClose: () => void;
+  onLogout: () => void;
+  authenticated: boolean;
 }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <aside className="settings-drawer" onClick={(e) => e.stopPropagation()}>
         <div className="drawer-header">
-          <div><span className="section-kicker">PREFERÊNCIAS</span><h3>Definições</h3></div>
-          <button className="drawer-close" onClick={onClose} aria-label="Fechar"><X size={19} /></button>
+          <div><span className="section-kicker">{t('settings.kicker', language)}</span><h3>{t('settings.title', language)}</h3></div>
+          <button className="drawer-close" onClick={onClose} aria-label={t('settings.close', language)}><X size={19} /></button>
         </div>
         <div className="settings-section">
-          <div className="settings-label"><Globe2 size={18} /><div><strong>Idioma</strong><span>Escolha o idioma do painel.</span></div></div>
+          <div className="settings-label"><Globe2 size={18} /><div><strong>{t('settings.language', language)}</strong><span>{t('settings.languageDesc', language)}</span></div></div>
           <div className="language-toggle">
             <button className={language === 'PT' ? 'selected' : ''} onClick={() => setLanguage('PT')}>Português</button>
             <button className={language === 'EN' ? 'selected' : ''} onClick={() => setLanguage('EN')}>English</button>
           </div>
         </div>
         <div className="settings-section">
-          <div className="settings-label"><UserRound size={18} /><div><strong>Conta do operador</strong><span>Atualize os dados de acesso ao painel.</span></div></div>
-          <label className="field-label">Utilizador<input value={username} onChange={(e) => setUsername(e.target.value)} /></label>
-          <label className="field-label">Nova palavra-passe<input type="password" placeholder="Deixe vazio para manter" value={password} onChange={(e) => setPassword(e.target.value)} /></label>
-          <div className="security-note"><LockKeyhole size={15} /> Os dados de acesso ficam protegidos neste dispositivo.</div>
+          <div className="settings-label"><UserRound size={18} /><div><strong>{t('settings.account', language)}</strong><span>{t('settings.accountDesc', language)}</span></div></div>
+          <label className="field-label">{t('settings.username', language)}<input value={username} onChange={(e) => setUsername(e.target.value)} /></label>
+          <label className="field-label">{t('settings.password', language)}<input type="password" placeholder={t('settings.passwordPlaceholder', language)} value={password} onChange={(e) => setPassword(e.target.value)} /></label>
+          <div className="security-note"><LockKeyhole size={15} /> {t('settings.securityNote', language)}</div>
         </div>
+        {authenticated && (
+          <div className="settings-section">
+            <div className="settings-label"><LockKeyhole size={18} /><div><strong>{t('settings.logout', language)}</strong><span>{t('settings.logoutDesc', language)}</span></div></div>
+            <button className="logout-btn" onClick={onLogout}>{t('settings.logoutBtn', language)}</button>
+          </div>
+        )}
         <div className="drawer-footer">
-          <button className={`save-btn ${saved ? 'saved' : ''}`} onClick={onSave}><Save size={17} /> {saved ? 'Definições guardadas' : 'Guardar alterações'}</button>
+          <button className={`save-btn ${saved ? 'saved' : ''}`} onClick={onSave}><Save size={17} /> {saved ? t('general.saved', language) : t('general.save', language)}</button>
         </div>
       </aside>
     </div>
@@ -1783,6 +1800,68 @@ function AlarmItem({ event, onResolve }: { event: ErrorEvent; onResolve?: () => 
         <button className="resolve-btn" onClick={onResolve}><CheckCircle2 size={15} />Resolver</button>
       ) : (
         <StatusBadge tone="success">Resolvido</StatusBadge>
+      )}
+    </div>
+  );
+}
+
+/* ---------- Login Screen (full-screen) ---------- */
+function LoginScreen({ language, onSubmit }: { language: Language; onSubmit: (pass: string) => void }) {
+  const [pass, setPass] = useState('');
+  const [error, setError] = useState(false);
+  const [capsLock, setCapsLock] = useState(false);
+  const [showKeyboard, setShowKeyboard] = useState(false);
+
+  const handleSubmit = () => {
+    if (pass === '1234') {
+      onSubmit(pass);
+      setError(false);
+    } else {
+      setError(true);
+      setPass('');
+      setTimeout(() => setError(false), 2000);
+    }
+  };
+
+  return (
+    <div className="login-screen">
+      <div className="login-screen-bg" />
+      <div className="login-screen-card">
+        <div className="login-brand">
+          <div className="login-brand-mark"><Leaf size={36} /></div>
+          <div className="login-brand-text">
+            <strong>GTC</strong><span>REGA</span>
+          </div>
+        </div>
+        <h2>{t('login.welcome', language)}</h2>
+        <p className="login-desc">{t('login.description', language)}</p>
+        <div className="login-form">
+          <div className={`login-input-group ${error ? 'login-input-error' : ''}`} onClick={() => setShowKeyboard(true)}>
+            <LockKeyhole size={18} />
+            <input
+              type="password"
+              placeholder={t('login.password', language)}
+              value={pass}
+              onChange={(e) => { setPass(e.target.value); setError(false); }}
+              onFocus={() => setShowKeyboard(true)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); setCapsLock(e.getModifierState('CapsLock')); }}
+              onKeyUp={(e) => setCapsLock(e.getModifierState('CapsLock'))}
+              autoFocus
+            />
+          </div>
+          {capsLock && <div className="login-caps-warning">⚠ {t('login.capsLock', language)}</div>}
+          {error && <div className="login-message error">{t('login.error', language)}</div>}
+          <button className="login-submit-btn" onClick={handleSubmit} disabled={!pass}>
+            {t('login.submit', language)}
+          </button>
+        </div>
+        <div className="login-footer">
+          <span>ESP32-S3 · v2.11</span>
+          <span>© Deogracia de Castro</span>
+        </div>
+      </div>
+      {showKeyboard && (
+        <TextKeyboard value={pass} onChange={setPass} onSubmit={() => { handleSubmit(); setShowKeyboard(false); }} onClose={() => setShowKeyboard(false)} />
       )}
     </div>
   );
