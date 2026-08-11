@@ -12,7 +12,7 @@ const pt: Dict = {
   'nav.estado': 'Estado',
   'nav.setpoints': 'Setpoints',
   'nav.mapa': 'Mapa',
-  'nav.historico': 'Histórico',
+  'nav.histórico': 'Histórico',
   'nav.comandos': 'Comandos',
   'nav.alarmes': 'Alarmes',
 
@@ -170,7 +170,7 @@ const en: Dict = {
   'nav.estado': 'Status',
   'nav.setpoints': 'Setpoints',
   'nav.mapa': 'Map',
-  'nav.historico': 'History',
+  'nav.histórico': 'History',
   'nav.comandos': 'Commands',
   'nav.alarmes': 'Alarms',
 

@@ -1863,10 +1863,17 @@ function ScheduleEditor({ zone, onChange, language }: { zone: Zone; onChange: (s
   const formatTime = (h: number, m: number) => 
     `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 
+  if (!zone.schedules) {
+    // If schedules is missing, create default
+    const defaults: Record<string, WaterSchedule> = {};
+    WEEKDAYS.forEach(d => { defaults[d] = { enabled: true, hour: 6, minute: 0 }; });
+    zone.schedules = defaults as Record<WeekDay, WaterSchedule>;
+  }
+
   return (
     <div className="schedule-grid">
       {WEEKDAYS.map((day, i) => {
-        const s = zone.schedules[day];
+        const s = zone.schedules[day] || { enabled: true, hour: 6, minute: 0 };
         return (
           <div key={day} className={`schedule-day ${s.enabled ? 'schedule-enabled' : ''}`}>
             <button
