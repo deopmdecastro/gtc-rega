@@ -243,6 +243,39 @@ app.post('/api/command', (req, res) => {
   res.json(engine.getState());
 });
 
+// ── GPIO Config persistence ──
+const GPIO_CONFIG_FILE = path.join(DATA_DIR, 'gtc-gpio-config.json');
+
+function loadGpioConfigFile() {
+  try {
+    if (fs.existsSync(GPIO_CONFIG_FILE)) return JSON.parse(fs.readFileSync(GPIO_CONFIG_FILE, 'utf-8'));
+  } catch (e) { /* ignore */ }
+  return null;
+}
+
+function saveGpioConfigFile(config) {
+  try {
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(GPIO_CONFIG_FILE, JSON.stringify(config, null, 2), 'utf-8');
+  } catch (e) { console.error('Failed to save GPIO config:', e.message); }
+}
+
+app.get('/api/gpio-config', (_req, res) => {
+  res.json(loadGpioConfigFile() || { config: [] });
+});
+
+app.post('/api/gpio-config', (req, res) => {
+  const { config } = req.body || {};
+  if (config && Array.isArray(config)) {
+    saveGpioConfigFile({ config, savedAt: new Date().toISOString() });
+    // Also update engine gpio mappings
+    io.emit('gpio:config', { config });
+    res.json({ ok: true });
+  } else {
+    res.status(400).json({ error: 'Invalid config' });
+  }
+});
+
 // ── WebSocket ──
 io.on('connection', (socket) => {
   console.log(`Client connected: ${socket.id}`);

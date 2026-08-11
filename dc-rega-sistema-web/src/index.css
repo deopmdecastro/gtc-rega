@@ -436,6 +436,75 @@ button { cursor: pointer; }
 .logout-btn { width: 100%; padding: 12px; border: 1px solid rgba(240,101,101,.25); border-radius: 10px; background: rgba(240,101,101,.06); color: #f06565; font: 600 13px inherit; cursor: pointer; transition: .2s; }
 .logout-btn:hover { background: rgba(240,101,101,.12); border-color: rgba(240,101,101,.4); }
 
+
+/* ---------- Hardware Diagram (Estado tab) ---------- */
+.hardware-panel-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid #1a2a33; }
+.hardware-header-left .section-kicker { font-size: 10px; letter-spacing: .12em; color: #12bcb6; font-weight: 700; display: block; margin-bottom: 4px; }
+.hardware-header-left h3 { margin: 0; font-size: 18px; color: #dce5e8; }
+.gpio-edit-btn { display: flex; align-items: center; gap: 6px; padding: 8px 14px; border: 1px solid #263943; border-radius: 8px; background: #0d171e; color: #8499a2; font: 600 12px inherit; cursor: pointer; transition: .2s; white-space: nowrap; }
+.gpio-edit-btn:hover { border-color: #12bcb6; color: #1ad5d0; }
+
+/* Diagram layout: 3 columns */
+.hardware-diagram { display: grid; grid-template-columns: 1fr auto 1fr; gap: 0; align-items: start; }
+.hw-section { }
+.hw-section-header { margin-bottom: 12px; }
+.hw-section-kicker { font-size: 10px; letter-spacing: .12em; font-weight: 700; padding: 4px 10px; border-radius: 5px; display: inline-block; }
+.hw-inputs .hw-section-kicker { background: rgba(94,229,138,.1); color: #5ee58a; }
+.hw-outputs .hw-section-kicker { background: rgba(240,161,69,.1); color: #f0a145; }
+
+/* Sensor nodes (left) */
+.hw-sensor-node { display: flex; align-items: center; gap: 0; margin-bottom: 16px; }
+.hw-sensor-info { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #0b151b; border: 1px solid #1a2a33; border-radius: 10px; min-width: 160px; }
+.hw-sensor-badge { width: 36px; height: 36px; display: grid; place-items: center; background: rgba(94,229,138,.12); border: 1px solid rgba(94,229,138,.25); border-radius: 8px; color: #5ee58a; font: 700 14px 'DM Mono', monospace; }
+.hw-sensor-detail strong { display: block; font-size: 13px; color: #dce5e8; }
+.hw-sensor-detail span { font-size: 11px; color: #5a6f7a; }
+.hw-arrow { width: 0; height: 0; border-top: 7px solid transparent; border-bottom: 7px solid transparent; margin: 0 4px; flex-shrink: 0; }
+.hw-arrow-input { border-left: 10px solid #5ee58a; }
+.hw-arrow-output { border-right: 10px solid #f0a145; }
+.hw-gpio-tag { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 10px; border-radius: 6px; font: 600 10px 'DM Mono', monospace; white-space: nowrap; }
+.hw-input-tag { background: rgba(94,229,138,.08); border: 1px solid rgba(94,229,138,.2); color: #5ee58a; }
+.hw-output-tag { background: rgba(240,161,69,.08); border: 1px solid rgba(240,161,69,.2); color: #f0a145; }
+.hw-gpio-dir { font-size: 8px; letter-spacing: .08em; opacity: .7; }
+
+/* Controller chip (center) */
+.hw-controller { display: flex; justify-content: center; padding: 0 16px; }
+.hw-chip { border: 1px solid #1a2a33; border-radius: 14px; background: linear-gradient(160deg, #0e1921, #091218); overflow: hidden; min-width: 220px; }
+.hw-chip-top { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid #1a2a33; color: #1ad5d0; font: 600 14px 'DM Mono', monospace; letter-spacing: .04em; }
+.hw-chip-pins { display: flex; gap: 1px; padding: 8px; }
+.hw-chip-column { display: flex; flex-direction: column; gap: 3px; flex: 1; }
+.hw-column-in { padding-right: 6px; border-right: 1px solid #1a2a33; }
+.hw-column-out { padding-left: 6px; }
+.hw-pin-tag { display: flex; align-items: center; gap: 4px; padding: 3px 7px; border-radius: 4px; font: 600 9px 'DM Mono', monospace; }
+.hw-pin-in { background: rgba(94,229,138,.06); color: #5ee58a; }
+.hw-pin-out { background: rgba(240,161,69,.06); color: #f0a145; }
+.hw-pin-num { letter-spacing: .03em; }
+.hw-pin-dir { font-size: 7px; letter-spacing: .06em; opacity: .6; }
+
+/* Relay nodes (right) */
+.hw-relay-node { display: flex; align-items: center; gap: 0; margin-bottom: 16px; justify-content: flex-end; }
+.hw-relay-info { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #0b151b; border: 1px solid #1a2a33; border-radius: 10px; min-width: 180px; }
+.hw-relay-badge { width: 36px; height: 36px; display: grid; place-items: center; background: rgba(240,161,69,.12); border: 1px solid rgba(240,161,69,.25); border-radius: 8px; color: #f0a145; font: 700 14px 'DM Mono', monospace; }
+.hw-relay-detail strong { display: block; font-size: 13px; color: #dce5e8; }
+.hw-relay-detail span { font-size: 11px; color: #5a6f7a; }
+
+/* Legend */
+.hw-legend { display: flex; gap: 24px; margin-top: 20px; padding-top: 16px; border-top: 1px solid #1a2a33; font-size: 11px; color: #7e909c; }
+.hw-legend-item { display: flex; align-items: center; gap: 6px; }
+.hw-legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.hw-legend-in { background: #5ee58a; box-shadow: 0 0 4px rgba(94,229,138,.4); }
+.hw-legend-out { background: #f0a145; box-shadow: 0 0 4px rgba(240,161,69,.4); }
+
+/* GPIO Edit Table */
+.gpio-edit-table-wrap { margin-top: 24px; padding-top: 20px; border-top: 1px solid #1a2a33; }
+.gpio-edit-table-wrap h4 { margin: 0 0 12px; font-size: 14px; color: #dce5e8; }
+.gpio-edit-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 12px; }
+.gpio-edit-table th { text-align: left; padding: 8px 10px; border-bottom: 1px solid #1a2a33; color: #78909a; font-size: 10px; letter-spacing: .06em; font-weight: 700; }
+.gpio-edit-table td { padding: 6px 10px; border-bottom: 1px solid #0f1a21; }
+.gpio-select { padding: 5px 8px; border: 1px solid #263943; border-radius: 5px; background: #0d171e; color: #dce5e8; font: 11px 'DM Mono', monospace; }
+.gpio-input { width: 100%; padding: 6px 8px; border: 1px solid #263943; border-radius: 5px; background: #0d171e; color: #dce5e8; font: 11px 'DM Mono', monospace; }
+.gpio-input:focus, .gpio-select:focus { outline: none; border-color: #12bcb6; }
+.gpio-input-sm { max-width: 70px; }
+
 @media (max-width: 1000px) {
   .content-wrap { padding: 0 22px 40px; }
   .topbar-inner { padding: 18px 22px 16px; }
@@ -656,6 +725,12 @@ button { cursor: pointer; }
 .estado-pinout-panel { padding: 20px; margin-top: 20px; }
 .estado-pinout-panel .panel-heading { padding: 0 0 12px; }
 .pinout-full-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .hardware-diagram { grid-template-columns: 1fr; gap: 12px; }
+  .hw-controller { order: -1; padding: 0; }
+  .hw-sensor-node, .hw-relay-node { flex-wrap: wrap; gap: 6px; }
+  .hw-arrow { display: none; }
+  .gpio-edit-table-wrap { overflow-x: auto; }
+
   
   .login-screen-card { padding: 36px 24px 28px; }
   .login-modal { width: calc(100vw - 32px); }
