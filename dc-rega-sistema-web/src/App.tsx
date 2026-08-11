@@ -674,7 +674,7 @@ function ActuatorRow({ icon, label, on, onToggle }: { icon: React.ReactNode; lab
   return <div className="actuator-row"><span className="actuator-icon">{icon}</span><strong>{label}</strong><button className={`switch ${on ? 'switch-on' : ''}`} onClick={onToggle} aria-label={`Alternar ${label}`}><span /></button><span className={`actuator-state ${on ? 'on' : ''}`}>{on ? 'LIGADO' : 'DESLIGADO'}</span></div>;
 }
 
-function SensorCard({ zone }: { zone: Zone }) {
+function SensorCard({ zone, language }: { zone: Zone; language: Language }) {
   return (
     <Panel className="sensor-card">
       <div className="sensor-header">
