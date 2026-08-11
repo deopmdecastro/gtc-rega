@@ -46,6 +46,10 @@ class ControlEngine {
     this.cycleActive = false;
     this.testCycleActive = false;
     this.startTime = null;
+    this.watchdogTimer = null;
+    this.watchdogTimeout = 60000; // 60s max per zone before force-stop
+    this.errors = [];
+    this.uptime = 0;
     
     // GPIO virtual states
     this.gpio = {
@@ -78,6 +82,38 @@ class ControlEngine {
     this._broadcast();
   }
 
+  // Restore engine from persisted state
+  restoreState(saved) {
+    if (!saved || !saved.controlState) return;
+    const cs = saved.controlState;
+    this.state = cs.state || STATES.IDLE;
+    this.pumpOn = cs.pump || false;
+    this.autoMode = cs.autoMode !== false;
+    this.zones = (cs.zones || []).map(z => ({
+      ...z,
+      on: z.on || false,
+      moisture: z.moisture || 50,
+    }));
+    this.currentZoneIndex = cs.currentZoneIndex ?? -1;
+    this.cycleActive = cs.cycleActive || false;
+    this.testCycleActive = cs.testCycleActive || false;
+    this.startTime = cs.startTime || null;
+    if (cs.gpio) {
+      Object.entries(cs.gpio).forEach(([k, v]) => {
+        this.gpio[parseInt(k)] = v;
+      });
+    }
+    // If was in a transient state, reset to idle
+    if (this.state === STATES.STARTING || this.state === STATES.STOPPING) {
+      this.state = STATES.IDLE;
+      this.pumpOn = false;
+      this.zones.forEach(z => { z.on = false; });
+      this.cycleActive = false;
+      this.testCycleActive = false;
+    }
+    this._broadcast();
+  }
+
   updateZones(zonesConfig) {
     // Preserve runtime state (on/moisture) when config changes
     const oldMap = new Map(this.zones.map(z => [z.id, z]));
@@ -89,6 +125,38 @@ class ControlEngine {
         moisture: old ? old.moisture : (z.moisture || 50),
       };
     });
+    this._broadcast();
+  }
+
+  // Restore engine from persisted state
+  restoreState(saved) {
+    if (!saved || !saved.controlState) return;
+    const cs = saved.controlState;
+    this.state = cs.state || STATES.IDLE;
+    this.pumpOn = cs.pump || false;
+    this.autoMode = cs.autoMode !== false;
+    this.zones = (cs.zones || []).map(z => ({
+      ...z,
+      on: z.on || false,
+      moisture: z.moisture || 50,
+    }));
+    this.currentZoneIndex = cs.currentZoneIndex ?? -1;
+    this.cycleActive = cs.cycleActive || false;
+    this.testCycleActive = cs.testCycleActive || false;
+    this.startTime = cs.startTime || null;
+    if (cs.gpio) {
+      Object.entries(cs.gpio).forEach(([k, v]) => {
+        this.gpio[parseInt(k)] = v;
+      });
+    }
+    // If was in a transient state, reset to idle
+    if (this.state === STATES.STARTING || this.state === STATES.STOPPING) {
+      this.state = STATES.IDLE;
+      this.pumpOn = false;
+      this.zones.forEach(z => { z.on = false; });
+      this.cycleActive = false;
+      this.testCycleActive = false;
+    }
     this._broadcast();
   }
 
@@ -111,6 +179,10 @@ class ControlEngine {
     this._log('system_start', 'Sistema', 'Sistema iniciado — bomba ligada', 'info', { pumpDelay: pumpDelaySec });
 
     // Fase 1: delay da bomba
+    // Start watchdog for this zone
+    this._startWatchdog(duration + 10);
+
+    this._startWatchdog(10);
     this._addTimer(setTimeout(() => {
       this.state = STATES.WATERING;
       this.currentZoneIndex = 0;
@@ -125,6 +197,7 @@ class ControlEngine {
 
   stop() {
     this._clearTimers();
+    this._clearWatchdog();
     this.state = STATES.STOPPING;
     
     // Fechar válvulas da zona atual primeiro
@@ -137,6 +210,10 @@ class ControlEngine {
 
     this._log('system_stop', 'Sistema', 'Sistema parado — todos os atuadores desligados', 'warning');
     
+    // Start watchdog for this zone
+    this._startWatchdog(duration + 10);
+
+    this._startWatchdog(10);
     this._addTimer(setTimeout(() => {
       this.state = STATES.IDLE;
       this._broadcast();
@@ -148,6 +225,7 @@ class ControlEngine {
 
   emergencyStop() {
     this._clearTimers();
+    this._clearWatchdog();
     this.state = STATES.EMERGENCY;
     this._closeAllValves();
     this._setPump(false);
@@ -168,6 +246,7 @@ class ControlEngine {
 
   reset() {
     this._clearTimers();
+    this._clearWatchdog();
     this.state = STATES.IDLE;
     this._closeAllValves();
     this._setPump(false);
@@ -198,6 +277,9 @@ class ControlEngine {
     this._log('test_cycle', 'Ciclo de teste', 'Ciclo de teste iniciado — verificação de bomba e válvulas', 'info');
 
     // Teste: bomba 3s → cada válvula 4s
+    // Start watchdog for this zone
+    this._startWatchdog(duration + 10);
+
     this._addTimer(setTimeout(() => {
       this.state = STATES.WATERING;
       this._runTestSequence(0);
@@ -242,6 +324,38 @@ class ControlEngine {
     this.autoMode = mode;
     this._setGpio(GPIO.RELAY_K7_AUTO, mode);
     this._log('mode_change', 'Modo de operação', mode ? 'Modo automático ativado' : 'Modo manual ativado', 'info');
+    this._broadcast();
+  }
+
+  // Restore engine from persisted state
+  restoreState(saved) {
+    if (!saved || !saved.controlState) return;
+    const cs = saved.controlState;
+    this.state = cs.state || STATES.IDLE;
+    this.pumpOn = cs.pump || false;
+    this.autoMode = cs.autoMode !== false;
+    this.zones = (cs.zones || []).map(z => ({
+      ...z,
+      on: z.on || false,
+      moisture: z.moisture || 50,
+    }));
+    this.currentZoneIndex = cs.currentZoneIndex ?? -1;
+    this.cycleActive = cs.cycleActive || false;
+    this.testCycleActive = cs.testCycleActive || false;
+    this.startTime = cs.startTime || null;
+    if (cs.gpio) {
+      Object.entries(cs.gpio).forEach(([k, v]) => {
+        this.gpio[parseInt(k)] = v;
+      });
+    }
+    // If was in a transient state, reset to idle
+    if (this.state === STATES.STARTING || this.state === STATES.STOPPING) {
+      this.state = STATES.IDLE;
+      this.pumpOn = false;
+      this.zones.forEach(z => { z.on = false; });
+      this.cycleActive = false;
+      this.testCycleActive = false;
+    }
     this._broadcast();
   }
 
@@ -327,6 +441,9 @@ class ControlEngine {
     this._broadcast();
 
     // Temporizador da válvula
+    // Start watchdog for this zone
+    this._startWatchdog(duration + 10);
+
     this._addTimer(setTimeout(() => {
       zone.on = false;
       this._setGpio(GPIO.RELAY_K5_START, false);
@@ -339,7 +456,10 @@ class ControlEngine {
       this._broadcast();
 
       // Esperar 2s entre zonas
-      this._addTimer(setTimeout(() => {
+      // Start watchdog for this zone
+    this._startWatchdog(duration + 10);
+
+    this._addTimer(setTimeout(() => {
         if (this.testCycleActive) {
           this._runTestSequence(this.currentZoneIndex);
         } else if (this.cycleActive) {
@@ -368,12 +488,18 @@ class ControlEngine {
     this._log('test_zone', `Teste · ${zone.name}`, `A testar ${zone.name} (4s)`, 'info', { zone_id: zone.id });
     this._broadcast();
 
+    // Start watchdog for this zone
+    this._startWatchdog(duration + 10);
+
     this._addTimer(setTimeout(() => {
       zone.on = false;
       this._setGpio(GPIO.RELAY_K5_START, false);
       this.currentZoneIndex = index + 1;
       
-      this._addTimer(setTimeout(() => {
+      // Start watchdog for this zone
+    this._startWatchdog(duration + 10);
+
+    this._addTimer(setTimeout(() => {
         this._runTestSequence(this.currentZoneIndex);
       }, 1000));
     }, 4000));
@@ -416,6 +542,31 @@ class ControlEngine {
   _clearTimers() {
     this.timers.forEach(t => clearTimeout(t));
     this.timers = [];
+    this._clearWatchdog();
+  }
+
+  _startWatchdog(extraSeconds = 10) {
+    this._clearWatchdog();
+    const timeout = (this.watchdogTimeout + extraSeconds * 1000);
+    this.watchdogTimer = setTimeout(() => {
+      this._log('watchdog_triggered', 'Watchdog', 
+        `Timeout de segurança excedido — a forçar paragem`, 'critical');
+      this._closeAllValves();
+      this._setPump(false);
+      this.state = STATES.IDLE;
+      this.cycleActive = false;
+      this.testCycleActive = false;
+      this.currentZoneIndex = -1;
+      this._clearTimers();
+      this._broadcast();
+    }, timeout);
+  }
+
+  _clearWatchdog() {
+    if (this.watchdogTimer) {
+      clearTimeout(this.watchdogTimer);
+      this.watchdogTimer = null;
+    }
   }
 
   _broadcast() {
