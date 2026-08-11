@@ -137,6 +137,9 @@ export function createControllerClient() {
             case 'controller:sensor':
               emit('sensor', payload);
               break;
+            case 'controller:device':
+              emit('controller:device', payload);
+              break;
           }
         }
       } catch { /* ignore parse errors */ }

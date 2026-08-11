@@ -11,6 +11,7 @@ services:
     environment:
       - DATA_DIR=/data
       - PORT=3000
+      - DEVICE_TOKEN=${DEVICE_TOKEN:-}
 
   frontend:
     build: .

@@ -337,6 +337,22 @@ class ControlEngine {
     });
   }
 
+  // ── Update sensor from real device (ESP32 telemetry) ──
+  updateDeviceSensor(sensorId, moisture) {
+    const zone = this.zones.find(z => z.sensorId === sensorId);
+    if (!zone) return;
+    zone.moisture = moisture;
+    // Update virtual GPIO
+    const sensorGpio = sensorId === 'B1' ? GPIO.SENSOR_B1 :
+                       sensorId === 'B2' ? GPIO.SENSOR_B2 : null;
+    if (sensorGpio !== null) {
+      this.gpio[sensorGpio] = moisture;
+    }
+    if (this.onSensorUpdate) {
+      this.onSensorUpdate(sensorId, moisture);
+    }
+  }
+
   // ── Verificação do ciclo automático (com schedules) ──
   checkAutoCycle() {
     // Only run in auto mode when a cycle is active

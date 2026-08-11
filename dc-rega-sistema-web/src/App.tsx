@@ -208,6 +208,8 @@ function App() {
   // Weather state – real API
   const [weather, setWeather] = useState({ temp: 24, desc: 'Parcialmente nublado', city: 'Leiria', country: 'Portugal', icon: '⛅' });
   const [weatherLoading, setWeatherLoading] = useState(false);
+  const [deviceOnline, setDeviceOnline] = useState(false);
+  const [deviceInfo, setDeviceInfo] = useState<{ deviceId?: string; firmware?: string; ip?: string; rssi?: number } | null>(null);
   const [clock, setClock] = useState('');
   const [dateStr, setDateStr] = useState('');
 
@@ -354,9 +356,15 @@ function App() {
       }
     });
 
+    const unsubDevice = ctrl.on('controller:device', (dev: Record<string, unknown>) => {
+      if (dev.online !== undefined) setDeviceOnline(dev.online as boolean);
+      if (dev.info) setDeviceInfo(dev.info as typeof deviceInfo);
+    });
+
     return () => {
       unsubState();
       unsubEvent();
+      unsubDevice();
       ctrl.disconnect();
     };
   }, []);
@@ -657,13 +665,13 @@ function App() {
         <div className="content-wrap">
           <div className="page-heading">
             <div><span className="section-kicker">{t('heading.overview', language)}</span><h2>{t(`nav.${activePage.toLowerCase()}`, language)}</h2></div>
-            <div className="connection"><Radio size={15} /> {t('heading.connection', language)} <span className="pulse" /></div>
+            <div className="connection"><Radio size={15} /> {deviceOnline ? 'ESP32 Online' : t('heading.connection', language)} <span className={`pulse ${deviceOnline ? 'pulse-device' : ''}`} /></div>
           </div>
           {renderPage()}
           <footer className="app-footer">
             <span>Desenvolvido por <strong>Deogracia de Castro</strong></span>
             <span className="footer-divider">·</span>
-            <span>GTC Rega v2.7 · ESP32-S3 · Build 2026-08-14</span>
+            <span>GTC Rega v2.8 · ESP32-S3 · Build 2026-08-11</span>
           </footer>
         </div>
       </main>

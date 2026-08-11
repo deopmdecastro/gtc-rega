@@ -79,6 +79,8 @@ input:focus-visible { border-radius: inherit; }
 .connection { display: flex; align-items: center; gap: 8px; color: #6f8792; font-size: 11px; }
 .connection svg { color: #18d6d0; }
 .pulse { width: 6px; height: 6px; border-radius: 50%; background: #54dc81; box-shadow: 0 0 0 4px rgba(84, 220, 129, .1); }
+.pulse-device { background: #18d6d0; box-shadow: 0 0 0 4px rgba(24, 214, 208, .2); animation: pulse-device-glow 2s ease-in-out infinite; }
+@keyframes pulse-device-glow { 0%,100% { box-shadow: 0 0 0 4px rgba(24, 214, 208, .2); } 50% { box-shadow: 0 0 0 8px rgba(24, 214, 208, .4); } }
 
 /* ---------- Footer ---------- */
 .app-footer { display: flex; align-items: center; gap: 8px; margin-top: 48px; padding-top: 20px; border-top: 1px solid #17232c; color: #5a6f7a; font-size: 11px; }

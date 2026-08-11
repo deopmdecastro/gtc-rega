@@ -17,6 +17,10 @@ const DATA_DIR = process.env.DATA_DIR || '/data';
 const STATE_FILE = path.join(DATA_DIR, 'gtc-state.json');
 const LAYOUT_FILE = path.join(DATA_DIR, 'gtc-layout.json');
 
+// ── Device Token (igual ao GTC_DEVICE_TOKEN no config.h do firmware) ──
+const DEVICE_TOKEN = process.env.DEVICE_TOKEN || '';
+const DEVICE_OFFLINE_TIMEOUT = 30000; // 30s sem telemetria → voltar a simular
+
 // ── Engine ──
 const engine = new ControlEngine();
 
@@ -43,13 +47,25 @@ engine.onSensorUpdate = (sensorId, moisture) => {
   io.emit('controller:sensor', { sensorId, moisture });
 };
 
-// Sensor simulation loop (every 3 seconds)
+// ── Device tracking ──
+let deviceOnline = false;
+let lastDeviceContact = 0;
+let deviceInfo = null; // info from /api/device/hello
+
+// Sensor simulation loop (every 3 seconds) — only runs when device is offline
 let sensorInterval = null;
 function startSensorSim() {
   if (sensorInterval) clearInterval(sensorInterval);
   sensorInterval = setInterval(() => {
-    engine.updateSensors();
-    engine.checkAutoCycle();
+    // Only simulate if no real device is connected
+    if (!deviceOnline || Date.now() - lastDeviceContact > DEVICE_OFFLINE_TIMEOUT) {
+      if (deviceOnline) {
+        console.log('[DEVICE] ESP32 offline — switching to simulation');
+        deviceOnline = false;
+      }
+      engine.updateSensors();
+      engine.checkAutoCycle();
+    }
   }, 3000);
 }
 startSensorSim();
@@ -93,6 +109,14 @@ function saveLayoutToFile(layout) {
   } catch (e) { console.error('Failed to save layout:', e.message); }
 }
 
+// ── Device token middleware ──
+function checkDeviceToken(req, res, next) {
+  if (!DEVICE_TOKEN) return next(); // no token configured → allow all
+  const token = req.headers['x-device-token'];
+  if (token === DEVICE_TOKEN) return next();
+  return res.status(401).json({ error: 'Invalid or missing device token' });
+}
+
 // Load persisted state and restore engine
 const persisted = loadPersistedState();
 if (persisted) {
@@ -119,6 +143,8 @@ app.get('/api/health', (_req, res) => {
     currentZone: engine.currentZoneIndex,
     watchdogActive: !!engine.watchdogTimer,
     gpio: engine.gpio,
+    deviceOnline,
+    deviceInfo,
   });
 });
 
@@ -181,6 +207,103 @@ app.post('/api/control/zones', (req, res) => {
   res.json({ ok: true, state: engine.getState() });
 });
 
+// ── Device API (ESP32-S3 firmware endpoints) ──
+// POST /api/device/hello — handshake / registo do dispositivo
+app.post('/api/device/hello', checkDeviceToken, (req, res) => {
+  const { deviceId, firmware, ip, rssi } = req.body || {};
+  
+  deviceOnline = true;
+  lastDeviceContact = Date.now();
+  deviceInfo = { deviceId, firmware, ip, rssi, connectedAt: new Date().toISOString() };
+  
+  console.log(`[DEVICE] Hello from ${deviceId || 'unknown'} — fw ${firmware || '?'} @ ${ip || '?'}`);
+  
+  engine._log('device_connected', 'ESP32-S3',
+    `Dispositivo ${deviceId || 'desconhecido'} conectado (fw ${firmware || '?'})`, 'info',
+    { deviceId, firmware, ip, rssi });
+  
+  res.json({
+    ok: true,
+    serverTime: new Date().toISOString(),
+    message: 'Handshake OK — GTC Rega backend pronto',
+  });
+});
+
+// POST /api/device/telemetry — recebe sensores e devolve saídas desejadas
+app.post('/api/device/telemetry', checkDeviceToken, (req, res) => {
+  const { deviceId, firmware, ip, rssi, uptime, emergency, sensors } = req.body || {};
+  
+  deviceOnline = true;
+  lastDeviceContact = Date.now();
+  deviceInfo = { ...deviceInfo, deviceId, firmware, ip, rssi, uptime, lastTelemetry: new Date().toISOString() };
+  
+  // Update sensor readings from real device
+  if (sensors && Array.isArray(sensors)) {
+    sensors.forEach(s => {
+      if (s.sensorId && typeof s.moisture === 'number') {
+        engine.updateDeviceSensor(s.sensorId, Math.round(s.moisture));
+      }
+    });
+  }
+  
+  // Handle emergency signal from device
+  if (emergency && engine.state !== 'emergency') {
+    engine.emergencyStop();
+    console.log('[DEVICE] Emergency stop received from ESP32');
+  }
+  
+  // Build outputs response for the device
+  const outputs = {
+    emergency: engine.state === 'emergency',
+    pump: engine.pumpOn,
+    zones: engine.zones.map((z, i) => ({
+      name: z.name,
+      on: z.on,
+      duration: z.waterDuration || 30,
+    })),
+  };
+  
+  res.json({
+    ok: true,
+    outputs,
+    serverTime: new Date().toISOString(),
+  });
+});
+
+// GET /api/device/outputs — ESP32 consulta as saídas desejadas
+app.get('/api/device/outputs', checkDeviceToken, (req, res) => {
+  lastDeviceContact = Date.now();
+  deviceOnline = true;
+  
+  res.json({
+    emergency: engine.state === 'emergency',
+    pump: engine.pumpOn,
+    zones: engine.zones.map((z, i) => ({
+      name: z.name,
+      on: z.on,
+      duration: z.waterDuration || 30,
+    })),
+  });
+});
+
+// GET /api/device/status — estado completo do dispositivo (para debug/UI)
+app.get('/api/device/status', checkDeviceToken, (req, res) => {
+  res.json({
+    deviceOnline,
+    lastContact: lastDeviceContact ? new Date(lastDeviceContact).toISOString() : null,
+    deviceInfo,
+    engine: {
+      state: engine.state,
+      pumpOn: engine.pumpOn,
+      autoMode: engine.autoMode,
+      cycleActive: engine.cycleActive,
+      testCycleActive: engine.testCycleActive,
+      currentZoneIndex: engine.currentZoneIndex,
+      zones: engine.zones.length,
+    },
+  });
+});
+
 // ── Events ──
 app.get('/api/events', (req, res) => {
   const limit = Math.min(parseInt(req.query.limit, 10) || 100, 500);
@@ -220,6 +343,7 @@ app.get('/api/state', (_req, res) => {
     zones: cs.zones,
     eventLog: appState.eventLog || [],
     errors: [],
+    deviceOnline,
   });
 });
 
@@ -268,7 +392,6 @@ app.post('/api/gpio-config', (req, res) => {
   const { config } = req.body || {};
   if (config && Array.isArray(config)) {
     saveGpioConfigFile({ config, savedAt: new Date().toISOString() });
-    // Also update engine gpio mappings
     io.emit('gpio:config', { config });
     res.json({ ok: true });
   } else {
@@ -281,6 +404,8 @@ io.on('connection', (socket) => {
   console.log(`Client connected: ${socket.id}`);
   socket.emit('controller:state', engine.getState());
   socket.emit('controller:gpio', engine.gpio);
+  // Send device status
+  socket.emit('controller:device', { online: deviceOnline, info: deviceInfo });
 
   socket.on('control:start', (data) => engine.start(data?.pumpDelay || 5));
   socket.on('control:stop', () => engine.stop());
@@ -297,4 +422,10 @@ const port = process.env.PORT || 3000;
 server.listen(port, () => {
   console.log(`GTC Rega API + Engine listening on port ${port}`);
   console.log(`Data dir: ${DATA_DIR}`);
+  console.log(`Device token: ${DEVICE_TOKEN ? 'configured' : 'disabled (no token)'}`);
+  console.log(`Device API endpoints:`);
+  console.log(`  POST /api/device/hello      — handshake`);
+  console.log(`  POST /api/device/telemetry  — sensors + outputs`);
+  console.log(`  GET  /api/device/outputs    — desired outputs`);
+  console.log(`  GET  /api/device/status     — device + engine status`);
 });
