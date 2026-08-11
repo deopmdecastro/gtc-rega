@@ -2,14 +2,9 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+const apiBase = import.meta.env.VITE_API_URL || '';
 
-/**
- * Supabase é opcional: o painel funciona mesmo sem credenciais configuradas.
- * Quando VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY não existem, o cliente
- * fica desativado (isSupabaseEnabled = false) e as funções de registo de
- * eventos degradam de forma silenciosa em vez de rebentar a aplicação com
- * "supabaseUrl is required".
- */
+/** Supabase é opcional: usamos o backend Docker como fallback primário */
 export const isSupabaseEnabled = Boolean(supabaseUrl && supabaseAnonKey);
 
 export const supabase: SupabaseClient | null = isSupabaseEnabled
@@ -31,7 +26,9 @@ export type EventType =
   | 'zone_drag'
   | 'zone_add_map'
   | 'zone_duplicate'
-  | 'zone_clear_all';
+  | 'zone_clear_all'
+  | 'layout_save'
+  | 'state_sync';
 
 export type EventSeverity = 'info' | 'warning' | 'critical';
 
@@ -45,13 +42,33 @@ export type EventLogEntry = {
   created_at: string;
 };
 
-/**
- * Registo local (fallback) usado quando o Supabase não está configurado.
- * Mantém os eventos em memória para que o Histórico continue a funcionar
- * durante a sessão, sem depender de qualquer serviço externo.
- */
 const localEventLog: EventLogEntry[] = [];
 let localSeq = 0;
+
+/** Save event via backend API (Docker) when Supabase isn't configured */
+async function postToBackend(path: string, body: unknown): Promise<boolean> {
+  try {
+    const res = await fetch(`${apiBase}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/** Fetch from backend API */
+async function getFromBackend(path: string): Promise<unknown | null> {
+  try {
+    const res = await fetch(`${apiBase}${path}`);
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
 
 export async function logEvent(
   eventType: EventType,
@@ -60,8 +77,7 @@ export async function logEvent(
   severity: EventSeverity = 'info',
   metadata: Record<string, unknown> | null = null,
 ): Promise<void> {
-  // fallback local — sempre alimentado, também serve de cache quando há Supabase
-  localEventLog.unshift({
+  const entry: EventLogEntry = {
     id: `local-${Date.now()}-${localSeq++}`,
     event_type: eventType,
     source,
@@ -69,36 +85,86 @@ export async function logEvent(
     severity,
     metadata,
     created_at: new Date().toISOString(),
-  });
+  };
+
+  // Always keep local cache
+  localEventLog.unshift(entry);
   if (localEventLog.length > 200) localEventLog.length = 200;
 
-  if (!supabase) return;
-  try {
-    await supabase.from('event_log').insert({
-      event_type: eventType,
-      source,
-      message,
-      severity,
-      metadata,
-    });
-  } catch {
-    // silently fail — logging is best-effort
+  // Try Supabase first
+  if (supabase) {
+    try {
+      await supabase.from('event_log').insert({
+        event_type: eventType,
+        source,
+        message,
+        severity,
+        metadata,
+      });
+      return;
+    } catch { /* fall through */ }
   }
+
+  // Fallback: backend Docker API
+  await postToBackend('/api/events', entry);
 }
 
 export async function fetchEvents(limit = 50): Promise<EventLogEntry[]> {
-  if (!supabase) {
-    return localEventLog.slice(0, limit);
+  // Try Supabase first
+  if (supabase) {
+    try {
+      const { data, error } = await supabase
+        .from('event_log')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(limit);
+      if (!error && data) return data as EventLogEntry[];
+    } catch { /* fall through */ }
   }
+
+  // Try backend API
+  const backendEvents = await getFromBackend(`/api/events?limit=${limit}`);
+  if (backendEvents && Array.isArray(backendEvents)) {
+    return backendEvents as EventLogEntry[];
+  }
+
+  // Finally: local cache
+  return localEventLog.slice(0, limit);
+}
+
+/** Save full app state to backend */
+export async function saveState(state: unknown): Promise<boolean> {
+  return postToBackend('/api/state', state);
+}
+
+/** Load full app state from backend */
+export async function loadState(): Promise<unknown | null> {
+  return getFromBackend('/api/state');
+}
+
+/** Save map layout to backend */
+export async function saveLayout(layout: unknown): Promise<boolean> {
+  // Also save to localStorage as immediate cache
   try {
-    const { data, error } = await supabase
-      .from('event_log')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(limit);
-    if (error || !data) return localEventLog.slice(0, limit);
-    return data as EventLogEntry[];
-  } catch {
-    return localEventLog.slice(0, limit);
+    localStorage.setItem('gtc-rega-map-layout', JSON.stringify(layout));
+  } catch { /* ignore */ }
+  return postToBackend('/api/layout', layout);
+}
+
+/** Load map layout from backend, fallback to localStorage */
+export async function loadLayout(): Promise<unknown | null> {
+  const backend = await getFromBackend('/api/layout');
+  if (backend && Object.keys(backend as object).length > 0) {
+    // Also sync localStorage
+    try {
+      localStorage.setItem('gtc-rega-map-layout', JSON.stringify(backend));
+    } catch { /* ignore */ }
+    return backend;
   }
+  // Fallback: localStorage
+  try {
+    const local = localStorage.getItem('gtc-rega-map-layout');
+    if (local) return JSON.parse(local);
+  } catch { /* ignore */ }
+  return null;
 }
