@@ -2193,7 +2193,7 @@ function ScheduleEditor({ zone, onChange, language }: { zone: Zone; onChange: (s
                 <button className="schedule-time-btn" onClick={() => {
                   const newH = s.hour - 1 < 0 ? 23 : s.hour - 1;
                   setTime(day, newH, s.minute);
-                }} aria-label={language === 'PT' ? 'Hora anterior' : 'Previous hour'}>−</button>
+                }} aria-label={language === 'PT' ? 'Hora anterior' : 'Previous hour'}><Minus size={11} /></button>
                 <button className="schedule-time-display" onClick={() => {
                   setTimeEditing({ day, hour: s.hour, minute: s.minute });
                   setTimeStr('');
@@ -2204,7 +2204,7 @@ function ScheduleEditor({ zone, onChange, language }: { zone: Zone; onChange: (s
                 <button className="schedule-time-btn" onClick={() => {
                   const newH = s.hour + 1 > 23 ? 0 : s.hour + 1;
                   setTime(day, newH, s.minute);
-                }} aria-label={language === 'PT' ? 'Hora seguinte' : 'Next hour'}>+</button>
+                }} aria-label={language === 'PT' ? 'Hora seguinte' : 'Next hour'}><Plus size={11} /></button>
               </div>
             )}
           </div>

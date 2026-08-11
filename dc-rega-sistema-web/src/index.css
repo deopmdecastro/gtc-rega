@@ -404,20 +404,22 @@ input:focus-visible { border-radius: inherit; }
 /* ---------- Weekly Schedule Editor ---------- */
 .setpoint-schedule { margin-top: 24px; padding-top: 20px; border-top: 1px solid #1b2a32; }
 .setpoint-schedule > label { display: block; margin-bottom: 12px; color: #78909a; font-size: 11px; letter-spacing: .08em; font-weight: 600; }
-.schedule-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
-.schedule-day { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 4px; border: 1px solid #1a2a32; border-radius: 10px; background: #0a131a; transition: .2s; min-width: 0; }
+.schedule-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(64px, 1fr)); gap: 10px; }
+.schedule-day { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 10px 4px; border: 1px solid #1a2a32; border-radius: 10px; background: #0a131a; transition: .2s; min-width: 0; }
 .schedule-day.schedule-enabled { border-color: rgba(94,229,138,.25); background: rgba(94,229,138,.04); }
-.schedule-day-toggle { display: flex; flex-direction: column; align-items: center; gap: 4px; border: 0; background: none; cursor: pointer; padding: 2px; color: #7e909c; transition: .2s; }
+.schedule-day-toggle { display: flex; flex-direction: column; align-items: center; gap: 5px; border: 0; background: none; cursor: pointer; padding: 2px; color: #7e909c; transition: .2s; }
 .schedule-day-toggle:hover { color: #dce5e8; }
 .schedule-day-label { font-size: 10px; font-weight: 600; letter-spacing: .04em; }
 .schedule-day-status { width: 8px; height: 8px; border-radius: 50%; transition: .2s; }
 .schedule-day-status.on { background: #5ee58a; box-shadow: 0 0 6px rgba(94,229,138,.5); }
 .schedule-day-status.off { background: #3a4a52; }
-.schedule-time-controls { display: flex; align-items: center; justify-content: center; gap: 3px; }
-.schedule-time-btn { display: grid; place-items: center; width: 22px; height: 22px; flex: 0 0 auto; border: 1px solid #263943; border-radius: 5px; color: #8499a2; background: #0d171e; font-size: 12px; font-weight: 700; cursor: pointer; transition: .2s; }
-.schedule-time-btn:hover { border-color: #12bcb6; color: #1ad5d0; }
-.schedule-time-display { padding: 3px 6px; border: 1px solid #263943; border-radius: 5px; color: #1ad5d0; background: #0a141a; font: 600 11px 'DM Mono', monospace; cursor: pointer; transition: .2s; white-space: nowrap; }
-.schedule-time-display:hover { border-color: #12bcb6; }
+.schedule-time-controls { display: flex; align-items: center; justify-content: center; gap: 2px; }
+.schedule-time-btn { display: grid; place-items: center; width: 20px; height: 20px; flex: 0 0 auto; border: 0; border-radius: 5px; color: #5a6f7a; background: transparent; cursor: pointer; transition: .2s; }
+.schedule-time-btn:hover { color: #1ad5d0; background: rgba(18,188,182,.12); }
+.schedule-time-btn:active { transform: scale(.9); }
+.schedule-time-display { padding: 4px 6px; border: 1px solid #263943; border-radius: 6px; color: #1ad5d0; background: #0a141a; font: 600 11px 'DM Mono', monospace; cursor: pointer; transition: .2s; white-space: nowrap; }
+.schedule-time-display:hover { border-color: #12bcb6; background: rgba(18,188,182,.06); }
+
 
 
 /* ---------- Login Screen (full-screen) ---------- */
