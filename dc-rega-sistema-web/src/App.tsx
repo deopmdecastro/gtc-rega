@@ -40,6 +40,8 @@ import {
   Spline,
   Minus,
   Eraser,
+  CircuitBoard,
+  Zap,
 } from 'lucide-react';
 import { fetchEvents, logEvent, type EventLogEntry } from '@/lib/supabase';
 
@@ -87,6 +89,20 @@ const initialErrors: ErrorEvent[] = [
   { id: 'E001', time: 'Hoje, 21:12', source: 'Sensor B2', message: 'Leitura recebida dentro do intervalo esperado.', severity: 'info', resolved: true },
   { id: 'E002', time: 'Hoje, 14:03', source: 'Bomba K1', message: 'Sobrecorrente detectada no relé K1 durante o arranque.', severity: 'warning', resolved: true },
   { id: 'E003', time: 'Ontem, 06:30', source: 'Comunicação', message: 'Timeout Modbus no barramento RS485 — sensor B1.', severity: 'critical', resolved: true },
+];
+
+const SENSOR_GPIO_MAP: Record<string, number> = { B1: 4, B2: 5 };
+const VALVE_RELAY_MAP: Record<string, { relay: string; gpio: number; inChannel: string }> = {
+  Y1: { relay: 'K3', gpio: 6, inChannel: 'IN1' },
+  Y2: { relay: 'K4', gpio: 7, inChannel: 'IN2' },
+};
+const SYSTEM_RELAYS = [
+  { relay: 'K5', gpio: 8, inChannel: 'IN3', func: 'Temporizador 1' },
+  { relay: 'K6', gpio: 9, inChannel: 'IN4', func: 'Temporizador 2' },
+  { relay: 'K7', gpio: 10, inChannel: 'IN5', func: 'START GTC' },
+  { relay: 'K8', gpio: 11, inChannel: 'IN6', func: 'STOP / Emergência' },
+  { relay: 'K9', gpio: 12, inChannel: 'IN7', func: 'AUTOMÁTICO' },
+  { relay: 'K10', gpio: 13, inChannel: 'IN8', func: 'Reserva' },
 ];
 
 function StatusBadge({ children, tone = 'neutral' }: { children: React.ReactNode; tone?: 'success' | 'warning' | 'error' | 'neutral' | 'cyan' }) {
@@ -360,7 +376,7 @@ function App() {
     }
     if (activePage === 'Estado') return <StateView zones={zones} pumpOn={pumpOn} autoMode={autoMode} onToggleMode={toggleAutoMode} />;
     if (activePage === 'Setpoints') return <SetpointsView zones={zones} pumpDelay={pumpDelay} setPumpDelay={setPumpDelay} onChange={(id, target) => setZones((cur) => cur.map((z) => (z.id === id ? { ...z, target } : z)))} onUpdateZone={(id, patch) => setZones((cur) => cur.map((z) => (z.id === id ? { ...z, ...patch } : z)))} onAddZone={addZone} onRemoveZone={(z) => setZoneToDelete(z)} />;
-    if (activePage === 'Mapa') return <MapView zones={zones} pumpOn={pumpOn} onAddZone={addZoneFromMap} onDuplicateZone={duplicateZoneFromMap} onDragZone={updateZonePosition} onRenameZone={renameZone} onRemoveZone={(z) => setZoneToDelete(z)} onClearAll={clearAllZones} />;
+    if (activePage === 'Mapa') return <MapView zones={zones} pumpOn={pumpOn} onAddZone={addZoneFromMap} onDuplicateZone={duplicateZoneFromMap} onDragZone={updateZonePosition} onRenameZone={renameZone} onRemoveZone={(z) => setZoneToDelete(z)} onClearAll={clearAllZones} onToggleZone={toggleZone} />;
     if (activePage === 'Histórico') return <HistoryView errors={errors} eventLog={eventLog} eventLogLoading={eventLogLoading} onRefresh={loadEvents} />;
     if (activePage === 'Comandos') return <CommandsView zones={zones} pumpOn={pumpOn} systemRunning={systemRunning} starting={starting} startStep={startStep} autoMode={autoMode} onToggleZone={toggleZone} onTogglePump={togglePump} onToggleMode={toggleAutoMode} onEmergencyStop={handleEmergencyStop} onTestCycle={handleTestCycle} onStart={handleStart} onStop={handleStop} onReset={handleReset} />;
     return <AlarmsView errors={errors} onResolve={(id) => setErrors((cur) => cur.map((e) => (e.id === id ? { ...e, resolved: true } : e)))} />;
@@ -660,7 +676,7 @@ const MAX_ZONE_SCALE = 1.7;
 const ZONE_SCALE_STEP = 0.15;
 type EditorTool = 'select' | 'add' | 'duplicate';
 
-function MapView({ zones, pumpOn, onAddZone, onDuplicateZone, onDragZone, onRenameZone, onRemoveZone, onClearAll }: {
+function MapView({ zones, pumpOn, onAddZone, onDuplicateZone, onDragZone, onRenameZone, onRemoveZone, onClearAll, onToggleZone }: {
   zones: Zone[];
   pumpOn: boolean;
   onAddZone: (x: number, y: number) => void;
@@ -669,6 +685,7 @@ function MapView({ zones, pumpOn, onAddZone, onDuplicateZone, onDragZone, onRena
   onRenameZone: (id: string, name: string) => void;
   onRemoveZone: (zone: Zone) => void;
   onClearAll: () => void;
+  onToggleZone: (id: string) => void;
 }) {
   const [pumpPos, setPumpPos] = useState<MapElement>(DEFAULT_PUMP_POS);
   const [mcuPos, setMcuPos] = useState<MapElement>(DEFAULT_MCU_POS);
@@ -686,6 +703,8 @@ function MapView({ zones, pumpOn, onAddZone, onDuplicateZone, onDragZone, onRena
   const [zoneScale, setZoneScale] = useState<Record<string, number>>({});
   const [curvedPipes, setCurvedPipes] = useState(false);
   const [confirmClearAll, setConfirmClearAll] = useState(false);
+  const [selectedPart, setSelectedPart] = useState<'sensor' | 'valve' | null>(null);
+  const [showPinout, setShowPinout] = useState(false);
 
   const getZoneScale = (id: string) => zoneScale[id] ?? 1;
 
@@ -719,6 +738,7 @@ function MapView({ zones, pumpOn, onAddZone, onDuplicateZone, onDragZone, onRena
     const clickedCanvas = e.target === canvasRef.current || (e.target as HTMLElement).classList.contains('map-grid-bg');
     if (clickedCanvas) {
       setSelected(null);
+      setSelectedPart(null);
     }
     if (!editMode || editorTool !== 'add' || !clickedCanvas) return;
     const pos = getXY(e);
@@ -848,6 +868,9 @@ function MapView({ zones, pumpOn, onAddZone, onDuplicateZone, onDragZone, onRena
         >
           <PencilLine size={15} />{editMode ? 'Modo edição ativo' : 'Editar mapa'}
         </button>
+        <button className={`map-tool-btn ${showPinout ? 'active' : ''}`} onClick={() => setShowPinout(v => !v)}>
+          <CircuitBoard size={15} />Pinout ESP32-S3
+        </button>
         {editMode && (
           <>
             <button className={`map-tool-btn ${editorTool === 'select' ? 'active' : ''}`} onClick={() => setEditorTool('select')}>
@@ -964,6 +987,7 @@ function MapView({ zones, pumpOn, onAddZone, onDuplicateZone, onDragZone, onRena
                 onClick={(e) => {
                   e.stopPropagation();
                   setSelected(zone.id);
+                  setSelectedPart('valve');
                   if (editMode && editorTool === 'duplicate') {
                     onDuplicateZone(zone);
                   }
@@ -982,6 +1006,7 @@ function MapView({ zones, pumpOn, onAddZone, onDuplicateZone, onDragZone, onRena
                 onClick={(e) => {
                   e.stopPropagation();
                   setSelected(zone.id);
+                  setSelectedPart('sensor');
                   if (editMode && editorTool === 'duplicate') {
                     onDuplicateZone(zone);
                   }
@@ -1015,24 +1040,90 @@ function MapView({ zones, pumpOn, onAddZone, onDuplicateZone, onDragZone, onRena
         })}
       </div>
 
-      {editMode && selectedZone && (
+      {selectedZone && (
         <div className="map-selection-bar">
           <div className="map-sel-info">
-            <span className="map-sel-pin">{selectedZone.sensorId}</span>
+            <span className={`map-sel-pin ${selectedPart === 'valve' ? 'pin-valve' : 'pin-sensor'}`}>{selectedPart === 'valve' ? selectedZone.id : selectedZone.sensorId}</span>
             <div>
               <strong>{selectedZone.name}</strong>
-              <span>Válvula {selectedZone.id} · Sensor {selectedZone.sensorId} · Humidade {selectedZone.moisture}%</span>
+              <span>
+                {selectedPart === 'valve'
+                  ? `Válvula ${selectedZone.id} · ${selectedZone.on ? 'Aberta' : 'Fechada'}`
+                  : `Sensor ${selectedZone.sensorId} · Humidade ${selectedZone.moisture}%`}
+              </span>
             </div>
           </div>
-          <div className="map-sel-size">
-            <span>Tamanho</span>
-            <button className="map-sel-size-btn" onClick={() => adjustZoneScale(selectedZone.id, -ZONE_SCALE_STEP)} disabled={getZoneScale(selectedZone.id) <= MIN_ZONE_SCALE} aria-label="Diminuir tamanho"><Minus size={13} /></button>
-            <span className="map-sel-size-value">{Math.round(getZoneScale(selectedZone.id) * 100)}%</span>
-            <button className="map-sel-size-btn" onClick={() => adjustZoneScale(selectedZone.id, ZONE_SCALE_STEP)} disabled={getZoneScale(selectedZone.id) >= MAX_ZONE_SCALE} aria-label="Aumentar tamanho"><Plus size={13} /></button>
+          <div className="map-sel-gpio">
+            {selectedPart === 'valve'
+              ? (VALVE_RELAY_MAP[selectedZone.id]
+                ? <span className="gpio-chip"><CircuitBoard size={13} /> GPIO {VALVE_RELAY_MAP[selectedZone.id].gpio} · {VALVE_RELAY_MAP[selectedZone.id].relay} · {VALVE_RELAY_MAP[selectedZone.id].inChannel} · OUTPUT</span>
+                : <span className="gpio-chip gpio-unassigned"><CircuitBoard size={13} /> Sem relé atribuído</span>)
+              : (SENSOR_GPIO_MAP[selectedZone.sensorId]
+                ? <span className="gpio-chip"><CircuitBoard size={13} /> GPIO {SENSOR_GPIO_MAP[selectedZone.sensorId]} · INPUT</span>
+                : <span className="gpio-chip gpio-unassigned"><CircuitBoard size={13} /> Sem GPIO atribuído</span>)}
           </div>
-          <div className="map-sel-actions">
-            <button className="map-sel-btn" onClick={() => { setEditingName(selectedZone.id); setEditNameValue(selectedZone.name); }}><PencilLine size={14} />Renomear</button>
-            <button className="map-sel-btn map-sel-delete" onClick={() => { onRemoveZone(selectedZone); setSelected(null); }}><Trash2 size={14} />Apagar sensor</button>
+          {selectedPart === 'valve' && VALVE_RELAY_MAP[selectedZone.id] && (
+            <button className={`map-sel-btn ${selectedZone.on ? 'valve-open-btn' : 'valve-closed-btn'}`} onClick={() => onToggleZone(selectedZone.id)}>
+              <Zap size={14} />{selectedZone.on ? 'Fechar válvula' : 'Abrir válvula'}
+            </button>
+          )}
+          {editMode && (
+            <>
+              <div className="map-sel-size">
+                <span>Tamanho</span>
+                <button className="map-sel-size-btn" onClick={() => adjustZoneScale(selectedZone.id, -ZONE_SCALE_STEP)} disabled={getZoneScale(selectedZone.id) <= MIN_ZONE_SCALE} aria-label="Diminuir tamanho"><Minus size={13} /></button>
+                <span className="map-sel-size-value">{Math.round(getZoneScale(selectedZone.id) * 100)}%</span>
+                <button className="map-sel-size-btn" onClick={() => adjustZoneScale(selectedZone.id, ZONE_SCALE_STEP)} disabled={getZoneScale(selectedZone.id) >= MAX_ZONE_SCALE} aria-label="Aumentar tamanho"><Plus size={13} /></button>
+              </div>
+              <div className="map-sel-actions">
+                <button className="map-sel-btn" onClick={() => { setEditingName(selectedZone.id); setEditNameValue(selectedZone.name); }}><PencilLine size={14} />Renomear</button>
+                <button className="map-sel-btn map-sel-delete" onClick={() => { onRemoveZone(selectedZone); setSelected(null); setSelectedPart(null); }}><Trash2 size={14} />Apagar sensor</button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {showPinout && (
+        <div className="pinout-panel">
+          <div className="pinout-header">
+            <div><span className="section-kicker">HARDWARE</span><h3>ESP32-S3 · Mapa de pinos GPIO</h3></div>
+            <button className="pinout-close" onClick={() => setShowPinout(false)} aria-label="Fechar"><X size={16} /></button>
+          </div>
+          <div className="pinout-grid">
+            <div className="pinout-section">
+              <div className="pinout-section-title"><Radio size={14} /> Sensores (INPUT)</div>
+              {zones.map((z) => (
+                <div key={z.sensorId} className="pinout-row">
+                  <span className="pinout-pin">GPIO {SENSOR_GPIO_MAP[z.sensorId] ?? '—'}</span>
+                  <span className="pinout-label">{z.sensorId}</span>
+                  <span className="pinout-desc">{z.name}</span>
+                </div>
+              ))}
+            </div>
+            <div className="pinout-section">
+              <div className="pinout-section-title"><Droplets size={14} /> Válvulas (OUTPUT)</div>
+              {zones.map((z) => {
+                const relay = VALVE_RELAY_MAP[z.id];
+                return (
+                  <div key={z.id} className="pinout-row">
+                    <span className="pinout-pin">{relay ? `GPIO ${relay.gpio}` : '—'}</span>
+                    <span className="pinout-label">{relay ? `${relay.relay} · ${relay.inChannel}` : 'Sem relé'}</span>
+                    <span className="pinout-desc">Válvula {z.id} · {z.name}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="pinout-section">
+              <div className="pinout-section-title"><Cpu size={14} /> Funções do sistema (OUTPUT)</div>
+              {SYSTEM_RELAYS.map((r) => (
+                <div key={r.relay} className="pinout-row">
+                  <span className="pinout-pin">GPIO {r.gpio}</span>
+                  <span className="pinout-label">{r.relay} · {r.inChannel}</span>
+                  <span className="pinout-desc">{r.func}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
