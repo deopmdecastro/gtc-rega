@@ -364,8 +364,8 @@ function App() {
       </aside>
       {mobileOpen && <button className="scrim" onClick={() => setMobileOpen(false)} aria-label="Fechar menu" />}
       <main className="main-content">
-        <div className="content-wrap">
-          <header className="topbar">
+        <header className="topbar">
+          <div className="topbar-inner">
             <button className="mobile-menu" onClick={() => setMobileOpen(true)} aria-label="Abrir menu"><Menu size={22} /></button>
             <div className="topbar-title">
               <div className="eyebrow">CENTRO DE OPERAÇÕES <span>•</span> 10 AGO 2026</div>
@@ -376,7 +376,9 @@ function App() {
               <div className="weather"><CloudSun size={28} /><div><strong>24°C</strong><span>Leiria, Portugal · Parcialmente nublado</span></div></div>
               <button className="settings-btn" onClick={() => setSettingsOpen(true)} aria-label="Abrir definições"><Settings2 size={20} /></button>
             </div>
-          </header>
+          </div>
+        </header>
+        <div className="content-wrap">
           <div className="page-heading">
             <div><span className="section-kicker">VISÃO GERAL</span><h2>{activePage}</h2></div>
             <div className="connection"><Radio size={15} /> Ligação estável <span className="pulse" /></div>
