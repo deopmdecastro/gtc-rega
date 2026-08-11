@@ -37,11 +37,11 @@ button { cursor: pointer; }
 .sidebar-footer { margin-top: auto; border: 1px solid #192831; border-radius: 11px; padding: 14px; background: #0a131a; }
 .status-badge { display: inline-flex; align-items: center; gap: 7px; width: fit-content; border-radius: 99px; padding: 5px 9px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
 .status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 7px currentColor; }
-.status-success { color: #5ee58a; background: rgba(69, 207, 111, .1); }
-.status-warning { color: #f6be69; background: rgba(246, 190, 105, .1); }
-.status-error { color: #f06565; background: rgba(240, 101, 101, .12); }
-.status-cyan { color: #22ddd7; background: rgba(34, 221, 215, .1); }
-.status-neutral { color: #96a7b1; background: #111b22; }
+.status-success { color: #5ee58a; background: rgba(69, 207, 111, .12); border: 1px solid rgba(69, 207, 111, .22); }
+.status-warning { color: #f6be69; background: rgba(246, 190, 105, .12); border: 1px solid rgba(246, 190, 105, .22); }
+.status-error { color: #f06565; background: rgba(240, 101, 101, .14); border: 1px solid rgba(240, 101, 101, .25); }
+.status-cyan { color: #22ddd7; background: rgba(34, 221, 215, .12); border: 1px solid rgba(34, 221, 215, .22); }
+.status-neutral { color: #96a7b1; background: #111b22; border: 1px solid #243943; }
 .footer-reading { display: flex; gap: 10px; align-items: center; margin-top: 17px; color: #b1c0c8; }
 .footer-reading strong, .footer-reading span { display: block; }
 .footer-reading strong { font-size: 14px; color: #dce4e8; }
@@ -252,7 +252,7 @@ button { cursor: pointer; }
 /* ---------- Error history ---------- */
 .error-history-panel { grid-column: 1 / -1; }
 .error-list { display: grid; }
-.error-item { display: flex; gap: 18px; padding: 22px 0; border-bottom: 1px solid #1b2a32; }
+.error-item { display: flex; gap: 18px; padding: 26px 8px; border-bottom: 1px solid #1b2a32; }
 .error-item:last-child { border: 0; padding-bottom: 4px; }
 .error-item:first-child { padding-top: 4px; }
 .error-item:last-child { border: 0; }
@@ -303,7 +303,7 @@ button { cursor: pointer; }
 /* ---------- Alarmes ---------- */
 .alarms-layout { grid-template-columns: 1fr; }
 .alarm-summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
-.alarm-summary-card { display: flex; align-items: center; gap: 16px; padding: 24px 26px; }
+.alarm-summary-card { display: flex; align-items: center; gap: 16px; padding: 28px 30px; }
 .alarm-summary-icon { display: grid; place-items: center; width: 48px; height: 48px; flex: 0 0 48px; border-radius: 12px; color: #96a7b1; background: #111b22; }
 .alarm-summary-card strong { display: block; font-size: 32px; color: #dce5e8; letter-spacing: -.04em; line-height: 1; }
 .alarm-summary-card span { display: block; margin-top: 5px; color: #7e909c; font-size: 11px; letter-spacing: .05em; }
@@ -313,7 +313,7 @@ button { cursor: pointer; }
 .card-warning .alarm-summary-icon { color: #f2b35d; background: rgba(242,179,93,.12); }
 .card-warning strong { color: #f2b35d; }
 
-.alarm-banner { display: flex; align-items: center; gap: 15px; padding: 18px 21px; border-color: rgba(242, 179, 93, .25); background: linear-gradient(100deg, rgba(92, 57, 20, .22), rgba(10, 18, 24, .88)); }
+.alarm-banner { display: flex; align-items: center; gap: 15px; padding: 22px 26px; border-color: rgba(242, 179, 93, .25); background: linear-gradient(100deg, rgba(92, 57, 20, .22), rgba(10, 18, 24, .88)); }
 .alarm-banner-icon { width: 42px; height: 42px; flex: 0 0 42px; }
 .alarm-banner h3 { margin: 5px 0 4px; color: #f2c277; font-size: 15px; }
 .alarm-banner p { margin: 0; color: #9a9180; font-size: 10px; }
@@ -324,7 +324,7 @@ button { cursor: pointer; }
 .alarm-banner-icon.ok { color: #5ee58a; background: rgba(69,207,111,.12); }
 
 .alarm-list { display: grid; }
-.alarm-item { display: flex; align-items: flex-start; gap: 18px; padding: 24px 0; border-bottom: 1px solid #1b2a32; }
+.alarm-item { display: flex; align-items: flex-start; gap: 18px; padding: 28px 8px; border-bottom: 1px solid #1b2a32; }
 .alarm-item:last-child { border: 0; padding-bottom: 4px; }
 .alarm-item:first-child { padding-top: 4px; }
 .alarm-item-icon { width: 34px; height: 34px; flex: 0 0 34px; }
@@ -467,7 +467,7 @@ button { cursor: pointer; }
 .legend-warning { background: #f2b35d; box-shadow: 0 0 6px rgba(242,179,93,.5); }
 .legend-offline { background: #6a7a82; }
 .legend-mcu { background: #ff9f43; box-shadow: 0 0 6px rgba(255,159,67,.5); }
-.map-canvas { position: relative; height: 480px; margin-top: 16px; border: 1px solid #1a2a34; border-radius: 13px; overflow: hidden; background: #0a141a; cursor: crosshair; }
+.map-canvas { position: relative; height: 520px; margin-top: 16px; border: 1px solid #1a2a34; border-radius: 13px; overflow: hidden; background: #0a141a; cursor: crosshair; }
 .map-hint { display: flex; align-items: center; gap: 6px; margin-top: 14px; color: #6e858f; font-size: 11px; }
 .map-hint svg { color: #1ad5d0; }
 .map-marker.dragging { z-index: 10; cursor: grabbing; }
@@ -488,9 +488,10 @@ button { cursor: pointer; }
 .pipe-sensor { stroke: rgba(94,229,138,.25); stroke-dasharray: 2 2; }
 .pipe-active { stroke: rgba(77,208,225,.7); stroke-dasharray: none; animation: pipe-flow 1.5s linear infinite; }
 @keyframes pipe-flow { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -8; } }
-.map-field { position: absolute; border: 1px solid rgba(94,229,138,.15); border-radius: 10px; background: rgba(94,229,138,.04); }
-.field-a { left: 6%; top: 10%; width: 40%; height: 42%; }
-.field-b { left: 52%; top: 38%; width: 42%; height: 46%; }
+.map-field-draggable { position: absolute; border: 1px solid rgba(94,229,138,.18); border-radius: 10px; background: rgba(94,229,138,.05); cursor: grab; z-index: 2; transition: border-color .2s; }
+.map-field-draggable:hover { border-color: rgba(94,229,138,.35); }
+.map-field-draggable.dragging { cursor: grabbing; border-color: rgba(94,229,138,.5); z-index: 10; }
+.field-label { position: absolute; top: 8px; left: 10px; font-size: 10px; color: rgba(94,229,138,.5); letter-spacing: .08em; font-weight: 600; pointer-events: none; }
 .map-marker { position: absolute; transform: translate(-50%, -50%); z-index: 3; }
 .marker-pin { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; border: 3px solid #060b10; color: #06121a; font-size: 9px; font-weight: 700; box-shadow: 0 0 0 3px currentColor, 0 4px 12px rgba(0,0,0,.4); }
 .marker-pin-pump { background: #c77dff; color: #c77dff; width: 36px; height: 36px; }

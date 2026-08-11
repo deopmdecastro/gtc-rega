@@ -504,7 +504,13 @@ function StateView({ zones, pumpOn, autoMode, onToggleMode }: { zones: Zone[]; p
 }
 
 function StateRow({ icon, title, detail, status, active }: { icon: React.ReactNode; title: string; detail: string; status: string; active?: boolean }) {
-  return <div className="state-row"><span className="state-icon">{icon}</span><div><strong>{title}</strong><span>{detail}</span></div><StatusBadge tone={active ? 'cyan' : 'neutral'}>{status}</StatusBadge></div>;
+  const tone: 'success' | 'warning' | 'error' | 'neutral' | 'cyan' =
+    status === 'Online' ? 'success' :
+    status === 'Ligada' ? 'cyan' :
+    status === 'Desligada' ? 'neutral' :
+    status === 'Atenção' ? 'warning' :
+    active ? 'cyan' : 'neutral';
+  return <div className="state-row"><span className="state-icon">{icon}</span><div><strong>{title}</strong><span>{detail}</span></div><StatusBadge tone={tone}>{status}</StatusBadge></div>;
 }
 
 function PanelHeader({ eyebrow, title }: { eyebrow: string; title: string }) {
@@ -589,6 +595,9 @@ function SetpointsView({ zones, onChange, onUpdateZone, pumpDelay, setPumpDelay,
 }
 
 /* ---------- Mapa ---------- */
+type MapElement = { x: number; y: number };
+type MapField = { id: string; x: number; y: number; w: number; h: number; name: string };
+
 function MapView({ zones, pumpOn, onAddZone, onDragZone, onRenameZone }: {
   zones: Zone[];
   pumpOn: boolean;
@@ -596,25 +605,36 @@ function MapView({ zones, pumpOn, onAddZone, onDragZone, onRenameZone }: {
   onDragZone: (id: string, x: number, y: number) => void;
   onRenameZone: (id: string, name: string) => void;
 }) {
-  const pumpPos = { x: 50, y: 82 };
-  const mcuPos = { x: 50, y: 90 };
+  const [pumpPos, setPumpPos] = useState<MapElement>({ x: 50, y: 82 });
+  const [mcuPos, setMcuPos] = useState<MapElement>({ x: 50, y: 92 });
+  const [fields, setFields] = useState<MapField[]>([
+    { id: 'F1', x: 6, y: 8, w: 40, h: 42, name: 'Terreno A' },
+    { id: 'F2', x: 52, y: 36, w: 42, h: 46, name: 'Terreno B' },
+  ]);
   const canvasRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState<string | null>(null);
   const [editingName, setEditingName] = useState<string | null>(null);
   const [editNameValue, setEditNameValue] = useState('');
 
-  const handleCanvasClick = (e: React.MouseEvent) => {
-    if (dragging) return;
+  const getXY = (e: MouseEvent | React.MouseEvent): { x: number; y: number } | null => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) return null;
     const rect = canvas.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
-    if (x < 5 || x > 95 || y < 5 || y > 78) return;
-    onAddZone(x, y);
+    return {
+      x: Math.max(2, Math.min(98, ((e.clientX - rect.left) / rect.width) * 100)),
+      y: Math.max(2, Math.min(98, ((e.clientY - rect.top) / rect.height) * 100)),
+    };
   };
 
-  const handleMarkerMouseDown = (e: React.MouseEvent, id: string) => {
+  const handleCanvasClick = (e: React.MouseEvent) => {
+    if (dragging) return;
+    const pos = getXY(e);
+    if (!pos) return;
+    if (pos.y > 80) return;
+    onAddZone(pos.x, pos.y);
+  };
+
+  const handleMouseDown = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     e.preventDefault();
     setDragging(id);
@@ -623,12 +643,16 @@ function MapView({ zones, pumpOn, onAddZone, onDragZone, onRenameZone }: {
   useEffect(() => {
     if (!dragging) return;
     const handleMove = (e: MouseEvent) => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const rect = canvas.getBoundingClientRect();
-      const x = Math.max(5, Math.min(95, ((e.clientX - rect.left) / rect.width) * 100));
-      const y = Math.max(5, Math.min(78, ((e.clientY - rect.top) / rect.height) * 100));
-      onDragZone(dragging, x, y);
+      const pos = getXY(e);
+      if (!pos) return;
+      if (dragging === 'pump') setPumpPos(pos);
+      else if (dragging === 'mcu') setMcuPos(pos);
+      else if (dragging.startsWith('field-')) {
+        const fid = dragging.slice(6);
+        setFields((cur) => cur.map((f) => (f.id === fid ? { ...f, x: pos.x - f.w / 2, y: pos.y - f.h / 2 } : f)));
+      } else {
+        onDragZone(dragging, pos.x, pos.y);
+      }
     };
     const handleUp = () => setDragging(null);
     window.addEventListener('mousemove', handleMove);
@@ -665,17 +689,25 @@ function MapView({ zones, pumpOn, onAddZone, onDragZone, onRenameZone }: {
           <span><i className="legend-dot legend-mcu" /> Microcontrolador</span>
         </div>
       </div>
-      <div className="map-hint"><MapPin size={14} /> Clique no mapa para adicionar um novo local · Arraste os marcadores para reposicionar</div>
+      <div className="map-hint"><MapPin size={14} /> Clique no mapa para adicionar um local · Arraste qualquer elemento para reposicionar</div>
       <div className="map-canvas" ref={canvasRef} onClick={handleCanvasClick}>
         <div className="map-grid-bg" />
-        <div className="map-field field-a" />
-        <div className="map-field field-b" />
+        {fields.map((f) => (
+          <div
+            key={f.id}
+            className={`map-field-draggable ${dragging === `field-${f.id}` ? 'dragging' : ''}`}
+            style={{ left: `${f.x}%`, top: `${f.y}%`, width: `${f.w}%`, height: `${f.h}%` }}
+            onMouseDown={(e) => handleMouseDown(e, `field-${f.id}`)}
+          >
+            <span className="field-label">{f.name}</span>
+          </div>
+        ))}
         <svg className="map-pipes" viewBox="0 0 100 100" preserveAspectRatio="none">
           {zones.map((zone) => {
-            const vx = zone.x + 6;
-            const vy = zone.y + 4;
-            const sx = zone.x - 6;
-            const sy = zone.y - 4;
+            const vx = zone.x + 5;
+            const vy = zone.y;
+            const sx = zone.x - 5;
+            const sy = zone.y;
             return (
               <g key={zone.id}>
                 <line x1={mcuPos.x} y1={mcuPos.y} x2={sx} y2={sy} className={`pipe pipe-mcu ${zone.on ? 'pipe-active' : ''}`} />
@@ -684,15 +716,24 @@ function MapView({ zones, pumpOn, onAddZone, onDragZone, onRenameZone }: {
               </g>
             );
           })}
+          <line x1={mcuPos.x} y1={mcuPos.y} x2={pumpPos.x} y2={pumpPos.y} className={`pipe pipe-mcu ${pumpOn ? 'pipe-active' : ''}`} />
         </svg>
-        <div className="map-marker marker-pump" style={{ left: `${pumpPos.x}%`, top: `${pumpPos.y}%` }}>
+        <div
+          className={`map-marker marker-pump ${dragging === 'pump' ? 'dragging' : ''}`}
+          style={{ left: `${pumpPos.x}%`, top: `${pumpPos.y}%` }}
+          onMouseDown={(e) => handleMouseDown(e, 'pump')}
+        >
           <span className="marker-pin marker-pin-pump"><Waves size={16} /></span>
           <div className="marker-label">
             <strong>Bomba K1</strong>
             <span>{pumpOn ? 'Ligada' : 'Desligada'}</span>
           </div>
         </div>
-        <div className="map-marker marker-mcu" style={{ left: `${mcuPos.x}%`, top: `${mcuPos.y}%` }}>
+        <div
+          className={`map-marker marker-mcu ${dragging === 'mcu' ? 'dragging' : ''}`}
+          style={{ left: `${mcuPos.x}%`, top: `${mcuPos.y}%` }}
+          onMouseDown={(e) => handleMouseDown(e, 'mcu')}
+        >
           <span className="marker-pin marker-pin-mcu"><Cpu size={14} /></span>
           <div className="marker-label">
             <strong>ESP32-S3</strong>
@@ -701,16 +742,16 @@ function MapView({ zones, pumpOn, onAddZone, onDragZone, onRenameZone }: {
         </div>
         {zones.map((zone) => {
           const status = sensorStatus(zone);
-          const vx = zone.x + 6;
-          const vy = zone.y + 4;
-          const sx = zone.x - 6;
-          const sy = zone.y - 4;
+          const vx = zone.x + 5;
+          const vy = zone.y;
+          const sx = zone.x - 5;
+          const sy = zone.y;
           return (
             <div key={zone.id} className="map-zone-group">
               <div
                 className={`map-marker marker-valve ${zone.on ? 'valve-open' : ''} ${dragging === zone.id ? 'dragging' : ''}`}
                 style={{ left: `${vx}%`, top: `${vy}%` }}
-                onMouseDown={(e) => handleMarkerMouseDown(e, zone.id)}
+                onMouseDown={(e) => handleMouseDown(e, zone.id)}
               >
                 <span className="marker-pin marker-pin-valve">{zone.id}</span>
                 <div className="marker-label">
@@ -721,7 +762,7 @@ function MapView({ zones, pumpOn, onAddZone, onDragZone, onRenameZone }: {
               <div
                 className={`map-marker marker-sensor marker-${status} ${dragging === zone.id ? 'dragging' : ''}`}
                 style={{ left: `${sx}%`, top: `${sy}%` }}
-                onMouseDown={(e) => handleMarkerMouseDown(e, zone.id)}
+                onMouseDown={(e) => handleMouseDown(e, zone.id)}
               >
                 <span className="marker-pin">{zone.sensorId}</span>
                 <div className="marker-label">
