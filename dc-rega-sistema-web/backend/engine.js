@@ -79,7 +79,20 @@ class ControlEngine {
       on: false,
       moisture: z.moisture || 50,
     }));
+    this._ensureSchedules();
     this._broadcast();
+  }
+
+  // Ensure all zones have schedules
+  _ensureSchedules() {
+    this.zones.forEach(z => {
+      if (!z.schedules) {
+        z.schedules = {};
+        ['sun','mon','tue','wed','thu','fri','sat'].forEach(d => {
+          z.schedules[d] = { enabled: true, hour: 6, minute: 0 };
+        });
+      }
+    });
   }
 
   // Restore engine from persisted state
@@ -119,13 +132,37 @@ class ControlEngine {
     const oldMap = new Map(this.zones.map(z => [z.id, z]));
     this.zones = zonesConfig.map(z => {
       const old = oldMap.get(z.id);
-      return {
+      const merged = {
         ...z,
         on: old ? old.on : false,
         moisture: old ? old.moisture : (z.moisture || 50),
       };
+      // Preserve schedules from config if present, otherwise keep old
+      if (!merged.schedules && old && old.schedules) {
+        merged.schedules = old.schedules;
+      }
+      // Ensure schedules object exists
+      if (!merged.schedules) {
+        merged.schedules = {};
+        ['sun','mon','tue','wed','thu','fri','sat'].forEach(d => {
+          merged.schedules[d] = { enabled: true, hour: 6, minute: 0 };
+        });
+      }
+      return merged;
     });
     this._broadcast();
+  }
+
+  // Ensure all zones have schedules
+  _ensureSchedules() {
+    this.zones.forEach(z => {
+      if (!z.schedules) {
+        z.schedules = {};
+        ['sun','mon','tue','wed','thu','fri','sat'].forEach(d => {
+          z.schedules[d] = { enabled: true, hour: 6, minute: 0 };
+        });
+      }
+    });
   }
 
   // Restore engine from persisted state
@@ -171,6 +208,7 @@ class ControlEngine {
       return false;
     }
 
+    this._ensureSchedules();
     this._clearTimers();
     this.state = STATES.STARTING;
     this.startTime = Date.now();
@@ -327,6 +365,18 @@ class ControlEngine {
     this._broadcast();
   }
 
+  // Ensure all zones have schedules
+  _ensureSchedules() {
+    this.zones.forEach(z => {
+      if (!z.schedules) {
+        z.schedules = {};
+        ['sun','mon','tue','wed','thu','fri','sat'].forEach(d => {
+          z.schedules[d] = { enabled: true, hour: 6, minute: 0 };
+        });
+      }
+    });
+  }
+
   // Restore engine from persisted state
   restoreState(saved) {
     if (!saved || !saved.controlState) return;
@@ -384,17 +434,66 @@ class ControlEngine {
     });
   }
 
-  // ── Verificação do ciclo automático ──
+  // ── Verificação do ciclo automático (com schedules) ──
   checkAutoCycle() {
-    if (!this.autoMode || !this.cycleActive || this.state !== STATES.WATERING) return;
+    // Only run in auto mode when a cycle is active
+    if (!this.autoMode || !this.cycleActive) return;
     
-    // Se todas as zonas já foram regadas, reiniciar ciclo ou parar
+    // If not watering, check if it's time to start based on schedules
+    if (this.state === STATES.IDLE && this.zones.length > 0) {
+      if (this._shouldWaterNow()) {
+        this.start(5);
+      }
+      return;
+    }
+
+    if (this.state !== STATES.WATERING) return;
+    
+    // Cycle complete — check if we should continue or stop
     const allDone = this.currentZoneIndex >= this.zones.length;
     if (allDone) {
-      this.currentZoneIndex = 0;
-      this._log('cycle_complete', 'Sistema', 'Ciclo de rega completo — a repetir', 'info');
-      this._waterNextZone();
+      // Check if any zone still needs watering based on moisture vs target
+      const needsWater = this.zones.some(z => z.moisture < z.target);
+      if (needsWater) {
+        this.currentZoneIndex = 0;
+        this._log('cycle_continue', 'Sistema', 'Ciclo de rega — algumas zonas ainda abaixo do setpoint', 'info');
+        this._waterNextZone();
+      } else {
+        // All zones satisfied — stop the cycle
+        this.cycleActive = false;
+        this.state = STATES.IDLE;
+        this._closeAllValves();
+        this._setPump(false);
+        this._setGpio(GPIO.RELAY_K7_AUTO, false);
+        this._log('cycle_complete', 'Sistema', 'Ciclo de rega completo — todas as zonas no setpoint', 'info');
+        this._broadcast();
+      }
     }
+  }
+
+  // Check if any schedule says "water now"
+  _shouldWaterNow() {
+    const now = new Date();
+    const dayNames = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+    const today = dayNames[now.getDay()];
+    const currentMin = now.getHours() * 60 + now.getMinutes();
+
+    // Check each zone's schedule for today
+    for (const zone of this.zones) {
+      if (!zone.schedules) continue;
+      const sched = zone.schedules[today];
+      if (!sched || !sched.enabled) continue;
+      
+      const schedMin = sched.hour * 60 + sched.minute;
+      // Fire within a 3-minute window (sensor loop runs every 3s)
+      if (Math.abs(currentMin - schedMin) <= 3 && zone.moisture < zone.target) {
+        this._log('schedule_trigger', `${zone.name}`, 
+          `Horário programado (${String(sched.hour).padStart(2,'0')}:${String(sched.minute).padStart(2,'0')}) — humidade ${zone.moisture}% < ${zone.target}%`,
+          'info', { zone_id: zone.id, schedule: `${sched.hour}:${sched.minute}`, moisture: zone.moisture, target: zone.target });
+        return true;
+      }
+    }
+    return false;
   }
 
   // ── Estado atual (para API) ──

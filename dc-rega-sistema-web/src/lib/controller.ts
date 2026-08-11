@@ -1,8 +1,7 @@
 /**
- * GTC Rega — Frontend Controller Hook
- * 
- * Comunicação bidirecional com o backend via REST + WebSocket.
- * Fornece o estado do controlador em tempo real.
+ * GTC Rega — Frontend Controller Client
+ * Comunicação bidirecional com o backend via WebSocket + REST.
+ * Exponential backoff, heartbeat, fallback robusto.
  */
 
 type ControllerState = {
@@ -26,10 +25,9 @@ type ZoneState = {
   lastWatered: string;
   on: boolean;
   waterDuration: number;
+  schedules?: Record<string, { enabled: boolean; hour: number; minute: number }>;
 };
 
-type GpioUpdate = { pin: number; value: number | boolean };
-type SensorUpdate = { sensorId: string; moisture: number };
 type ControllerEvent = {
   id: string;
   event_type: string;
@@ -48,8 +46,12 @@ function apiUrl(path: string): string {
 
 export function createControllerClient() {
   let socket: WebSocket | null = null;
-  let listeners: Map<string, Set<Function>> = new Map();
+  const listeners: Map<string, Set<Function>> = new Map();
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  let reconnectAttempts = 0;
+  let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+  let lastStateTime = 0;
+  let connected = false;
 
   function on(event: string, callback: Function) {
     if (!listeners.has(event)) listeners.set(event, new Set());
@@ -62,6 +64,33 @@ export function createControllerClient() {
     if (cbs) cbs.forEach(cb => cb(data));
   }
 
+  // Exponential backoff: 1s, 2s, 4s, 8s, max 30s
+  function getBackoffDelay(): number {
+    const base = Math.min(30, Math.pow(2, reconnectAttempts));
+    const jitter = Math.random() * 1000; // 0-1000ms jitter
+    return base * 1000 + jitter;
+  }
+
+  function startHeartbeat() {
+    stopHeartbeat();
+    heartbeatTimer = setInterval(() => {
+      // If no state update in 15 seconds, assume connection lost
+      if (Date.now() - lastStateTime > 15000 && connected) {
+        console.warn('[GTC] Heartbeat timeout — reconnecting');
+        reconnect();
+      }
+      // Send ping via REST as lightweight check
+      fetch(apiUrl('/api/health')).catch(() => {});
+    }, 10000);
+  }
+
+  function stopHeartbeat() {
+    if (heartbeatTimer) {
+      clearInterval(heartbeatTimer);
+      heartbeatTimer = null;
+    }
+  }
+
   function connect() {
     if (socket && socket.readyState === WebSocket.OPEN) return;
 
@@ -72,43 +101,54 @@ export function createControllerClient() {
     try {
       socket = new WebSocket(`${wsUrl}/socket.io/?EIO=4&transport=websocket`);
     } catch {
-      // Fallback: poll REST API
+      console.warn('[GTC] WebSocket unavailable — using REST polling');
       startPolling();
       return;
     }
 
     socket.onopen = () => {
+      console.log('[GTC] WebSocket connected');
+      connected = true;
+      reconnectAttempts = 0;
+      lastStateTime = Date.now();
+      stopPolling();
+      startHeartbeat();
       emit('connected', null);
     };
 
     socket.onmessage = (event) => {
+      lastStateTime = Date.now();
       try {
         const data = JSON.parse(event.data);
-        // Socket.IO protocol messages
-        if (typeof data === 'string') return;
+        if (typeof data === 'string') return; // Socket.IO ping
 
         if (Array.isArray(data)) {
-          // Socket.IO event array: [eventName, payload]
           const [eventName, payload] = data;
-          if (eventName === 'controller:state') {
-            emit('state', payload);
-          } else if (eventName === 'controller:event') {
-            emit('event', payload);
-          } else if (eventName === 'controller:gpio') {
-            emit('gpio', payload);
-          } else if (eventName === 'controller:sensor') {
-            emit('sensor', payload);
+          switch (eventName) {
+            case 'controller:state':
+              emit('state', payload);
+              break;
+            case 'controller:event':
+              emit('event', payload);
+              break;
+            case 'controller:gpio':
+              emit('gpio', payload);
+              break;
+            case 'controller:sensor':
+              emit('sensor', payload);
+              break;
           }
         }
       } catch { /* ignore parse errors */ }
     };
 
-    socket.onclose = () => {
-      emit('disconnected', null);
+    socket.onclose = (ev) => {
+      console.log(`[GTC] WebSocket closed (code=${ev.code})`);
+      connected = false;
       socket = null;
-      // Auto-reconnect after 3s
-      if (reconnectTimer) clearTimeout(reconnectTimer);
-      reconnectTimer = setTimeout(connect, 3000);
+      stopHeartbeat();
+      emit('disconnected', null);
+      scheduleReconnect();
     };
 
     socket.onerror = () => {
@@ -116,36 +156,71 @@ export function createControllerClient() {
     };
   }
 
-  function disconnect() {
+  function scheduleReconnect() {
     if (reconnectTimer) clearTimeout(reconnectTimer);
-    if (socket) socket.close();
-    socket = null;
+    const delay = getBackoffDelay();
+    reconnectAttempts++;
+    console.log(`[GTC] Reconnecting in ${Math.round(delay/1000)}s (attempt ${reconnectAttempts})`);
+    reconnectTimer = setTimeout(() => {
+      connect();
+      // If WS fails, fall back to polling
+      setTimeout(() => {
+        if (!connected) startPolling();
+      }, 5000);
+    }, delay);
   }
 
+  function reconnect() {
+    if (socket) {
+      socket.close();
+      socket = null;
+    }
+    connected = false;
+    scheduleReconnect();
+  }
+
+  function disconnect() {
+    if (reconnectTimer) clearTimeout(reconnectTimer);
+    stopHeartbeat();
+    stopPolling();
+    if (socket) socket.close();
+    socket = null;
+    connected = false;
+    reconnectAttempts = 0;
+  }
+
+  // ── REST Polling Fallback ──
   let polling = false;
+  let pollTimer: ReturnType<typeof setTimeout> | null = null;
+
   function startPolling() {
     if (polling) return;
     polling = true;
-    const poll = async () => {
-      if (!polling) return;
-      try {
-        const res = await fetch(apiUrl('/api/control/state'));
-        if (res.ok) {
-          const st: ControllerState = await res.json();
-          emit('state', st);
-        }
-      } catch { /* ignore */ }
-      setTimeout(poll, 2000);
-    };
+    console.log('[GTC] Starting REST polling');
     poll();
   }
 
   function stopPolling() {
     polling = false;
+    if (pollTimer) clearTimeout(pollTimer);
+    pollTimer = null;
   }
 
-  // ── REST commands (fallback when WebSocket not available) ──
-  async function post(path: string, body?: unknown) {
+  async function poll() {
+    if (!polling) return;
+    try {
+      const res = await fetch(apiUrl('/api/control/state'));
+      if (res.ok) {
+        const st: ControllerState = await res.json();
+        lastStateTime = Date.now();
+        emit('state', st);
+      }
+    } catch { /* ignore */ }
+    pollTimer = setTimeout(poll, 2000);
+  }
+
+  // ── REST Commands ──
+  async function post(path: string, body?: unknown): Promise<boolean> {
     try {
       const res = await fetch(apiUrl(path), {
         method: 'POST',
@@ -153,11 +228,12 @@ export function createControllerClient() {
         body: body ? JSON.stringify(body) : undefined,
       });
       return res.ok;
-    } catch { return false; }
+    } catch {
+      return false;
+    }
   }
 
   function sendCommand(cmd: string, data?: unknown) {
-    // Try WebSocket first
     if (socket && socket.readyState === WebSocket.OPEN) {
       socket.send(JSON.stringify([`control:${cmd}`, data || {}]));
       return;
@@ -170,7 +246,8 @@ export function createControllerClient() {
     on,
     connect,
     disconnect,
-    // Commands
+    get connected() { return connected; },
+    // ── Commands ──
     start: (pumpDelay?: number) => sendCommand('start', { pumpDelay }),
     stop: () => sendCommand('stop'),
     emergency: () => sendCommand('emergency'),
@@ -180,7 +257,7 @@ export function createControllerClient() {
     togglePump: () => sendCommand('toggle-pump'),
     setMode: (auto: boolean) => sendCommand('mode', { auto }),
     updateZones: (zones: ZoneState[]) => { post('/api/control/zones', { zones }); },
-    // REST helpers
+    // ── REST helpers ──
     fetchState: async (): Promise<ControllerState | null> => {
       try {
         const res = await fetch(apiUrl('/api/control/state'));
