@@ -152,51 +152,6 @@ class ControlEngine {
     });
     this._broadcast();
   }
-
-  // Ensure all zones have schedules
-  _ensureSchedules() {
-    this.zones.forEach(z => {
-      if (!z.schedules) {
-        z.schedules = {};
-        ['sun','mon','tue','wed','thu','fri','sat'].forEach(d => {
-          z.schedules[d] = { enabled: true, hour: 6, minute: 0 };
-        });
-      }
-    });
-  }
-
-  // Restore engine from persisted state
-  restoreState(saved) {
-    if (!saved || !saved.controlState) return;
-    const cs = saved.controlState;
-    this.state = cs.state || STATES.IDLE;
-    this.pumpOn = cs.pump || false;
-    this.autoMode = cs.autoMode !== false;
-    this.zones = (cs.zones || []).map(z => ({
-      ...z,
-      on: z.on || false,
-      moisture: z.moisture || 50,
-    }));
-    this.currentZoneIndex = cs.currentZoneIndex ?? -1;
-    this.cycleActive = cs.cycleActive || false;
-    this.testCycleActive = cs.testCycleActive || false;
-    this.startTime = cs.startTime || null;
-    if (cs.gpio) {
-      Object.entries(cs.gpio).forEach(([k, v]) => {
-        this.gpio[parseInt(k)] = v;
-      });
-    }
-    // If was in a transient state, reset to idle
-    if (this.state === STATES.STARTING || this.state === STATES.STOPPING) {
-      this.state = STATES.IDLE;
-      this.pumpOn = false;
-      this.zones.forEach(z => { z.on = false; });
-      this.cycleActive = false;
-      this.testCycleActive = false;
-    }
-    this._broadcast();
-  }
-
   // ── Comandos ──
   start(pumpDelaySec = 5) {
     if (this.state === STATES.EMERGENCY) {
@@ -217,10 +172,7 @@ class ControlEngine {
     this._log('system_start', 'Sistema', 'Sistema iniciado — bomba ligada', 'info', { pumpDelay: pumpDelaySec });
 
     // Fase 1: delay da bomba
-    // Start watchdog for this zone
-    this._startWatchdog(duration + 10);
-
-    this._startWatchdog(10);
+    this._startWatchdog(pumpDelaySec + 15);
     this._addTimer(setTimeout(() => {
       this.state = STATES.WATERING;
       this.currentZoneIndex = 0;
@@ -248,10 +200,7 @@ class ControlEngine {
 
     this._log('system_stop', 'Sistema', 'Sistema parado — todos os atuadores desligados', 'warning');
     
-    // Start watchdog for this zone
-    this._startWatchdog(duration + 10);
-
-    this._startWatchdog(10);
+    this._startWatchdog(5);
     this._addTimer(setTimeout(() => {
       this.state = STATES.IDLE;
       this._broadcast();
@@ -315,8 +264,7 @@ class ControlEngine {
     this._log('test_cycle', 'Ciclo de teste', 'Ciclo de teste iniciado — verificação de bomba e válvulas', 'info');
 
     // Teste: bomba 3s → cada válvula 4s
-    // Start watchdog for this zone
-    this._startWatchdog(duration + 10);
+    this._startWatchdog(30);
 
     this._addTimer(setTimeout(() => {
       this.state = STATES.WATERING;
@@ -364,51 +312,6 @@ class ControlEngine {
     this._log('mode_change', 'Modo de operação', mode ? 'Modo automático ativado' : 'Modo manual ativado', 'info');
     this._broadcast();
   }
-
-  // Ensure all zones have schedules
-  _ensureSchedules() {
-    this.zones.forEach(z => {
-      if (!z.schedules) {
-        z.schedules = {};
-        ['sun','mon','tue','wed','thu','fri','sat'].forEach(d => {
-          z.schedules[d] = { enabled: true, hour: 6, minute: 0 };
-        });
-      }
-    });
-  }
-
-  // Restore engine from persisted state
-  restoreState(saved) {
-    if (!saved || !saved.controlState) return;
-    const cs = saved.controlState;
-    this.state = cs.state || STATES.IDLE;
-    this.pumpOn = cs.pump || false;
-    this.autoMode = cs.autoMode !== false;
-    this.zones = (cs.zones || []).map(z => ({
-      ...z,
-      on: z.on || false,
-      moisture: z.moisture || 50,
-    }));
-    this.currentZoneIndex = cs.currentZoneIndex ?? -1;
-    this.cycleActive = cs.cycleActive || false;
-    this.testCycleActive = cs.testCycleActive || false;
-    this.startTime = cs.startTime || null;
-    if (cs.gpio) {
-      Object.entries(cs.gpio).forEach(([k, v]) => {
-        this.gpio[parseInt(k)] = v;
-      });
-    }
-    // If was in a transient state, reset to idle
-    if (this.state === STATES.STARTING || this.state === STATES.STOPPING) {
-      this.state = STATES.IDLE;
-      this.pumpOn = false;
-      this.zones.forEach(z => { z.on = false; });
-      this.cycleActive = false;
-      this.testCycleActive = false;
-    }
-    this._broadcast();
-  }
-
   // ── Simulação de sensores ──
   updateSensors() {
     this.zones.forEach(z => {
@@ -555,10 +458,7 @@ class ControlEngine {
       this._broadcast();
 
       // Esperar 2s entre zonas
-      // Start watchdog for this zone
-    this._startWatchdog(duration + 10);
-
-    this._addTimer(setTimeout(() => {
+      this._addTimer(setTimeout(() => {
         if (this.testCycleActive) {
           this._runTestSequence(this.currentZoneIndex);
         } else if (this.cycleActive) {
@@ -587,18 +487,14 @@ class ControlEngine {
     this._log('test_zone', `Teste · ${zone.name}`, `A testar ${zone.name} (4s)`, 'info', { zone_id: zone.id });
     this._broadcast();
 
-    // Start watchdog for this zone
-    this._startWatchdog(duration + 10);
+    this._startWatchdog(10);
 
     this._addTimer(setTimeout(() => {
       zone.on = false;
       this._setGpio(GPIO.RELAY_K5_START, false);
       this.currentZoneIndex = index + 1;
       
-      // Start watchdog for this zone
-    this._startWatchdog(duration + 10);
-
-    this._addTimer(setTimeout(() => {
+      this._addTimer(setTimeout(() => {
         this._runTestSequence(this.currentZoneIndex);
       }, 1000));
     }, 4000));
