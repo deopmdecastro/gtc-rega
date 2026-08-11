@@ -1,8 +1,13 @@
 /**
  * GTC Rega — Frontend Controller Client
- * Comunicação bidirecional com o backend via WebSocket + REST.
- * Exponential backoff, heartbeat, fallback robusto.
+ * Comunicação bidirecional com o backend real (Socket.IO + REST).
+ *
+ * Tudo o que a UI mostra vem daqui: estado do motor de controlo, telemetria
+ * dos sensores, saúde de cada sensor, presença do controlador ESP32-S3 e
+ * registo de eventos/alarmes. Não há dados simulados no frontend.
  */
+
+import { io, type Socket } from 'socket.io-client';
 
 type ControllerState = {
   state: string;
@@ -38,6 +43,33 @@ type ControllerEvent = {
   created_at: string;
 };
 
+export type DeviceStatus = {
+  deviceOnline: boolean;
+  lastContact: string | null;
+  deviceInfo: { deviceId?: string; firmware?: string; ip?: string; rssi?: number; uptime?: number } | null;
+  sensors: { sensorId: string; lastSeen: number | null; stale: boolean }[];
+  engine?: {
+    state: string;
+    pumpOn: boolean;
+    autoMode: boolean;
+    cycleActive: boolean;
+    testCycleActive: boolean;
+    currentZoneIndex: number;
+    zones: number;
+  };
+};
+
+export type HealthStatus = {
+  ok: boolean;
+  uptime: number;
+  engineUptime: number;
+  engineState: string;
+  zones: number;
+  watchdogActive: boolean;
+  deviceOnline: boolean;
+  deviceInfo: Record<string, unknown> | null;
+};
+
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
 function apiUrl(path: string): string {
@@ -45,13 +77,12 @@ function apiUrl(path: string): string {
 }
 
 export function createControllerClient() {
-  let socket: WebSocket | null = null;
+  let socket: Socket | null = null;
   const listeners: Map<string, Set<Function>> = new Map();
-  let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-  let reconnectAttempts = 0;
-  let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
-  let lastStateTime = 0;
+  /** true = backend alcançável (socket ligado ou REST a responder) */
   let connected = false;
+  /** true = a receber por Socket.IO; false = a usar polling REST */
+  let realtime = false;
 
   function on(event: string, callback: Function) {
     if (!listeners.has(event)) listeners.set(event, new Set());
@@ -60,172 +91,131 @@ export function createControllerClient() {
   }
 
   function emit(event: string, data: unknown) {
-    const cbs = listeners.get(event);
-    if (cbs) cbs.forEach(cb => cb(data));
+    listeners.get(event)?.forEach((cb) => cb(data));
   }
 
-  // Exponential backoff: 1s, 2s, 4s, 8s, max 30s
-  function getBackoffDelay(): number {
-    const base = Math.min(30, Math.pow(2, reconnectAttempts));
-    const jitter = Math.random() * 1000; // 0-1000ms jitter
-    return base * 1000 + jitter;
-  }
-
-  function startHeartbeat() {
-    stopHeartbeat();
-    heartbeatTimer = setInterval(() => {
-      // If no state update in 15 seconds, assume connection lost
-      if (Date.now() - lastStateTime > 15000 && connected) {
-        console.warn('[GTC] Heartbeat timeout — reconnecting');
-        reconnect();
-      }
-      // Send ping via REST as lightweight check
-      fetch(apiUrl('/api/health')).catch(() => {});
-    }, 10000);
-  }
-
-  function stopHeartbeat() {
-    if (heartbeatTimer) {
-      clearInterval(heartbeatTimer);
-      heartbeatTimer = null;
-    }
+  function setConnected(next: boolean) {
+    if (connected === next) return;
+    connected = next;
+    emit(next ? 'connected' : 'disconnected', null);
   }
 
   function connect() {
-    if (socket && socket.readyState === WebSocket.OPEN) return;
+    if (socket) return;
 
-    const wsUrl = API_BASE 
-      ? API_BASE.replace(/^http/, 'ws') 
-      : `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}`;
+    socket = io(API_BASE || undefined, {
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 15000,
+      timeout: 8000,
+    });
 
-    try {
-      socket = new WebSocket(`${wsUrl}/socket.io/?EIO=4&transport=websocket`);
-    } catch {
-      console.warn('[GTC] WebSocket unavailable — using REST polling');
-      startPolling();
-      return;
-    }
-
-    socket.onopen = () => {
-      console.log('[GTC] WebSocket connected');
-      connected = true;
-      reconnectAttempts = 0;
-      lastStateTime = Date.now();
+    socket.on('connect', () => {
+      realtime = true;
+      setConnected(true);
       stopPolling();
-      startHeartbeat();
-      emit('connected', null);
-    };
+      // Snapshot imediato por REST — garante dados reais no primeiro render
+      void refreshAll();
+    });
 
-    socket.onmessage = (event) => {
-      lastStateTime = Date.now();
-      try {
-        const data = JSON.parse(event.data);
-        if (typeof data === 'string') return; // Socket.IO ping
+    socket.on('disconnect', () => {
+      realtime = false;
+      // Continuamos a servir dados reais por REST enquanto o socket recupera
+      startPolling();
+    });
 
-        if (Array.isArray(data)) {
-          const [eventName, payload] = data;
-          switch (eventName) {
-            case 'controller:state':
-              emit('state', payload);
-              break;
-            case 'controller:event':
-              emit('event', payload);
-              break;
-            case 'controller:gpio':
-              emit('gpio', payload);
-              break;
-            case 'controller:sensor':
-              emit('sensor', payload);
-              break;
-            case 'controller:device':
-              emit('controller:device', payload);
-              break;
-            case 'controller:sensor-health':
-              emit('sensor-health', payload);
-              break;
-          }
-        }
-      } catch { /* ignore parse errors */ }
-    };
+    socket.on('connect_error', () => {
+      realtime = false;
+      startPolling();
+    });
 
-    socket.onclose = (ev) => {
-      console.log(`[GTC] WebSocket closed (code=${ev.code})`);
-      connected = false;
-      socket = null;
-      stopHeartbeat();
-      emit('disconnected', null);
-      scheduleReconnect();
-    };
+    socket.on('controller:state', (payload: ControllerState) => emit('state', payload));
+    socket.on('controller:event', (payload: ControllerEvent) => emit('event', payload));
+    socket.on('controller:gpio', (payload: unknown) => emit('gpio', payload));
+    socket.on('controller:sensor', (payload: unknown) => emit('sensor', payload));
+    socket.on('controller:device', (payload: unknown) => emit('controller:device', payload));
+    socket.on('controller:sensor-health', (payload: unknown) => emit('sensor-health', payload));
+    socket.on('gpio:config', (payload: unknown) => emit('gpio:config', payload));
 
-    socket.onerror = () => {
-      socket?.close();
-    };
-  }
-
-  function scheduleReconnect() {
-    if (reconnectTimer) clearTimeout(reconnectTimer);
-    const delay = getBackoffDelay();
-    reconnectAttempts++;
-    console.log(`[GTC] Reconnecting in ${Math.round(delay/1000)}s (attempt ${reconnectAttempts})`);
-    reconnectTimer = setTimeout(() => {
-      connect();
-      // If WS fails, fall back to polling
-      setTimeout(() => {
-        if (!connected) startPolling();
-      }, 5000);
-    }, delay);
-  }
-
-  function reconnect() {
-    if (socket) {
-      socket.close();
-      socket = null;
-    }
-    connected = false;
-    scheduleReconnect();
+    // Polling de segurança: mesmo com socket ligado, sincronizamos device/health
+    startStatusPolling();
   }
 
   function disconnect() {
-    if (reconnectTimer) clearTimeout(reconnectTimer);
-    stopHeartbeat();
     stopPolling();
-    if (socket) socket.close();
-    socket = null;
+    stopStatusPolling();
+    if (socket) {
+      socket.removeAllListeners();
+      socket.disconnect();
+      socket = null;
+    }
     connected = false;
-    reconnectAttempts = 0;
+    realtime = false;
   }
 
-  // ── REST Polling Fallback ──
-  let polling = false;
-  let pollTimer: ReturnType<typeof setTimeout> | null = null;
+  // ── Fallback REST (estado) ──
+  let pollTimer: ReturnType<typeof setInterval> | null = null;
 
   function startPolling() {
-    if (polling) return;
-    polling = true;
-    console.log('[GTC] Starting REST polling');
-    poll();
+    if (pollTimer) return;
+    pollTimer = setInterval(() => { void pollState(); }, 3000);
+    void pollState();
   }
 
   function stopPolling() {
-    polling = false;
-    if (pollTimer) clearTimeout(pollTimer);
+    if (pollTimer) clearInterval(pollTimer);
     pollTimer = null;
   }
 
-  async function poll() {
-    if (!polling) return;
-    try {
-      const res = await fetch(apiUrl('/api/control/state'));
-      if (res.ok) {
-        const st: ControllerState = await res.json();
-        lastStateTime = Date.now();
-        emit('state', st);
-      }
-    } catch { /* ignore */ }
-    pollTimer = setTimeout(poll, 2000);
+  async function pollState() {
+    const st = await fetchState();
+    if (st) {
+      setConnected(true);
+      emit('state', st);
+    } else {
+      setConnected(false);
+    }
   }
 
-  // ── REST Commands ──
+  // ── Polling de estado do dispositivo/sensores (sempre ativo) ──
+  let statusTimer: ReturnType<typeof setInterval> | null = null;
+
+  function startStatusPolling() {
+    if (statusTimer) return;
+    statusTimer = setInterval(() => { void refreshDevice(); }, 5000);
+  }
+
+  function stopStatusPolling() {
+    if (statusTimer) clearInterval(statusTimer);
+    statusTimer = null;
+  }
+
+  async function refreshDevice() {
+    const status = await fetchDeviceStatus();
+    if (!status) {
+      setConnected(false);
+      return;
+    }
+    setConnected(true);
+    emit('controller:device', { online: status.deviceOnline, info: status.deviceInfo, lastContact: status.lastContact });
+    status.sensors?.forEach((s) => emit('sensor-health', s));
+    emit('device-status', status);
+  }
+
+  async function refreshAll() {
+    await Promise.all([pollState(), refreshDevice()]);
+  }
+
+  // ── REST helpers ──
+  async function get<T>(path: string): Promise<T | null> {
+    try {
+      const res = await fetch(apiUrl(path));
+      if (res.ok) return (await res.json()) as T;
+    } catch { /* backend inacessível */ }
+    return null;
+  }
+
   async function post(path: string, body?: unknown): Promise<boolean> {
     try {
       const res = await fetch(apiUrl(path), {
@@ -239,21 +229,25 @@ export function createControllerClient() {
     }
   }
 
+  const fetchState = () => get<ControllerState>('/api/control/state');
+  const fetchDeviceStatus = () => get<DeviceStatus>('/api/device/status');
+
   function sendCommand(cmd: string, data?: unknown) {
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send(JSON.stringify([`control:${cmd}`, data || {}]));
+    if (socket && socket.connected) {
+      socket.emit(`control:${cmd}`, data || {});
       return;
     }
-    // Fallback to REST
-    post(`/api/control/${cmd}`, data);
+    void post(`/api/control/${cmd}`, data);
   }
 
   return {
     on,
     connect,
     disconnect,
+    refreshAll,
     get connected() { return connected; },
-    // ── Commands ──
+    get realtime() { return realtime; },
+    // ── Comandos ──
     start: (pumpDelay?: number) => sendCommand('start', { pumpDelay }),
     stop: () => sendCommand('stop'),
     emergency: () => sendCommand('emergency'),
@@ -262,33 +256,14 @@ export function createControllerClient() {
     toggleZone: (zoneId: string) => sendCommand('toggle-zone', { zoneId }),
     togglePump: () => sendCommand('toggle-pump'),
     setMode: (auto: boolean) => sendCommand('mode', { auto }),
-    updateZones: (zones: ZoneState[]) => { post('/api/control/zones', { zones }); },
-    // ── REST helpers ──
-    fetchState: async (): Promise<ControllerState | null> => {
-      try {
-        const res = await fetch(apiUrl('/api/control/state'));
-        if (res.ok) return res.json();
-      } catch { /* ignore */ }
-      return null;
-    },
+    updateZones: (zones: ZoneState[]) => { void post('/api/control/zones', { zones }); },
+    // ── Leituras REST ──
+    fetchState,
+    fetchDeviceStatus,
+    fetchHealth: () => get<HealthStatus>('/api/health'),
     fetchEvents: async (limit = 100): Promise<ControllerEvent[]> => {
-      try {
-        const res = await fetch(apiUrl(`/api/events?limit=${limit}`));
-        if (res.ok) return res.json();
-      } catch { /* ignore */ }
-      return [];
-    },
-    fetchDeviceStatus: async (): Promise<{
-      deviceOnline: boolean;
-      lastContact: string | null;
-      deviceInfo: { deviceId?: string; firmware?: string; ip?: string; rssi?: number; uptime?: number } | null;
-      sensors: { sensorId: string; lastSeen: number | null; stale: boolean }[];
-    } | null> => {
-      try {
-        const res = await fetch(apiUrl('/api/device/status'));
-        if (res.ok) return res.json();
-      } catch { /* ignore */ }
-      return null;
+      const events = await get<ControllerEvent[]>(`/api/events?limit=${limit}`);
+      return events || [];
     },
   };
 }

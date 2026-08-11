@@ -245,6 +245,9 @@ function App() {
   const [deviceOnline, setDeviceOnline] = useState(false);
   const [deviceInfo, setDeviceInfo] = useState<{ deviceId?: string; firmware?: string; ip?: string; rssi?: number; uptime?: number } | null>(null);
   const [sensorHealth, setSensorHealth] = useState<Record<string, { stale: boolean; lastSeen: number | null }>>({});
+  // Ligação real ao backend (API/Socket.IO) — independente do ESP32 estar online
+  const [backendOnline, setBackendOnline] = useState(false);
+  const [lastContact, setLastContact] = useState<string | null>(null);
   const [clock, setClock] = useState('');
   const [dateStr, setDateStr] = useState('');
 
@@ -419,27 +422,42 @@ function App() {
       setSensorHealth((cur) => ({ ...cur, [sensorId]: { stale: !!health.stale, lastSeen: (health.lastSeen as number) ?? null } }));
     });
 
-    // Snapshot inicial do estado real do controlador e sensores (REST) —
-    // garante que a UI mostra dados reais mesmo antes do primeiro evento WS
-    ctrl.fetchDeviceStatus().then((status) => {
-      if (!status) return;
-      setDeviceOnline(status.deviceOnline);
-      if (status.deviceInfo) setDeviceInfo(status.deviceInfo);
-      if (Array.isArray(status.sensors)) {
+    // Ligação real ao backend
+    const unsubUp = ctrl.on('connected', () => setBackendOnline(true));
+    const unsubDown = ctrl.on('disconnected', () => setBackendOnline(false));
+
+    // Estado consolidado do dispositivo (polling REST de 5s, sempre ativo)
+    const unsubStatus = ctrl.on('device-status', (status: Record<string, unknown>) => {
+      setDeviceOnline(!!status.deviceOnline);
+      setLastContact((status.lastContact as string) ?? null);
+      if (status.deviceInfo) setDeviceInfo(status.deviceInfo as typeof deviceInfo);
+      const sensors = status.sensors as { sensorId: string; stale: boolean; lastSeen: number | null }[] | undefined;
+      if (Array.isArray(sensors)) {
         const map: Record<string, { stale: boolean; lastSeen: number | null }> = {};
-        status.sensors.forEach((s) => { map[s.sensorId] = { stale: s.stale, lastSeen: s.lastSeen }; });
+        sensors.forEach((s) => { map[s.sensorId] = { stale: s.stale, lastSeen: s.lastSeen }; });
         setSensorHealth(map);
       }
     });
+
+    // Snapshot inicial do estado real do controlador e sensores (REST) —
+    // garante que a UI mostra dados reais mesmo antes do primeiro evento WS
+    void ctrl.refreshAll();
+
+    // Histórico/alarmes reais atualizados periodicamente a partir da API
+    const eventsTimer = window.setInterval(() => { void loadEvents(); }, 20000);
 
     return () => {
       unsubState();
       unsubEvent();
       unsubDevice();
       unsubSensorHealth();
+      unsubUp();
+      unsubDown();
+      unsubStatus();
+      window.clearInterval(eventsTimer);
       ctrl.disconnect();
     };
-  }, []);
+  }, [loadEvents]);
   const activeZones = useMemo(() => zones.filter((z) => z.on).length, [zones]);
   const alarmCount = useMemo(() => errors.filter((e) => !e.resolved).length, [errors]);
 
@@ -717,8 +735,8 @@ function App() {
           ))}
         </nav>
         <div className="sidebar-footer">
-          <StatusBadge tone="success">{t('sidebar.system', language)}</StatusBadge>
-          <div className="footer-reading"><TimerReset size={17} /><div><strong>{clock || '21:16'}</strong><span>{dateStr || '10/08/2026'}</span></div></div>
+          <StatusBadge tone={backendOnline ? 'success' : 'error'}>{backendOnline ? t('sidebar.system', language) : (language === 'PT' ? 'Sem ligação à API' : 'API offline')}</StatusBadge>
+          <div className="footer-reading"><TimerReset size={17} /><div><strong>{clock || '—'}</strong><span>{dateStr || '—'}</span></div></div>
           <div className="footer-reading"><CloudSun size={19} /><div><strong>{weather.temp}°C</strong><span>{weather.city} · {weather.desc}</span></div></div>
           <div className="footer-reading"><Cpu size={17} /><div><strong>ESP32-S3</strong><span>{t('sidebar.controller', language)}</span></div></div>
         </div>
@@ -743,7 +761,11 @@ function App() {
         <div className="content-wrap">
           <div className="page-heading">
             <div><span className="section-kicker">{t('heading.overview', language)}</span><h2>{t(`nav.${activePage.toLowerCase()}`, language)}</h2></div>
-            <div className="connection"><Radio size={15} /> {deviceOnline ? 'ESP32 Online' : t('heading.connection', language)} <span className={`pulse ${deviceOnline ? 'pulse-device' : ''}`} /></div>
+            <div className={`connection ${deviceOnline ? 'connection-online' : backendOnline ? 'connection-waiting' : 'connection-offline'}`} title={lastContact ? `Último contacto: ${new Date(lastContact).toLocaleString('pt-PT')}` : undefined}>
+              <Radio size={15} />
+              <span>{deviceOnline ? 'ESP32-S3 online' : backendOnline ? (language === 'PT' ? 'API ligada · ESP32 offline' : 'API up · ESP32 offline') : (language === 'PT' ? 'Sem ligação' : 'No connection')}</span>
+              <span className={`pulse ${deviceOnline ? 'pulse-device' : ''}`} />
+            </div>
           </div>
           {renderPage()}
           <footer className="app-footer">
@@ -879,12 +901,15 @@ function Metric({ icon, label, value, detail, accent }: { icon: React.ReactNode;
 
 /* ---------- Estado ---------- */
 function StateView({ zones, pumpOn, autoMode, onToggleMode, language, gpioConfig, editingGpio, setEditingGpio, handleGpioUpdate, saveGpioConfig, deviceOnline, deviceInfo, sensorHealth, engineState }: { zones: Zone[]; pumpOn: boolean; autoMode: boolean; onToggleMode: () => void; language: Language; gpioConfig: { gpio: number; direction: string; label: string; func: string; inChannel: string }[]; editingGpio: number | null; setEditingGpio: (v: number | null) => void; handleGpioUpdate: (gpio: number, key: string, value: string) => void; saveGpioConfig: () => void; deviceOnline: boolean; deviceInfo: { deviceId?: string; firmware?: string; ip?: string; rssi?: number; uptime?: number } | null; sensorHealth: Record<string, { stale: boolean; lastSeen: number | null }>; engineState: string; }) {
+  const inputPins = gpioConfig.filter((g) => g.direction === 'INPUT');
+  const outputPins = gpioConfig.filter((g) => g.direction === 'OUTPUT');
+  const okSensorCount = zones.filter((z) => deviceOnline && !sensorHealth[z.sensorId]?.stale).length;
   return (
     <div className="two-column">
       <Panel>
         <PanelHeader eyebrow="LEITURA EM TEMPO REAL" title="Estado dos equipamentos" />
         <div className="state-list">
-          <StateRow icon={<Cpu />} title={language === "PT" ? "Controlador central" : "Central controller"} detail={deviceOnline && deviceInfo ? `${deviceInfo.deviceId || "ESP32-S3"} · fw ${deviceInfo.firmware || "—"} · ${deviceInfo.ip || "Wi-Fi"}` : (language === "PT" ? "ESP32-S3 · Wi-Fi · Simulação" : "ESP32-S3 · Wi-Fi · Simulation")} status={deviceOnline ? "Online" : (language === "PT" ? "Simulação" : "Simulating")} active={deviceOnline} />
+          <StateRow icon={<Cpu />} title={language === "PT" ? "Controlador central" : "Central controller"} detail={deviceOnline && deviceInfo ? `${deviceInfo.deviceId || "ESP32-S3"} · fw ${deviceInfo.firmware || "—"} · ${deviceInfo.ip || "Wi-Fi"}` : (language === "PT" ? "ESP32-S3 · não reconhecido na rede" : "ESP32-S3 · not recognized on network")} status={deviceOnline ? "Online" : (language === "PT" ? "Offline" : "Offline")} active={deviceOnline} />
           <StateRow icon={<Power />} title="Bomba principal" detail="Relé K1 · Saída digital" status={pumpOn ? 'Ligada' : 'Desligada'} active={pumpOn} />
           {zones.map((z) => <StateRow key={z.id} icon={<Droplets />} title={`${z.name} · Válvula ${z.id}`} detail="Válvula solenóide" status={z.on ? 'Ligada' : 'Desligada'} active={z.on} />)}
           {zones.map((z) => { const health = sensorHealth[z.sensorId]; const stale = !!health?.stale; return <StateRow key={`s-${z.sensorId}`} icon={<Radio />} title={`${z.name} · Sensor ${z.sensorId}`} detail={stale ? (language === 'PT' ? 'Sem sinal · Verificar ligação' : 'No signal · Check connection') : `Humidade do solo · ${z.moisture}%`} status={stale ? (language === 'PT' ? 'Sem sinal' : 'No signal') : 'Online'} active={!stale} />; })}
@@ -901,14 +926,16 @@ function StateView({ zones, pumpOn, autoMode, onToggleMode, language, gpioConfig
           <Settings2 size={15} />{autoMode ? 'Passar para Manual' : 'Passar para Automático'}
         </button>
         <div className="info-list">
-          <div><span>{language === "PT" ? "Última sincronização" : "Last sync"}</span><strong>{deviceOnline ? (deviceInfo?.uptime ? `há ${Math.floor(deviceInfo.uptime / 60)} minutos` : "Agora") : (language === "PT" ? "Simulação ativa" : "Simulation active")}</strong></div>
-          <div><span>{language === "PT" ? "Tempo de atividade" : "Uptime"}</span><strong>{deviceOnline && deviceInfo?.uptime ? formatUptime(deviceInfo.uptime) || "—" : (language === "PT" ? "Modo simulação" : "Simulation mode")}</strong></div>
-          <div><span>{language === "PT" ? "Versão do controlador" : "Controller version"}</span><strong>{deviceOnline && deviceInfo?.firmware ? `GTC v${deviceInfo.firmware} · ${deviceInfo.deviceId || "ESP32-S3"}` : "GTC v2.15 · ESP32-S3"}</strong></div>
-          <div><span>Sensores ativos</span><strong>{zones.length} zonas</strong></div>
+          <div><span>{language === "PT" ? "Última sincronização" : "Last sync"}</span><strong>{deviceOnline ? (language === 'PT' ? 'Agora' : 'Now') : (language === "PT" ? "Sem contacto" : "No contact")}</strong></div>
+          <div><span>{language === "PT" ? "Tempo de atividade" : "Uptime"}</span><strong>{deviceOnline && deviceInfo?.uptime ? formatUptime(deviceInfo.uptime) || "—" : "—"}</strong></div>
+          <div><span>{language === "PT" ? "Versão do controlador" : "Controller version"}</span><strong>{deviceOnline && deviceInfo?.firmware ? `fw ${deviceInfo.firmware} · ${deviceInfo.deviceId || "ESP32-S3"}` : "—"}</strong></div>
+          <div><span>{language === 'PT' ? 'Endereço IP' : 'IP address'}</span><strong>{deviceOnline && deviceInfo?.ip ? deviceInfo.ip : '—'}</strong></div>
+          <div><span>{language === 'PT' ? 'Sinal Wi-Fi' : 'Wi-Fi signal'}</span><strong>{deviceOnline && typeof deviceInfo?.rssi === 'number' ? `${deviceInfo.rssi} dBm` : '—'}</strong></div>
+          <div><span>{language === 'PT' ? 'Sensores reconhecidos' : 'Recognized sensors'}</span><strong>{okSensorCount}/{zones.length}</strong></div>
         </div>
       </Panel>
 
-      {/* ESP32-S3 Hardware Diagram — Design da imagem */}
+      {/* ESP32-S3 Hardware Diagram — Design da imagem de referência */}
       <Panel className="estado-pinout-panel" style={{ gridColumn: '1 / -1' }}>
         <div className="hw3-header">
           <div className="hw3-header-titles">
@@ -924,45 +951,55 @@ function StateView({ zones, pumpOn, autoMode, onToggleMode, language, gpioConfig
         <div className="hw3-diagram">
           {/* ── Coluna 1: Sensores (INPUT) ── */}
           <div className="hw3-col hw3-col-left">
-            {zones.map((z) => (
-              <div key={z.sensorId} className="hw3-sensor-block">
-                <div className="hw3-block hw3-block-input">
-                  <span className="hw3-block-label">{z.sensorId}</span>
-                  <div className="hw3-block-info">
-                    <strong>{language === 'PT' ? 'Sensor' : 'Sensor'} {z.sensorId}</strong>
-                    <span>{z.name} · {z.moisture}%</span>
+            <span className="hw3-col-caption hw3-caption-input">INPUT</span>
+            {inputPins.map((g, i) => {
+              const zone = zones[i];
+              const stale = zone ? !!sensorHealth[zone.sensorId]?.stale : false;
+              return (
+                <div key={g.gpio} className="hw3-sensor-block">
+                  <div className={`hw3-block hw3-block-input ${zone ? (stale ? 'hw3-block-stale' : 'hw3-block-live') : 'hw3-block-empty'}`}>
+                    <span className="hw3-block-label">{g.label || zone?.sensorId || `B${i + 1}`}</span>
+                    <div className="hw3-block-info">
+                      <strong>{zone ? `${language === 'PT' ? 'Sensor' : 'Sensor'} ${zone.sensorId}` : (language === 'PT' ? 'Sem sensor' : 'No sensor')}</strong>
+                      <span>{zone ? `${zone.name} · ${zone.moisture}%` : (language === 'PT' ? 'não reconhecido' : 'not detected')}</span>
+                    </div>
                   </div>
-                  <span className="hw3-pin-badge hw3-badge-input hw3-block-badge">INPUT</span>
+                  <div className="hw3-wire hw3-wire-input">
+                    <span className="hw3-wire-dot" />
+                    <span className="hw3-wire-line" />
+                    <span className="hw3-wire-arrow" />
+                  </div>
                 </div>
-                <div className="hw3-arrow-line hw3-arrow-right" />
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* ── Coluna 2: ESP32-S3 (centro) ── */}
           <div className="hw3-col hw3-col-center">
             <div className="hw3-chip-frame">
               <div className="hw3-chip-header">
-                <Cpu size={20} />
+                <span className="hw3-chip-icon"><Cpu size={18} /></span>
+                <div className="hw3-chip-titles">
+                  <strong>ESP32-S3</strong>
+                  <span>{deviceOnline ? (language === 'PT' ? 'reconhecido' : 'recognized') : (language === 'PT' ? 'não reconhecido' : 'not recognized')}</span>
+                </div>
+                <span className={`hw3-chip-dot ${deviceOnline ? 'on' : 'off'}`} />
               </div>
               <div className="hw3-chip-body">
-                {/* INPUT pins */}
                 <div className="hw3-pin-group">
-                  {gpioConfig.filter(g => g.direction === 'INPUT').map(g => (
+                  {inputPins.map(g => (
                     <div key={g.gpio} className="hw3-pin hw3-pin-input">
                       <span className="hw3-pin-num">GPIO {g.gpio}</span>
-                      <span className="hw3-pin-badge hw3-badge-input">INPUT</span>
+                      <span className="hw3-pin-dir">INPUT</span>
                     </div>
                   ))}
                 </div>
-                {/* Separator */}
                 <div className="hw3-chip-divider" />
-                {/* OUTPUT pins */}
                 <div className="hw3-pin-group">
-                  {gpioConfig.filter(g => g.direction === 'OUTPUT').map(g => (
+                  {outputPins.map(g => (
                     <div key={g.gpio} className="hw3-pin hw3-pin-output">
                       <span className="hw3-pin-num">GPIO {g.gpio}</span>
-                      <span className="hw3-pin-badge hw3-badge-output">OUTPUT</span>
+                      <span className="hw3-pin-dir">OUTPUT</span>
                     </div>
                   ))}
                 </div>
@@ -972,13 +1009,19 @@ function StateView({ zones, pumpOn, autoMode, onToggleMode, language, gpioConfig
 
           {/* ── Coluna 3: Relés (OUTPUT) ── */}
           <div className="hw3-col hw3-col-right">
-            {gpioConfig.filter(g => g.direction === 'OUTPUT').map((g) => (
+            <span className="hw3-col-caption hw3-caption-output">OUTPUT</span>
+            {outputPins.map((g) => (
               <div key={g.gpio} className="hw3-relay-row">
-                <div className="hw3-arrow-line hw3-arrow-left" />
+                <div className="hw3-wire hw3-wire-output">
+                  <span className="hw3-wire-dot" />
+                  <span className="hw3-wire-line" />
+                  <span className="hw3-wire-arrow" />
+                </div>
                 <div className="hw3-block hw3-block-output">
                   <span className="hw3-block-label">{g.label}</span>
                   <div className="hw3-block-info">
-                    <strong>{g.func}{g.inChannel ? ` - ${g.inChannel}` : ''}</strong>
+                    <strong>{g.func || '—'}</strong>
+                    {g.inChannel && <span>{g.inChannel}</span>}
                   </div>
                 </div>
               </div>
@@ -988,6 +1031,7 @@ function StateView({ zones, pumpOn, autoMode, onToggleMode, language, gpioConfig
 
         {/* Legend */}
         <div className="hw3-legend">
+          <span className="hw3-legend-title">{language === 'PT' ? 'LEGENDA' : 'LEGEND'}</span>
           <div className="hw3-legend-item">
             <span className="hw3-legend-dot hw3-legend-green" />
             <span className="hw3-legend-label">INPUT</span>
