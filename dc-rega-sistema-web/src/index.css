@@ -386,6 +386,25 @@ button { cursor: pointer; }
 .login-error { padding: 6px 14px; margin-bottom: 8px; color: #f06565; font-size: 12px; font-weight: 600; text-align: center; border-radius: 7px; background: rgba(240,101,101,.08); border: 1px solid rgba(240,101,101,.2); animation: shake .3s ease; }
 @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
 
+
+/* ---------- Weekly Schedule Editor ---------- */
+.setpoint-schedule { margin-top: 24px; padding-top: 20px; border-top: 1px solid #1b2a32; }
+.setpoint-schedule > label { display: block; margin-bottom: 12px; color: #78909a; font-size: 11px; letter-spacing: .08em; font-weight: 600; }
+.schedule-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.schedule-day { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 4px; border: 1px solid #1a2a32; border-radius: 10px; background: #0a131a; transition: .2s; }
+.schedule-day.schedule-enabled { border-color: rgba(94,229,138,.25); background: rgba(94,229,138,.04); }
+.schedule-day-toggle { display: flex; flex-direction: column; align-items: center; gap: 4px; border: 0; background: none; cursor: pointer; padding: 2px; color: #7e909c; transition: .2s; }
+.schedule-day-toggle:hover { color: #dce5e8; }
+.schedule-day-label { font-size: 10px; font-weight: 600; letter-spacing: .04em; }
+.schedule-day-status { width: 8px; height: 8px; border-radius: 50%; transition: .2s; }
+.schedule-day-status.on { background: #5ee58a; box-shadow: 0 0 6px rgba(94,229,138,.5); }
+.schedule-day-status.off { background: #3a4a52; }
+.schedule-time-controls { display: flex; align-items: center; gap: 2px; }
+.schedule-time-btn { display: grid; place-items: center; width: 20px; height: 20px; border: 1px solid #263943; border-radius: 5px; color: #8499a2; background: #0d171e; font-size: 12px; font-weight: 700; cursor: pointer; transition: .2s; }
+.schedule-time-btn:hover { border-color: #12bcb6; color: #1ad5d0; }
+.schedule-time-display { padding: 2px 5px; border: 1px solid #263943; border-radius: 5px; color: #1ad5d0; background: #0a141a; font: 600 10px 'DM Mono', monospace; cursor: pointer; transition: .2s; }
+.schedule-time-display:hover { border-color: #12bcb6; }
+
 @media (max-width: 1000px) {
   .content-wrap { padding: 0 22px 40px; }
   .topbar-inner { padding: 18px 22px 16px; }
