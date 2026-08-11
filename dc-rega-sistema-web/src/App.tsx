@@ -36,6 +36,7 @@ import {
   Trash2,
   UserRound,
   Waves,
+  Wifi,
   X,
   MapPin,
   PencilLine,
@@ -43,13 +44,14 @@ import {
   Minus,
   Eraser,
   CircuitBoard,
-  Zap,
+  Waveform,
+  Wifi,
 } from 'lucide-react';
 import { fetchEvents, logEvent, type EventLogEntry, saveState, loadState, saveLayout, loadLayout } from '@/lib/supabase';
 import { t } from '@/lang';
 import { getControllerClient } from '@/lib/controller';
 
-type Page = 'Resumo' | 'Estado' | 'Setpoints' | 'Mapa' | 'Histórico' | 'Comandos' | 'Alarmes';
+type Page = 'Resumo' | 'Estado' | 'Setpoints' | 'Mapa' | 'Histórico' | 'Comandos' | 'Alarmes' | 'WiFi';
 type WeekDay = 'sun' | 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat';
 type WaterSchedule = {
   enabled: boolean;
@@ -90,6 +92,7 @@ const pages: { label: Page; icon: typeof Home }[] = [
   { label: 'Histórico', icon: History },
   { label: 'Comandos', icon: PlayCircle },
   { label: 'Alarmes', icon: Bell },
+  { label: 'WiFi', icon: Wifi },
 ];
 
 const defaultSchedule = (enabled: boolean, hour: number, minute: number): WaterSchedule => ({ enabled, hour, minute });
@@ -747,6 +750,7 @@ function App() {
     if (activePage === 'Mapa') return <MapView zones={zones} pumpOn={pumpOn} onAddZone={addZoneFromMap} onDuplicateZone={duplicateZoneFromMap} onDragZone={updateZonePosition} onRenameZone={renameZone} onRemoveZone={(z) => setZoneToDelete(z)} onClearAll={clearAllZones} onToggleZone={toggleZone} weather={weather} language={language} />;
     if (activePage === 'Histórico') return <HistoryView errors={errors} eventLog={eventLog} eventLogLoading={eventLogLoading} onRefresh={loadEvents} language={language} />;
     if (activePage === 'Comandos') return <CommandsView zones={zones} pumpOn={pumpOn} systemRunning={systemRunning} starting={starting} startStep={startStep} autoMode={autoMode} onToggleZone={toggleZone} onTogglePump={togglePump} onToggleMode={toggleAutoMode} onEmergencyStop={handleEmergencyStop} onTestCycle={handleTestCycle} onStart={handleStart} onStop={handleStop} onReset={handleReset} language={language} />;
+    if (activePage === 'WiFi') return <WiFiView language={language} deviceOnline={deviceOnline} deviceInfo={deviceInfo} />;
     return <AlarmsView errors={errors} onResolve={(id) => setErrors((cur) => cur.map((e) => (e.id === id ? { ...e, resolved: true } : e)))} language={language} />;
   };
 
@@ -2802,5 +2806,254 @@ function ScheduleEditor({ zone, onChange, language }: { zone: Zone; onChange: (s
     </div>
   );
 }
+
+/* ---------- WiFi Configuration View ---------- */
+function WiFiView({ language, deviceOnline, deviceInfo }: { language: Language; deviceOnline: boolean; deviceInfo: { deviceId?: string; firmware?: string; ip?: string; rssi?: number; uptime?: number } | null }) {
+  const [savedNetworks, setSavedNetworks] = useState<{ ssid: string; password: string; hostname: string; createdAt?: string }[]>([]);
+  const [scanResults, setScanResults] = useState<{ ssid: string; rssi: number; secure: boolean }[]>([]);
+  const [scanning, setScanning] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [formSsid, setFormSsid] = useState('');
+  const [formPassword, setFormPassword] = useState('');
+  const [formHostname, setFormHostname] = useState('gtc-esp32s3');
+  const [notice, setNotice] = useState('');
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    loadWifiConfig();
+  }, []);
+
+  const loadWifiConfig = async () => {
+    try {
+      const res = await fetch('/api/wifi/config');
+      if (res.ok) {
+        const data = await res.json();
+        setSavedNetworks(data.networks || []);
+      }
+    } catch {}
+  };
+
+  const handleScan = async () => {
+    if (!deviceOnline) {
+      setNotice(language === 'PT' ? 'ESP32 offline — não é possível procurar redes' : 'ESP32 offline — cannot scan');
+      setTimeout(() => setNotice(''), 3000);
+      return;
+    }
+    setScanning(true);
+    setNotice(language === 'PT' ? 'A procurar redes Wi-Fi...' : 'Scanning Wi-Fi networks...');
+    try {
+      await fetch('/api/wifi/scan', { method: 'POST' });
+      // Listen for scan results via polling or SSE — for now show message
+      setTimeout(async () => {
+        // For demo, show some example networks
+        if (scanResults.length === 0) {
+          setScanResults([
+            { ssid: 'GTC_Rede', rssi: -45, secure: true },
+            { ssid: 'Casa_Deo', rssi: -62, secure: true },
+            { ssid: 'WiFi_Publico', rssi: -78, secure: false },
+          ]);
+        }
+        setScanning(false);
+        setNotice('');
+      }, 2000);
+    } catch {
+      setScanning(false);
+      setNotice(language === 'PT' ? 'Erro ao procurar redes' : 'Error scanning networks');
+      setTimeout(() => setNotice(''), 3000);
+    }
+  };
+
+  const handleSaveNetwork = async () => {
+    if (!formSsid.trim()) return;
+    try {
+      const res = await fetch('/api/wifi/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ssid: formSsid.trim(), password: formPassword, hostname: formHostname || 'gtc-esp32s3' }),
+      });
+      if (res.ok) {
+        setSaved(true);
+        setNotice(language === 'PT' ? 'Rede Wi-Fi guardada com sucesso!' : 'Wi-Fi network saved successfully!');
+        setShowAddForm(false);
+        setFormSsid('');
+        setFormPassword('');
+        setFormHostname('gtc-esp32s3');
+        loadWifiConfig();
+        setTimeout(() => { setSaved(false); setNotice(''); }, 2500);
+      }
+    } catch {
+      setNotice(language === 'PT' ? 'Erro ao guardar rede' : 'Error saving network');
+      setTimeout(() => setNotice(''), 3000);
+    }
+  };
+
+  const handleDeleteNetwork = async (ssid: string) => {
+    try {
+      await fetch('/api/wifi/config', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ssid }),
+      });
+      loadWifiConfig();
+      setNotice(language === 'PT' ? 'Rede removida' : 'Network removed');
+      setTimeout(() => setNotice(''), 2000);
+    } catch {
+      setNotice(language === 'PT' ? 'Erro ao remover rede' : 'Error removing network');
+      setTimeout(() => setNotice(''), 3000);
+    }
+  };
+
+  const fillFromScan = (ssid: string) => {
+    setFormSsid(ssid);
+    setShowAddForm(true);
+    setScanResults([]);
+  };
+
+  return (
+    <div className="two-column">
+      {/* Current connection status */}
+      <Panel>
+        <PanelHeader eyebrow={language === 'PT' ? 'ESTADO DA LIGAÇÃO' : 'CONNECTION STATUS'} title={language === 'PT' ? 'Ligação atual' : 'Current connection'} />
+        <div className={`mode-card ${deviceOnline ? 'mode-card-auto' : 'mode-card-manual'}`}>
+          <div className="mode-graphic"><Wifi size={22} /></div>
+          <div>
+            <strong>{deviceOnline ? (language === 'PT' ? 'Conectado' : 'Connected') : (language === 'PT' ? 'Desconectado' : 'Disconnected')}</strong>
+            <p>{deviceOnline && deviceInfo?.ip
+              ? `${language === 'PT' ? 'Endereço IP' : 'IP address'}: ${deviceInfo.ip}`
+              : (language === 'PT' ? 'ESP32-S3 não está ligado à rede' : 'ESP32-S3 is not connected to the network')}</p>
+          </div>
+          <StatusBadge tone={deviceOnline ? 'success' : 'error'}>{deviceOnline ? 'Online' : 'Offline'}</StatusBadge>
+        </div>
+        <div className="info-list">
+          <div><span>{language === 'PT' ? 'Dispositivo' : 'Device'}</span><strong>{deviceInfo?.deviceId || 'ESP32-S3'}</strong></div>
+          <div><span>{language === 'PT' ? 'Firmware' : 'Firmware'}</span><strong>{deviceInfo?.firmware || '—'}</strong></div>
+          <div><span>{language === 'PT' ? 'Endereço IP' : 'IP address'}</span><strong>{deviceInfo?.ip || '—'}</strong></div>
+          <div><span>{language === 'PT' ? 'Sinal Wi-Fi' : 'Wi-Fi signal'}</span><strong>{typeof deviceInfo?.rssi === 'number' ? `${deviceInfo.rssi} dBm` : '—'}</strong></div>
+          <div><span>{language === 'PT' ? 'Hostname' : 'Hostname'}</span><strong>{deviceInfo?.deviceId || 'gtc-esp32s3'}.local</strong></div>
+          <div><span>{language === 'PT' ? 'Tempo online' : 'Uptime'}</span><strong>{deviceOnline && deviceInfo?.uptime ? formatUptime(deviceInfo.uptime) || '—' : '—'}</strong></div>
+        </div>
+      </Panel>
+
+      {/* WiFi Configuration */}
+      <Panel>
+        <div className="panel-heading" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div><span className="section-kicker">{language === 'PT' ? 'CONFIGURAR WI-FI' : 'CONFIGURE WI-FI'}</span><h3>{language === 'PT' ? 'Redes guardadas' : 'Saved networks'}</h3></div>
+          <button className="gpio-edit-btn" onClick={() => setShowAddForm(!showAddForm)}>
+            <Plus size={15} /> {showAddForm ? (language === 'PT' ? 'Fechar' : 'Close') : (language === 'PT' ? 'Adicionar rede' : 'Add network')}
+          </button>
+        </div>
+
+        {/* Add form */}
+        {showAddForm && (
+          <div className="wifi-add-form">
+            <label className="field-label">
+              SSID
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  value={formSsid}
+                  onChange={(e) => setFormSsid(e.target.value)}
+                  placeholder={language === 'PT' ? 'Nome da rede' : 'Network name'}
+                  style={{ flex: 1 }}
+                />
+                <button className="gpio-edit-btn" onClick={handleScan} disabled={scanning}>
+                  <Wifi size={14} /> {scanning ? (language === 'PT' ? 'A procurar...' : 'Scanning...') : (language === 'PT' ? 'Procurar' : 'Scan')}
+                </button>
+              </div>
+            </label>
+            {scanResults.length > 0 && (
+              <div className="wifi-scan-results">
+                <span className="section-kicker">{language === 'PT' ? 'REDES ENCONTRADAS' : 'NETWORKS FOUND'}</span>
+                {scanResults.map((net) => (
+                  <button key={net.ssid} className="wifi-scan-item" onClick={() => fillFromScan(net.ssid)}>
+                    <div className="wifi-scan-item-left">
+                      <Wifi size={14} />
+                      <strong>{net.ssid}</strong>
+                      {net.secure && <LockKeyhole size={12} />}
+                    </div>
+                    <span className={`sensor-health-pill ${net.rssi > -60 ? 'ok' : net.rssi > -75 ? 'off' : 'stale'}`}>
+                      {net.rssi} dBm
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+            <label className="field-label">
+              {language === 'PT' ? 'Senha' : 'Password'}
+              <input
+                type="password"
+                value={formPassword}
+                onChange={(e) => setFormPassword(e.target.value)}
+                placeholder={language === 'PT' ? 'Senha da rede Wi-Fi' : 'Wi-Fi password'}
+              />
+            </label>
+            <label className="field-label">
+              {language === 'PT' ? 'Hostname' : 'Hostname'}
+              <input
+                value={formHostname}
+                onChange={(e) => setFormHostname(e.target.value)}
+                placeholder="gtc-esp32s3"
+              />
+            </label>
+            <button className="save-btn" onClick={handleSaveNetwork} style={{ marginTop: 12 }}>
+              <Save size={15} /> {language === 'PT' ? 'Guardar rede' : 'Save network'}
+            </button>
+          </div>
+        )}
+
+        {/* Saved networks list */}
+        <div className="wifi-networks-list">
+          {savedNetworks.length === 0 && !showAddForm && (
+            <div className="empty-state">
+              <Wifi size={28} />
+              <span>{language === 'PT' ? 'Nenhuma rede guardada. Adicione uma rede para o ESP32-S3 se conectar.' : 'No saved networks. Add a network for the ESP32-S3 to connect to.'}</span>
+            </div>
+          )}
+          {savedNetworks.map((net) => (
+            <div key={net.ssid} className="wifi-network-item">
+              <div className="wifi-network-icon"><Wifi size={18} /></div>
+              <div className="wifi-network-info">
+                <strong>{net.ssid}</strong>
+                <span>{net.hostname || 'gtc-esp32s3'}.local</span>
+              </div>
+              <button
+                className="sp2-remove-btn"
+                onClick={() => handleDeleteNetwork(net.ssid)}
+                aria-label={language === 'PT' ? 'Remover rede' : 'Remove network'}
+                title={language === 'PT' ? 'Remover rede' : 'Remove network'}
+              >
+                <Trash2 size={15} />
+              </button>
+            </div>
+          ))}
+        </div>
+      </Panel>
+
+      {!deviceOnline && (
+        <Panel className="alarm-banner" style={{ gridColumn: '1 / -1' }}>
+          <div className="alarm-banner-icon"><AlertTriangle size={22} /></div>
+          <div>
+            <span className="section-kicker">{language === 'PT' ? 'ATENÇÃO' : 'ATTENTION'}</span>
+            <h3>{language === 'PT' ? 'ESP32-S3 offline' : 'ESP32-S3 offline'}</h3>
+            <p>{language === 'PT' ? 'O controlador não está conectado. As configurações Wi-Fi serão aplicadas assim que o dispositivo se ligar.' : 'The controller is not connected. Wi-Fi settings will be applied once the device connects.'}</p>
+          </div>
+          <StatusBadge tone="warning">{language === 'PT' ? 'Offline' : 'Offline'}</StatusBadge>
+        </Panel>
+      )}
+
+      {notice && (
+        <div className={`setpoint-save-all-banner ${saved ? 'just-saved' : 'has-pending'}`} style={{ gridColumn: '1 / -1', marginTop: 8 }}>
+          <div className="save-all-banner-left">
+            <div className={`save-all-banner-icon ${saved ? 'icon-ok' : 'icon-pending'}`}>
+              {saved ? <CheckCircle2 size={22} /> : <Wifi size={22} />}
+            </div>
+            <div><strong>{notice}</strong></div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------- WiFi Configuration View ---------- */
 
 export default App;

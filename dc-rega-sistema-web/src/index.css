@@ -1423,7 +1423,19 @@ table th:last-child, table td:last-child { padding-right: 16px; }
 
 /* ── Estados: azul para modo automático ── */
 .status-blue { color: #5aa9ff; background: rgba(90, 169, 255, .12); border: 1px solid rgba(90, 169, 255, .26); }
-.sensor-health-pill.off { color: #8b9ba5; background: rgba(139,155,165,.1); border-color: rgba(139,155,165,.22); }
+.sensor-health-pill.off { color: #f0a145; background: rgba(240,161,69,.1); border-color: rgba(240,161,69,.25); }
+
+/* ── Cores semânticas de alarmes ──
+   Verde (#5ee58a)  = online / normal / resolvido
+   Vermelho (#f06565) = crítico / alarme / erro
+   Laranja (#f0a145) = offline / sem sinal / atenção
+   Azul (#5aa9ff) = automático / informativo */
+.state-row.state-row-success { border-left: 3px solid #5ee58a; }
+.state-row.state-row-error { border-left: 3px solid #f06565; }
+.state-row.state-row-neutral { border-left: 3px solid #3a4d57; }
+.state-row.state-row-blue { border-left: 3px solid #5aa9ff; }
+.state-row.state-row-warning { border-left: 3px solid #f0a145; }
+.state-row.state-row-cyan { border-left: 3px solid #14ddd6; }
 
 /* Linhas de estado: ícone alinhado e tingido pelo estado real */
 .state-row { align-items: center; padding: 15px 12px; margin: 0; }
@@ -1500,3 +1512,93 @@ select:focus-visible, [role="button"]:focus-visible {
   .hw3-signal { margin-left: 0; }
   .hw3-legend-live { margin-left: 0; }
 }
+
+/* ══════════════════════════════════════════════════════════
+   WIFI CONFIGURATION PANEL
+   ══════════════════════════════════════════════════════════ */
+.wifi-add-form { padding: 16px 20px; border-bottom: 1px solid #1c2b33; }
+.wifi-add-form .field-label { margin-top: 10px; color: #7e909c; font-size: 11px; font-weight: 600; letter-spacing: .06em; }
+.wifi-add-form .field-label input { margin-top: 6px; }
+.wifi-scan-results { margin: 10px 0 4px; padding: 10px 12px; border: 1px solid #1c2b33; border-radius: 10px; background: #0b151b; max-height: 180px; overflow-y: auto; }
+.wifi-scan-results .section-kicker { display: block; margin-bottom: 8px; font-size: 9px; }
+.wifi-scan-item { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 9px 10px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: #dce5e8; cursor: pointer; transition: .15s; text-align: left; }
+.wifi-scan-item:hover { border-color: #14ddd6; background: rgba(20,221,214,.06); }
+.wifi-scan-item-left { display: flex; align-items: center; gap: 8px; color: #14ddd6; }
+.wifi-scan-item-left strong { font-size: 13px; font-weight: 600; color: #dce5e8; }
+.wifi-scan-item-left svg:last-child { color: #5a6f7a; }
+.wifi-networks-list { padding: 8px 0; }
+.wifi-network-item { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-bottom: 1px solid #1b2a32; transition: background .15s; }
+.wifi-network-item:hover { background: rgba(20,221,214,.03); }
+.wifi-network-item:last-child { border-bottom: 0; }
+.wifi-network-icon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: rgba(20,221,214,.08); color: #14ddd6; flex-shrink: 0; }
+.wifi-network-info { flex: 1; min-width: 0; }
+.wifi-network-info strong { display: block; font-size: 13px; color: #dce5e8; }
+.wifi-network-info span { display: block; margin-top: 3px; font-size: 10px; color: #6e858f; }
+.empty-state { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 40px 20px; color: #5a6f7a; font-size: 12px; text-align: center; line-height: 1.5; }
+
+/* ══════════════════════════════════════════════════════════
+   SCROLL CONTAINERS — camadas com scroll visível
+   ══════════════════════════════════════════════════════════ */
+.history-list,
+.alarm-list,
+.error-list,
+.command-list,
+.state-list,
+.actuator-list,
+.settings-drawer,
+.gpio-edit-table-scroll,
+.table-scroll,
+.wifi-networks-list,
+.wifi-scan-results,
+.info-list { overflow-y: auto; overflow-x: hidden; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
+.history-list { max-height: 480px; }
+.alarm-list { max-height: 500px; }
+.error-list { max-height: 360px; }
+.state-list { max-height: 420px; }
+.command-list { max-height: 380px; }
+.wifi-networks-list { max-height: 340px; }
+.wifi-scan-results { max-height: 180px; }
+.info-list { max-height: 260px; }
+
+@media (max-width: 720px) {
+  .history-list { max-height: 360px; }
+  .alarm-list { max-height: 380px; }
+  .state-list { max-height: 320px; }
+  .command-list { max-height: 300px; }
+}
+
+/* ══════════════════════════════════════════════════════════
+   TECLADO VIRTUAL — UX refinado
+   ══════════════════════════════════════════════════════════ */
+.keyboard-overlay { animation: fade-in .18s ease; }
+.keyboard { animation: kb-slide-up .22s cubic-bezier(.16,1,.3,1); }
+@keyframes kb-slide-up { from { transform: translateY(32px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+/* Teclado no ecrã de login — mais compacto para mobile */
+@media (max-width: 600px) {
+  .full-keyboard { width: calc(100vw - 16px) !important; border-radius: 18px 18px 0 0; }
+  .keyboard-display { font-size: 28px; padding: 18px 16px; }
+  .kb-key { height: 44px; font-size: 16px; }
+  .kb-key-sm { height: 34px; font-size: 12px; min-width: 28px; }
+  .keyboard-keys { gap: 6px; padding: 12px 14px 6px; }
+  .keyboard-actions { padding: 6px 14px 16px; }
+  .text-kb-nums { grid-template-columns: repeat(5, 1fr); gap: 4px; padding: 8px 10px 2px; }
+  .text-kb-rows { padding: 2px 10px; gap: 4px; }
+  .text-kb-row { gap: 4px; }
+}
+
+/* Indicador de campo ativo no teclado virtual */
+.keyboard-display { position: relative; }
+.keyboard-display::after {
+  content: '';
+  display: block;
+  width: 2px;
+  height: 60%;
+  background: #14ddd6;
+  animation: cursor-blink .8s step-end infinite;
+  position: absolute;
+  right: 36px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+@keyframes cursor-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }

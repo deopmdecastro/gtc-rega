@@ -181,6 +181,25 @@ const pt: Dict = {
   'login.password': 'Senha',
   'login.submit': 'Entrar',
   'login.error': 'Senha incorreta',
+
+  // WiFi
+  'wifi.title': 'Configuração Wi-Fi',
+  'wifi.configure': 'CONFIGURAR WI-FI',
+  'wifi.ssid': 'Nome da rede (SSID)',
+  'wifi.password': 'Senha da rede',
+  'wifi.hostname': 'Hostname do dispositivo',
+  'wifi.scan': 'Procurar redes',
+  'wifi.scanning': 'A procurar…',
+  'wifi.connect': 'Guardar e conectar',
+  'wifi.saved': 'Rede guardada!',
+  'wifi.current': 'Rede atual',
+  'wifi.signal': 'Sinal',
+  'wifi.noNetworks': 'Nenhuma rede guardada',
+  'wifi.scanResults': 'Redes encontradas',
+  'wifi.delete': 'Remover',
+  'wifi.deviceOffline': 'ESP32 offline — não é possível configurar Wi-Fi',
+  'wifi.connectedTo': 'Conectado a',
+  'wifi.ipAddress': 'Endereço IP',
 };
 
 const en: Dict = {
@@ -350,6 +369,25 @@ const en: Dict = {
   'login.password': 'Password',
   'login.submit': 'Login',
   'login.error': 'Incorrect password',
+
+  // WiFi
+  'wifi.title': 'Wi-Fi Configuration',
+  'wifi.configure': 'CONFIGURE WI-FI',
+  'wifi.ssid': 'Network name (SSID)',
+  'wifi.password': 'Network password',
+  'wifi.hostname': 'Device hostname',
+  'wifi.scan': 'Scan networks',
+  'wifi.scanning': 'Scanning…',
+  'wifi.connect': 'Save and connect',
+  'wifi.saved': 'Network saved!',
+  'wifi.current': 'Current network',
+  'wifi.signal': 'Signal',
+  'wifi.noNetworks': 'No saved networks',
+  'wifi.scanResults': 'Networks found',
+  'wifi.delete': 'Remove',
+  'wifi.deviceOffline': 'ESP32 offline — cannot configure Wi-Fi',
+  'wifi.connectedTo': 'Connected to',
+  'wifi.ipAddress': 'IP address',
 };
 
 export function t(key: string, lang: 'PT' | 'EN'): string {

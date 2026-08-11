@@ -447,6 +447,81 @@ app.post('/api/gpio-config', (req, res) => {
   }
 });
 
+// ── WiFi Configuration ──
+const WIFI_CONFIG_FILE = path.join(DATA_DIR, 'gtc-wifi-config.json');
+
+function loadWifiConfig() {
+  try {
+    if (fs.existsSync(WIFI_CONFIG_FILE)) return JSON.parse(fs.readFileSync(WIFI_CONFIG_FILE, 'utf-8'));
+  } catch (e) { /* ignore */ }
+  return { networks: [] };
+}
+
+function saveWifiConfig(config) {
+  try {
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(WIFI_CONFIG_FILE, JSON.stringify({ ...config, savedAt: new Date().toISOString() }, null, 2), 'utf-8');
+  } catch (e) { console.error('Failed to save WiFi config:', e.message); }
+}
+
+app.get('/api/wifi/config', (_req, res) => {
+  res.json(loadWifiConfig());
+});
+
+app.post('/api/wifi/config', (req, res) => {
+  const { ssid, password, hostname } = req.body || {};
+  const cfg = loadWifiConfig();
+  if (ssid) {
+    const existing = cfg.networks.find(n => n.ssid === ssid);
+    if (existing) {
+      existing.password = password || existing.password;
+      existing.hostname = hostname || existing.hostname;
+      existing.updatedAt = new Date().toISOString();
+    } else {
+      cfg.networks.push({ ssid, password: password || '', hostname: hostname || 'gtc-esp32s3', createdAt: new Date().toISOString() });
+    }
+  }
+  saveWifiConfig(cfg);
+  io.emit('wifi:config', cfg);
+  // If device is online, forward WiFi config to ESP32
+  if (deviceOnline) {
+    io.emit('wifi:apply', { ssid, password });
+  }
+  res.json({ ok: true, config: cfg });
+});
+
+app.delete('/api/wifi/config', (req, res) => {
+  const { ssid } = req.body || {};
+  const cfg = loadWifiConfig();
+  if (ssid) {
+    cfg.networks = cfg.networks.filter(n => n.ssid !== ssid);
+    saveWifiConfig(cfg);
+    io.emit('wifi:config', cfg);
+  }
+  res.json({ ok: true, config: cfg });
+});
+
+// WiFi scan (ask ESP32 to scan nearby networks)
+app.post('/api/wifi/scan', (_req, res) => {
+  if (deviceOnline) {
+    io.emit('wifi:scan-request', { timestamp: Date.now() });
+    res.json({ ok: true, message: 'Scan request sent to ESP32' });
+  } else {
+    res.json({ ok: false, message: 'ESP32 offline — cannot scan' });
+  }
+});
+
+// Receive WiFi scan results from ESP32
+app.post('/api/device/wifi-scan-results', checkDeviceToken, (req, res) => {
+  const { networks } = req.body || {};
+  if (networks && Array.isArray(networks)) {
+    io.emit('wifi:scan-results', { networks, timestamp: Date.now() });
+    res.json({ ok: true });
+  } else {
+    res.status(400).json({ error: 'Missing networks array' });
+  }
+});
+
 // ── WebSocket ──
 io.on('connection', (socket) => {
   console.log(`Client connected: ${socket.id}`);

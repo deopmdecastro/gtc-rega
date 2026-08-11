@@ -137,6 +137,8 @@ export function createControllerClient() {
     socket.on('controller:device', (payload: unknown) => emit('controller:device', payload));
     socket.on('controller:sensor-health', (payload: unknown) => emit('sensor-health', payload));
     socket.on('gpio:config', (payload: unknown) => emit('gpio:config', payload));
+    socket.on('wifi:config', (payload: unknown) => emit('wifi:config', payload));
+    socket.on('wifi:scan-results', (payload: unknown) => emit('wifi:scan-results', payload));
 
     // Polling de segurança: mesmo com socket ligado, sincronizamos device/health
     startStatusPolling();
