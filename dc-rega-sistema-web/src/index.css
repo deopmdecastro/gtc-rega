@@ -615,8 +615,9 @@ input:focus-visible { border-radius: inherit; }
   .sensor-grid, .two-column, .commands-layout, .quick-grid { grid-template-columns: 1fr; }
   .metrics-panel { grid-template-columns: repeat(2, 1fr); gap: 20px 0; }
   .metric { min-height: 42px; }
-  .metric:nth-child(2) { border: 0; }
+  .metric:nth-child(2n) { border: 0; }
   .metric:nth-child(3) { padding-left: 0; }
+  .metric:nth-child(4) { padding-left: 0; }
   .quick-grid { gap: 14px; }
   .alarm-banner { align-items: flex-start; flex-wrap: wrap; }
   .alarm-banner > .status-badge { margin-left: 57px; margin-top: -8px; }
