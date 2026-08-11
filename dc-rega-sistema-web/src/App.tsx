@@ -1937,50 +1937,139 @@ function SettingsPanel({ language, setLanguage, username, setUsername, password,
 
 /* ---------- Histórico de Erros + Eventos Reais ---------- */
 function HistoryView({ errors, eventLog, eventLogLoading, onRefresh, language }: { errors: ErrorEvent[]; eventLog: EventLogEntry[]; eventLogLoading: boolean; onRefresh: () => void; language: Language }) {
-  const irrigationEvents = eventLog.filter((e) =>
-    ['zone_toggle', 'system_start', 'system_stop', 'system_reset', 'emergency_stop', 'test_cycle', 'mode_change'].includes(e.event_type)
+  // Mostrar TODOS os eventos reais, agrupados por severidade para destaque
+  const allEvents = [...eventLog].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  const irrigationEvents = allEvents.filter((e) =>
+    ['zone_toggle', 'system_start', 'system_stop', 'system_reset', 'emergency_stop', 'test_cycle', 'mode_change', 'pump_toggle',
+     'device_connected', 'device_disconnected', 'device_reconnected', 'device_offline',
+     'sensor_stale', 'sensor_recovered', 'schedule_trigger', 'cycle_complete',
+     'watchdog_triggered', 'zone_add', 'zone_remove', 'zone_rename', 'layout_save', 'cycle_continue'].includes(e.event_type)
   );
   return (
     <div className="two-column">
       <Panel className="chart-panel">
-        <PanelHeader eyebrow="ÚLTIMAS 24 HORAS" title="Humidade por zona" />
-        <div className="chart">
-          <div className="chart-grid"><span>80%</span><span>60%</span><span>40%</span><span>20%</span></div>
-          <div className="chart-lines">
-            <div className="line line-a" />
-            <div className="line line-b" />
-            <div className="chart-labels"><span>00h</span><span>06h</span><span>12h</span><span>18h</span><span>Agora</span></div>
-          </div>
+        <PanelHeader eyebrow={language === 'PT' ? 'ÚLTIMAS 24 HORAS' : 'LAST 24 HOURS'} title={language === 'PT' ? 'Eventos por tipo' : 'Events by type'} />
+        <div className="history-stats-grid">
+          {(() => {
+            const criticalCount = allEvents.filter(e => e.severity === 'critical').length;
+            const warningCount = allEvents.filter(e => e.severity === 'warning').length;
+            const infoCount = allEvents.filter(e => e.severity === 'info').length;
+            const total = allEvents.length || 1;
+            return (
+              <>
+                <div className="history-stat-card stat-critical">
+                  <div className="history-stat-icon"><AlertTriangle size={20} /></div>
+                  <div>
+                    <strong>{criticalCount}</strong>
+                    <span>{language === 'PT' ? 'Críticos' : 'Critical'}</span>
+                    <div className="history-stat-bar"><div style={{width: `${(criticalCount/total)*100}%`}} /></div>
+                  </div>
+                </div>
+                <div className="history-stat-card stat-warning">
+                  <div className="history-stat-icon"><AlertTriangle size={20} /></div>
+                  <div>
+                    <strong>{warningCount}</strong>
+                    <span>{language === 'PT' ? 'Avisos' : 'Warnings'}</span>
+                    <div className="history-stat-bar"><div style={{width: `${(warningCount/total)*100}%`}} /></div>
+                  </div>
+                </div>
+                <div className="history-stat-card stat-info">
+                  <div className="history-stat-icon"><Activity size={20} /></div>
+                  <div>
+                    <strong>{infoCount}</strong>
+                    <span>{language === 'PT' ? 'Informação' : 'Info'}</span>
+                    <div className="history-stat-bar"><div style={{width: `${(infoCount/total)*100}%`}} /></div>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
         </div>
-        <div className="legend"><span><i className="legend-a" />Zona 1</span><span><i className="legend-b" />Zona 2</span></div>
+        <div className="history-total-row">
+          <span>{language === 'PT' ? 'Total de eventos' : 'Total events'}: <b>{allEvents.length}</b></span>
+          <span>{language === 'PT' ? 'Eventos do backend em tempo real' : 'Real-time backend events'}</span>
+        </div>
       </Panel>
       <Panel>
         <div className="panel-heading">
-          <div><span className="section-kicker">REGISTO DE ATIVIDADE</span><h3>Eventos recentes</h3></div>
+          <div><span className="section-kicker">{language === 'PT' ? 'REGISTO DE ATIVIDADE' : 'ACTIVITY LOG'}</span><h3>{language === 'PT' ? 'Todos os eventos do sistema' : 'All system events'}</h3></div>
           <button className="refresh-btn" onClick={onRefresh} aria-label="Atualizar"><RotateCcw size={16} /></button>
         </div>
         <div className="history-list">
           {eventLogLoading && <div className="empty-state"><Activity size={28} /><span>A carregar eventos…</span></div>}
           {!eventLogLoading && irrigationEvents.length === 0 && <div className="empty-state"><CheckCircle2 size={28} /><span>Nenhum evento registado</span></div>}
           {!eventLogLoading && irrigationEvents.map((ev) => {
-            const item = eventToHistoryItem(ev);
-            return <HistoryItem key={ev.id} time={item.time} zone={item.zone} duration={ev.message} />;
+            return <HistoryItem key={ev.id} event={ev} language={language} />;
           })}
         </div>
       </Panel>
       <Panel className="error-history-panel">
-        <PanelHeader eyebrow="DIAGNÓSTICO" title="Histórico de erros" />
+        <PanelHeader eyebrow={language === 'PT' ? 'DIAGNÓSTICO' : 'DIAGNOSTICS'} title={language === 'PT' ? 'Eventos de diagnóstico' : 'Diagnostic events'} />
         <div className="error-list">
-          {errors.length === 0 && <div className="empty-state"><CheckCircle2 size={28} /><span>Nenhum erro registado</span></div>}
-          {errors.map((err) => <ErrorItem key={err.id} event={err} />)}
+          {(() => {
+            const diagEvents = allEvents.filter(e => e.severity === 'warning' || e.severity === 'critical');
+            if (diagEvents.length === 0) {
+              return <div className="empty-state"><CheckCircle2 size={28} /><span>{language === 'PT' ? 'Nenhum evento de diagnóstico' : 'No diagnostic events'}</span></div>;
+            }
+            return diagEvents.map((ev) => <ErrorItem key={ev.id} event={{
+              id: ev.id,
+              time: formatDateTime(ev.created_at),
+              source: ev.source,
+              message: ev.message,
+              severity: ev.severity as 'critical' | 'warning' | 'info',
+              resolved: false,
+            }} />);
+          })()}
         </div>
       </Panel>
     </div>
   );
 }
 
-function HistoryItem({ time, zone, duration }: { time: string; zone: string; duration: string }) {
-  return <div className="history-item"><span className="history-time">{time}</span><div><strong>{zone}</strong><span>{duration}</span></div></div>;
+function HistoryItem({ event, language }: { event: EventLogEntry; language: Language }) {
+  const time = formatDateTime(event.created_at);
+  const severityIcon = event.severity === 'critical' ? <AlertTriangle size={15} /> : event.severity === 'warning' ? <AlertTriangle size={15} /> : <Activity size={15} />;
+  const severityClass = event.severity === 'critical' ? 'history-critical' : event.severity === 'warning' ? 'history-warning' : '';
+  const eventLabel: Record<string, string> = {
+    zone_toggle: language === 'PT' ? 'Válvula' : 'Valve',
+    pump_toggle: language === 'PT' ? 'Bomba' : 'Pump',
+    system_start: language === 'PT' ? 'Start' : 'Start',
+    system_stop: language === 'PT' ? 'Stop' : 'Stop',
+    system_reset: language === 'PT' ? 'Reset' : 'Reset',
+    emergency_stop: language === 'PT' ? 'Emergência' : 'Emergency',
+    test_cycle: language === 'PT' ? 'Teste' : 'Test',
+    mode_change: language === 'PT' ? 'Modo' : 'Mode',
+    device_connected: language === 'PT' ? 'ESP32' : 'ESP32',
+    device_disconnected: language === 'PT' ? 'ESP32' : 'ESP32',
+    device_reconnected: language === 'PT' ? 'ESP32' : 'ESP32',
+    device_offline: language === 'PT' ? 'ESP32' : 'ESP32',
+    sensor_stale: language === 'PT' ? 'Sensor' : 'Sensor',
+    sensor_recovered: language === 'PT' ? 'Sensor' : 'Sensor',
+    schedule_trigger: language === 'PT' ? 'Horário' : 'Schedule',
+    cycle_complete: language === 'PT' ? 'Ciclo' : 'Cycle',
+    cycle_continue: language === 'PT' ? 'Ciclo' : 'Cycle',
+    watchdog_triggered: language === 'PT' ? 'Watchdog' : 'Watchdog',
+    zone_add: language === 'PT' ? 'Zona' : 'Zone',
+    zone_remove: language === 'PT' ? 'Zona' : 'Zone',
+    zone_rename: language === 'PT' ? 'Zona' : 'Zone',
+    layout_save: language === 'PT' ? 'Mapa' : 'Map',
+  };
+  return (
+    <div className={`history-item ${severityClass}`}>
+      <span className={`history-icon hist-${event.severity}`}>{severityIcon}</span>
+      <div className="history-body">
+        <div className="history-top-row">
+          <strong>{event.source}</strong>
+          <small>{time}</small>
+        </div>
+        <span className="history-msg">{event.message}</span>
+        <div className="history-meta">
+          <span className="history-tag">{eventLabel[event.event_type] || event.event_type}</span>
+          <span className={`history-severity hist-sev-${event.severity}`}>{event.severity.toUpperCase()}</span>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function ErrorItem({ event }: { event: ErrorEvent }) {
@@ -2068,21 +2157,26 @@ function AlarmsView({ errors, onResolve, language }: { errors: ErrorEvent[]; onR
   const resolved = errors.filter((e) => e.resolved);
   const critical = active.filter((e) => e.severity === 'critical').length;
   const warnings = active.filter((e) => e.severity === 'warning').length;
+  const infos = active.filter((e) => e.severity === 'info').length;
 
   return (
     <div className="alarms-layout">
       <div className="alarm-summary-grid">
         <Panel className={`alarm-summary-card ${critical > 0 ? 'card-error' : 'card-ok'}`}>
           <div className="alarm-summary-icon"><AlertTriangle size={24} /></div>
-          <div><strong>{critical}</strong><span>Críticos</span></div>
+          <div><strong>{critical}</strong><span>{language === 'PT' ? 'Críticos' : 'Critical'}</span></div>
         </Panel>
         <Panel className={`alarm-summary-card ${warnings > 0 ? 'card-warning' : 'card-ok'}`}>
           <div className="alarm-summary-icon"><AlertTriangle size={24} /></div>
-          <div><strong>{warnings}</strong><span>Avisos</span></div>
+          <div><strong>{warnings}</strong><span>{language === 'PT' ? 'Avisos' : 'Warnings'}</span></div>
+        </Panel>
+        <Panel className="alarm-summary-card card-ok">
+          <div className="alarm-summary-icon"><Activity size={24} /></div>
+          <div><strong>{active.length}</strong><span>{language === 'PT' ? 'Ativos' : 'Active'}</span></div>
         </Panel>
         <Panel className="alarm-summary-card card-ok">
           <div className="alarm-summary-icon"><CheckCircle2 size={24} /></div>
-          <div><strong>{resolved.length}</strong><span>Resolvidos</span></div>
+          <div><strong>{resolved.length}</strong><span>{language === 'PT' ? 'Resolvidos' : 'Resolved'}</span></div>
         </Panel>
       </div>
 
@@ -2090,39 +2184,39 @@ function AlarmsView({ errors, onResolve, language }: { errors: ErrorEvent[]; onR
         <Panel className="alarm-banner">
           <div className="alarm-banner-icon"><AlertTriangle size={22} /></div>
           <div>
-            <span className="section-kicker">ALARMES ATIVOS</span>
-            <h3>{active.length} evento(s) requer(em) atenção</h3>
-            <p>Existem alarmes ativos que devem ser verificados.</p>
+            <span className="section-kicker">{language === 'PT' ? 'ALARMES ATIVOS' : 'ACTIVE ALARMS'}</span>
+            <h3>{active.length} {language === 'PT' ? 'evento(s) requer(em) atenção' : 'event(s) require attention'}</h3>
+            <p>{language === 'PT' ? 'Existem alarmes ativos que devem ser verificados.' : 'There are active alarms that should be checked.'}</p>
           </div>
-          <StatusBadge tone="error">Atenção</StatusBadge>
+          <StatusBadge tone="error">{language === 'PT' ? 'Atenção' : 'Attention'}</StatusBadge>
         </Panel>
       ) : (
         <Panel className="alarm-banner alarm-banner-ok">
           <div className="alarm-banner-icon ok"><CheckCircle2 size={22} /></div>
           <div>
-            <span className="section-kicker">ESTADO DOS ALARMES</span>
-            <h3>Sem alarmes ativos</h3>
-            <p>Não existem falhas que impeçam o funcionamento do sistema.</p>
+            <span className="section-kicker">{language === 'PT' ? 'ESTADO DOS ALARMES' : 'ALARM STATUS'}</span>
+            <h3>{language === 'PT' ? 'Sem alarmes ativos' : 'No active alarms'}</h3>
+            <p>{language === 'PT' ? 'Não existem falhas que impeçam o funcionamento do sistema.' : 'There are no faults preventing system operation.'}</p>
           </div>
-          <StatusBadge tone="success">Tudo OK</StatusBadge>
+          <StatusBadge tone="success">{language === 'PT' ? 'Tudo OK' : 'All OK'}</StatusBadge>
         </Panel>
       )}
 
       <Panel>
-        <PanelHeader eyebrow="ALARMES ATIVOS" title="Requerem atenção" />
+        <PanelHeader eyebrow={language === 'PT' ? 'ALARMES ATIVOS' : 'ACTIVE ALARMS'} title={language === 'PT' ? 'Requerem atenção' : 'Require attention'} />
         <div className="alarm-list">
-          {active.length === 0 && <div className="empty-state"><CheckCircle2 size={28} /><span>Nenhum alarme ativo</span></div>}
+          {active.length === 0 && <div className="empty-state"><CheckCircle2 size={28} /><span>{language === 'PT' ? 'Nenhum alarme ativo' : 'No active alarms'}</span></div>}
           {active.map((ev) => (
-            <AlarmItem key={ev.id} event={ev} onResolve={() => onResolve(ev.id)} />
+            <AlarmItem key={ev.id} event={ev} onResolve={() => onResolve(ev.id)} language={language} />
           ))}
         </div>
       </Panel>
 
       {resolved.length > 0 && (
         <Panel>
-          <PanelHeader eyebrow="HISTÓRICO" title="Alarmes resolvidos" />
+          <PanelHeader eyebrow={language === 'PT' ? 'HISTÓRICO' : 'HISTORY'} title={language === 'PT' ? 'Alarmes resolvidos' : 'Resolved alarms'} />
           <div className="alarm-list">
-            {resolved.map((ev) => <AlarmItem key={ev.id} event={ev} />)}
+            {resolved.map((ev) => <AlarmItem key={ev.id} event={ev} language={language} />)}
           </div>
         </Panel>
       )}
@@ -2130,22 +2224,29 @@ function AlarmsView({ errors, onResolve, language }: { errors: ErrorEvent[]; onR
   );
 }
 
-function AlarmItem({ event, onResolve }: { event: ErrorEvent; onResolve?: () => void }) {
+function AlarmItem({ event, onResolve, language }: { event: ErrorEvent; onResolve?: () => void; language?: Language }) {
+  const isCritical = event.severity === 'critical';
+  const isWarning = event.severity === 'warning';
   return (
     <div className={`alarm-item alarm-${event.severity}`}>
       <span className={`alarm-item-icon alarm-icon-${event.severity}`}>
         {event.severity === 'info' ? <Activity size={16} /> : <AlertTriangle size={16} />}
       </span>
-      <div>
-        <strong>{event.source}</strong>
-        <span>{event.message}</span>
+      <div className="alarm-item-body">
+        <div className="alarm-item-top">
+          <strong>{event.source}</strong>
+          <span className={`alarm-item-badge alarm-badge-${event.severity}`}>
+            {isCritical ? (language === 'PT' ? 'CRÍTICO' : 'CRITICAL') : isWarning ? (language === 'PT' ? 'AVISO' : 'WARNING') : 'INFO'}
+          </span>
+        </div>
+        <span className="alarm-item-msg">{event.message}</span>
         <div className="alarm-meta"><small>{event.time}</small><span className="alarm-id">{event.id}</span></div>
       </div>
       {!event.resolved && onResolve ? (
-        <button className="resolve-btn" onClick={onResolve}><CheckCircle2 size={15} />Resolver</button>
-      ) : (
-        <StatusBadge tone="success">Resolvido</StatusBadge>
-      )}
+        <button className="resolve-btn" onClick={onResolve}><CheckCircle2 size={15} />{language === 'PT' ? 'Resolver' : 'Resolve'}</button>
+      ) : event.resolved ? (
+        <StatusBadge tone="success">{language === 'PT' ? 'Resolvido' : 'Resolved'}</StatusBadge>
+      ) : null}
     </div>
   );
 }
