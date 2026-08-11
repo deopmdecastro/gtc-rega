@@ -491,19 +491,19 @@ input:focus-visible { border-radius: inherit; }
 .hw3-subtitle { font-size: 12px; color: #7c929c; }
 .hw3-header .gpio-edit-btn { position: absolute; right: 0; top: 0; }
 
-/* 3-column diagram layout */
-.hw3-diagram { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 0; align-items: start; }
-.hw3-col { display: flex; flex-direction: column; justify-content: center; gap: 14px; min-width: 0; }
-.hw3-col-left { align-items: stretch; padding-top: 66px; }
-.hw3-col-right { align-items: stretch; }
-.hw3-col-caption { font: 700 9px 'DM Mono', monospace; letter-spacing: .14em; margin-bottom: 2px; }
-.hw3-col-left .hw3-col-caption { text-align: left; padding-left: 4px; }
-.hw3-col-right .hw3-col-caption { text-align: right; padding-right: 4px; }
+/* 3-column diagram layout — pinos alinhados 1:1 com sensores/relés */
+.hw3-diagram { --hw-row: 58px; --hw-gap: 14px; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 0; align-items: start; }
+.hw3-col { position: relative; display: flex; flex-direction: column; justify-content: flex-start; gap: var(--hw-gap); min-width: 0; }
+.hw3-col-left { align-items: stretch; padding-top: var(--hw-offset, 0px); }
+.hw3-col-right { align-items: stretch; padding-top: var(--hw-offset, 0px); }
+.hw3-col-caption { position: absolute; top: -20px; font: 700 9px 'DM Mono', monospace; letter-spacing: .14em; }
+.hw3-col-left .hw3-col-caption { left: 4px; text-align: left; }
+.hw3-col-right .hw3-col-caption { right: 4px; text-align: right; }
 .hw3-caption-input { color: #5ee58a; }
 .hw3-caption-output { color: #f0a145; }
 
 /* Sensor/Relay blocks */
-.hw3-block { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; min-width: 0; flex: 1; }
+.hw3-block { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 10px; min-width: 0; flex: 1; height: var(--hw-row); box-sizing: border-box; }
 .hw3-block-input { background: #0b151b; border: 1px solid rgba(94,229,138,.2); }
 .hw3-block-output { background: #0b151b; border: 1px solid rgba(240,161,69,.2); }
 .hw3-block-stale { border-color: rgba(240,101,101,.35); }
@@ -515,8 +515,8 @@ input:focus-visible { border-radius: inherit; }
 .hw3-block-info strong { display: block; font-size: 12.5px; color: #dce5e8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hw3-block-info span { display: block; font-size: 11px; color: #5a6f7a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* Connector wires (ponto + linha + seta), como na imagem */
-.hw3-wire { flex-shrink: 0; display: flex; align-items: center; width: 46px; }
+/* Connector wires (ponto + linha + seta) — ligam mesmo ao pino */
+.hw3-wire { flex-shrink: 0; display: flex; align-items: center; width: 72px; }
 .hw3-wire-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
 .hw3-wire-line { flex: 1; height: 2px; }
 .hw3-wire-arrow { width: 0; height: 0; flex-shrink: 0; border-top: 4px solid transparent; border-bottom: 4px solid transparent; }
@@ -524,18 +524,18 @@ input:focus-visible { border-radius: inherit; }
 .hw3-wire-input .hw3-wire-dot { background: #23d7c9; box-shadow: 0 0 5px rgba(35,215,201,.5); }
 .hw3-wire-input .hw3-wire-line { background: linear-gradient(90deg, rgba(35,215,201,.35), #23d7c9); }
 .hw3-wire-input .hw3-wire-arrow { border-left: 6px solid #23d7c9; }
-.hw3-wire-output { flex-direction: row-reverse; }
+.hw3-wire-output { flex-direction: row; }
 .hw3-wire-output .hw3-wire-dot { background: #f0a145; box-shadow: 0 0 5px rgba(240,161,69,.5); }
-.hw3-wire-output .hw3-wire-line { background: linear-gradient(90deg, #f0a145, rgba(240,161,69,.35)); }
-.hw3-wire-output .hw3-wire-arrow { border-right: 6px solid #f0a145; }
+.hw3-wire-output .hw3-wire-line { background: linear-gradient(90deg, rgba(240,161,69,.35), #f0a145); }
+.hw3-wire-output .hw3-wire-arrow { border-left: 6px solid #f0a145; }
 
-.hw3-sensor-block { display: flex; align-items: center; min-width: 0; }
-.hw3-relay-row { display: flex; align-items: center; min-width: 0; }
+.hw3-sensor-block { display: flex; align-items: center; min-width: 0; height: var(--hw-row); }
+.hw3-relay-row { display: flex; align-items: center; min-width: 0; height: var(--hw-row); }
 
-/* Chip */
-.hw3-col-center { display: flex; justify-content: center; align-items: flex-start; padding: 0 4px; }
-.hw3-chip-frame { border: 1px solid #1f313b; border-radius: 16px; background: linear-gradient(160deg, #0e1921, #091218); overflow: hidden; width: 100%; max-width: 260px; min-width: 210px; box-shadow: 0 10px 30px rgba(0,0,0,.28); }
-.hw3-chip-header { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid #1a2a33; }
+/* Chip — maior, pinos com a mesma altura dos blocos */
+.hw3-col-center { display: flex; justify-content: center; align-items: flex-start; padding: 0; }
+.hw3-chip-frame { border: 1px solid #1f313b; border-radius: 16px; background: linear-gradient(160deg, #0e1921, #091218); overflow: hidden; width: 100%; max-width: 300px; min-width: 252px; box-shadow: 0 10px 30px rgba(0,0,0,.28); }
+.hw3-chip-header { display: flex; align-items: center; gap: 10px; height: 64px; padding: 0 14px; box-sizing: border-box; border-bottom: 1px solid #1a2a33; }
 .hw3-chip-icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; background: rgba(26,213,208,.1); border: 1px solid rgba(26,213,208,.22); color: #1ad5d0; flex-shrink: 0; }
 .hw3-chip-titles { flex: 1; min-width: 0; }
 .hw3-chip-titles strong { display: block; font-size: 13px; color: #e0e9eb; letter-spacing: .04em; }
@@ -543,15 +543,16 @@ input:focus-visible { border-radius: inherit; }
 .hw3-chip-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .hw3-chip-dot.on { background: #5ee58a; box-shadow: 0 0 6px rgba(94,229,138,.6); }
 .hw3-chip-dot.off { background: #f06565; box-shadow: 0 0 6px rgba(240,101,101,.5); }
-.hw3-pin-group { display: flex; flex-direction: column; gap: 3px; padding: 8px; }
-.hw3-chip-divider { height: 1px; background: #1a2a33; margin: 0 8px; }
-.hw3-pin { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 5px 8px; border-radius: 6px; font: 600 10px 'DM Mono', monospace; }
+.hw3-pin-group { display: flex; flex-direction: column; gap: var(--hw-gap); padding: 12px 10px; }
+.hw3-chip-divider { height: 1px; background: #1a2a33; margin: 0 10px; }
+.hw3-pin { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: var(--hw-row); padding: 0 12px; box-sizing: border-box; border-radius: 8px; font: 600 11px 'DM Mono', monospace; }
 .hw3-pin-input { background: rgba(94,229,138,.05); border: 1px solid rgba(94,229,138,.14); }
 .hw3-pin-output { background: rgba(240,161,69,.05); border: 1px solid rgba(240,161,69,.14); }
 .hw3-pin-num { color: #b6c6cd; letter-spacing: .04em; }
 .hw3-pin-dir { font-size: 8px; letter-spacing: .1em; font-weight: 700; }
 .hw3-pin-input .hw3-pin-dir { color: #5ee58a; }
 .hw3-pin-output .hw3-pin-dir { color: #f0a145; }
+
 
 /* Legend (caixa, como na imagem) */
 .hw3-legend { display: flex; align-items: center; flex-wrap: wrap; gap: 20px; margin-top: 24px; padding: 12px 16px; border: 1px solid #1a2a33; border-radius: 12px; background: #0b151b; font-size: 11px; }
@@ -568,8 +569,13 @@ input:focus-visible { border-radius: inherit; }
   .hw3-col-center { order: -1; }
   .hw3-chip-frame { max-width: 100%; }
   .hw3-wire { width: 24px; }
+  .hw3-col-left, .hw3-col-right { padding-top: 0 !important; }
+  .hw3-col-caption { position: static; top: auto; }
   .hw3-col-right .hw3-col-caption { text-align: left; padding-left: 4px; }
   .hw3-relay-row { flex-direction: row-reverse; justify-content: flex-end; }
+  .hw3-wire-output { flex-direction: row-reverse; }
+  .hw3-wire-output .hw3-wire-line { background: linear-gradient(90deg, #f0a145, rgba(240,161,69,.35)); }
+  .hw3-wire-output .hw3-wire-arrow { border-left: 0; border-right: 6px solid #f0a145; }
 }
 
 /* GPIO edit button re-use from old */

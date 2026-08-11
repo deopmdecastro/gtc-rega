@@ -995,9 +995,12 @@ function StateView({ zones, pumpOn, autoMode, onToggleMode, language, gpioConfig
           </button>
         </div>
 
-        <div className="hw3-diagram">
+        <div
+          className="hw3-diagram"
+          style={{ '--hw-left-offset': '76px', '--hw-right-offset': `${76 + inputPins.length * 58 + Math.max(inputPins.length - 1, 0) * 14 + 25}px` } as React.CSSProperties}
+        >
           {/* ── Coluna 1: Sensores (INPUT) ── */}
-          <div className="hw3-col hw3-col-left">
+          <div className="hw3-col hw3-col-left" style={{ '--hw-offset': 'var(--hw-left-offset)' } as React.CSSProperties}>
             <span className="hw3-col-caption hw3-caption-input">INPUT</span>
             {inputPins.map((g, i) => {
               const zone = zones[i];
@@ -1070,7 +1073,7 @@ function StateView({ zones, pumpOn, autoMode, onToggleMode, language, gpioConfig
           </div>
 
           {/* ── Coluna 3: Relés (OUTPUT) ── */}
-          <div className="hw3-col hw3-col-right">
+          <div className="hw3-col hw3-col-right" style={{ '--hw-offset': 'var(--hw-right-offset)' } as React.CSSProperties}>
             <span className="hw3-col-caption hw3-caption-output">OUTPUT</span>
             {outputPins.map((g) => (
               <div key={g.gpio} className="hw3-relay-row">
