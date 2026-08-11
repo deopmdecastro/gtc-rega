@@ -103,7 +103,7 @@ const defaultSchedules = (enabled: boolean): Record<WeekDay, WaterSchedule> => (
 
 const initialZones: Zone[] = [
   { id: 'Y1', sensorId: 'B1', name: 'Zona 1', moisture: 64, target: 55, lastWatered: 'Hoje, 18:12', on: false, waterDuration: 60, x: 28, y: 36, schedules: defaultSchedules(true) },
-  { id: 'Y2', sensorId: 'B2', name: 'Zona 2', moisture: 57, target: 52, lastWatered: 'Hoje, 17:48', on: false, waterDuration: 45, x: 56, y: 62, schedules: defaultSchedules(true) },
+  { id: 'Y2', sensorId: 'B2', name: 'Zona 2', moisture: 57, target: 52, lastWatered: 'Hoje, 17:48', on: false, waterDuration: 45, x: 70, y: 36, schedules: defaultSchedules(true) },
 ];
 
 const initialErrors: ErrorEvent[] = [
@@ -398,6 +398,11 @@ function App() {
       const ctrl = getControllerClient();
       ctrl.updateZones([...zones, newZone]);
     }, 100);
+  };
+
+  // Auto-layout: snap zone into the nearest field
+  const snapToField = (x: number, y: number): { x: number; y: number } => {
+    return { x, y };
   };
 
   const addZoneFromMap = useCallback((x: number, y: number) => {
@@ -1023,11 +1028,11 @@ function SetpointsView({ zones, onChange, onUpdateZone, pumpDelay, setPumpDelay,
 type MapElement = { x: number; y: number };
 type MapField = { id: string; x: number; y: number; w: number; h: number; name: string };
 
-const DEFAULT_PUMP_POS: MapElement = { x: 50, y: 82 };
-const DEFAULT_MCU_POS: MapElement = { x: 50, y: 92 };
+const DEFAULT_PUMP_POS: MapElement = { x: 40, y: 82 };
+const DEFAULT_MCU_POS: MapElement = { x: 60, y: 82 };
 const DEFAULT_FIELDS: MapField[] = [
-  { id: 'F1', x: 6, y: 8, w: 40, h: 42, name: 'Terreno A' },
-  { id: 'F2', x: 52, y: 36, w: 42, h: 46, name: 'Terreno B' },
+  { id: 'F1', x: 6, y: 6, w: 42, h: 58, name: 'Terreno A' },
+  { id: 'F2', x: 52, y: 6, w: 42, h: 58, name: 'Terreno B' },
 ];
 
 let nextFieldId = 3;
@@ -1227,6 +1232,22 @@ function MapView({ zones, pumpOn, onAddZone, onDuplicateZone, onDragZone, onRena
     setFieldNameValue('');
   };
 
+  const autoLayout = () => {
+    const newFields = DEFAULT_FIELDS.map((f) => ({ ...f }));
+    setFields(newFields);
+    setPumpPos({ ...DEFAULT_PUMP_POS });
+    setMcuPos({ ...DEFAULT_MCU_POS });
+    // Reposition zones inside their respective fields
+    const newZones = zones.map((zone, i) => {
+      const field = i < newFields.length ? newFields[i] : newFields[0];
+      const cx = field.x + field.w / 2;
+      const cy = field.y + field.h * 0.45;
+      return { ...zone, x: cx, y: cy };
+    });
+    newZones.forEach(z => onDragZone(z.id, z.x, z.y));
+    setLayoutSaved(false);
+  };
+
   const resetLayout = () => {
     setPumpPos(DEFAULT_PUMP_POS);
     setMcuPos(DEFAULT_MCU_POS);
@@ -1294,7 +1315,8 @@ function MapView({ zones, pumpOn, onAddZone, onDuplicateZone, onDragZone, onRena
             <button className={`map-tool-btn ${curvedPipes ? 'active' : ''}`} onClick={() => setCurvedPipes((v) => !v)}>
               <Spline size={15} />{curvedPipes ? 'Linhas curvas' : 'Linhas retas'}
             </button>
-            <button className="map-tool-btn map-tool-reset" onClick={resetLayout}><RotateCcw size={15} />Repor layout</button>
+            <button className="map-tool-btn" onClick={autoLayout}><RefreshCw size={15} />Auto-organizar</button>
+            <button className="map-tool-btn map-tool-reset" onClick={resetLayout}><RotateCcw size={15} />Layout original</button>
             <button
               className="map-tool-btn map-tool-clear"
               onClick={() => setConfirmClearAll(true)}
