@@ -375,6 +375,17 @@ button { cursor: pointer; }
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes kb-slide { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
+
+/* ---------- Login modal ---------- */
+.login-modal { width: 400px; }
+.login-field { display: flex; align-items: center; gap: 10px; padding: 12px 14px; margin: 0 0 12px; border: 1px solid #263943; border-radius: 10px; background: #0b171d; cursor: text; transition: .2s; }
+.login-field:focus-within { border-color: #12bcb6; background: rgba(20,221,214,.04); }
+.login-field svg { color: #7e909c; flex: 0 0 auto; }
+.login-field input { flex: 1; border: 0; background: none; color: #dce5e8; font-size: 14px; font-family: inherit; outline: none; }
+.login-field input::placeholder { color: #5a6f7a; }
+.login-error { padding: 6px 14px; margin-bottom: 8px; color: #f06565; font-size: 12px; font-weight: 600; text-align: center; border-radius: 7px; background: rgba(240,101,101,.08); border: 1px solid rgba(240,101,101,.2); animation: shake .3s ease; }
+@keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+
 @media (max-width: 1000px) {
   .content-wrap { padding: 0 22px 40px; }
   .topbar-inner { padding: 18px 22px 16px; }
@@ -454,6 +465,11 @@ button { cursor: pointer; }
 .topbar-right { display: flex; align-items: center; gap: 16px; }
 .settings-btn { display: grid; place-items: center; width: 42px; height: 42px; border: 1px solid #263943; border-radius: 11px; color: #18d6d0; background: #0b171d; transition: .2s; }
 .settings-btn:hover { background: rgba(20,221,214,.1); border-color: #12bcb6; }
+
+/* ---------- Language toggle button (topbar) ---------- */
+.lang-toggle-btn { display: flex; align-items: center; gap: 7px; padding: 8px 12px; border: 1px solid #263943; border-radius: 10px; color: #1ad5d0; background: #0b171d; font-size: 12px; font-weight: 700; font-family: inherit; cursor: pointer; transition: .2s; }
+.lang-toggle-btn:hover { background: rgba(20,221,214,.1); border-color: #12bcb6; }
+.lang-label { font-size: 11px; letter-spacing: .06em; min-width: 22px; text-align: center; }
 
 /* ---------- Setpoint grid (espelhamento dos cartões) ---------- */
 .setpoint-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; margin-top: 22px; }
@@ -590,6 +606,7 @@ button { cursor: pointer; }
 .estado-pinout-panel { padding: 20px; margin-top: 20px; }
 .estado-pinout-panel .panel-heading { padding: 0 0 12px; }
 .pinout-full-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .login-modal { width: calc(100vw - 32px); }
 .pinout-visual { display: flex; flex-direction: column; }
 .pinout-chip { border: 1px solid #1f3a42; border-radius: 12px; background: linear-gradient(160deg, #0d1b22, #0a131a); overflow: hidden; }
 .pinout-chip-header { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid #1a2a32; color: #ff9f43; font-weight: 700; font-size: 13px; letter-spacing: .02em; background: rgba(255,159,67,.06); }

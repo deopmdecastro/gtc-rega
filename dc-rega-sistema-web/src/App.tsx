@@ -44,6 +44,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { fetchEvents, logEvent, type EventLogEntry, saveState, loadState, saveLayout, loadLayout } from '@/lib/supabase';
+import { t } from '@/lang';
 
 type Page = 'Resumo' | 'Estado' | 'Setpoints' | 'Mapa' | 'Histórico' | 'Comandos' | 'Alarmes';
 type Zone = {
@@ -159,6 +160,11 @@ function App() {
   const [username, setUsername] = useState('operador');
   const [password, setPassword] = useState('');
   const [settingsSaved, setSettingsSaved] = useState(false);
+  const [authenticated, setAuthenticated] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [loginReason, setLoginReason] = useState<'startup' | 'setpoints' | 'map'>('startup');
+  const [pendingPage, setPendingPage] = useState<Page | null>(null);
   const [eventLog, setEventLog] = useState<EventLogEntry[]>([]);
   const [eventLogLoading, setEventLogLoading] = useState(false);
   const startTimers = useRef<number[]>([]);
@@ -220,6 +226,19 @@ function App() {
   }, []);
 
   useEffect(() => () => startTimers.current.forEach((t) => clearTimeout(t)), []);
+
+  // Check auth session on mount
+  useEffect(() => {
+    const sess = sessionStorage.getItem('gtc-auth');
+    if (sess === 'true') {
+      setAuthenticated(true);
+    }
+    setAuthChecked(true);
+    if (!sess) {
+      setLoginReason('startup');
+      setLoginOpen(true);
+    }
+  }, []);
 
   const loadEvents = useCallback(async () => {
     setEventLogLoading(true);
@@ -449,6 +468,30 @@ function App() {
     setZoneToDelete(null);
   };
 
+  const handleLogin = (pass: string) => {
+    if (pass === '1234') {
+      setAuthenticated(true);
+      sessionStorage.setItem('gtc-auth', 'true');
+      setLoginOpen(false);
+      if (pendingPage) {
+        setActivePage(pendingPage);
+        setPendingPage(null);
+      }
+      showNotice('Autenticado com sucesso');
+    }
+  };
+
+  const requireAuth = (page: Page) => {
+    if (authenticated || sessionStorage.getItem('gtc-auth') === 'true') {
+      if (!authenticated) setAuthenticated(true);
+      setActivePage(page);
+      return;
+    }
+    setPendingPage(page);
+    setLoginReason(page === 'Setpoints' ? 'setpoints' : 'map');
+    setLoginOpen(true);
+  };
+
   const saveSettings = () => {
     setSettingsSaved(true);
     showNotice('Definições guardadas');
@@ -457,14 +500,14 @@ function App() {
 
   const renderPage = () => {
     if (activePage === 'Resumo') {
-      return <Overview zones={zones} pumpOn={pumpOn} autoMode={autoMode} activeZones={activeZones} onToggleZone={toggleZone} onTogglePump={togglePump} onToggleMode={toggleAutoMode} onOpenMap={() => setActivePage('Mapa')} weather={weather} />;
+      return <Overview zones={zones} pumpOn={pumpOn} autoMode={autoMode} activeZones={activeZones} onToggleZone={toggleZone} onTogglePump={togglePump} onToggleMode={toggleAutoMode} onOpenMap={() => requireAuth('Mapa')} weather={weather} language={language} />;
     }
-    if (activePage === 'Estado') return <StateView zones={zones} pumpOn={pumpOn} autoMode={autoMode} onToggleMode={toggleAutoMode} />;
-    if (activePage === 'Setpoints') return <SetpointsView zones={zones} pumpDelay={pumpDelay} setPumpDelay={setPumpDelay} onChange={(id, target) => setZones((cur) => cur.map((z) => (z.id === id ? { ...z, target } : z)))} onUpdateZone={(id, patch) => setZones((cur) => cur.map((z) => (z.id === id ? { ...z, ...patch } : z)))} onAddZone={addZone} onRemoveZone={(z) => setZoneToDelete(z)} />;
-    if (activePage === 'Mapa') return <MapView zones={zones} pumpOn={pumpOn} onAddZone={addZoneFromMap} onDuplicateZone={duplicateZoneFromMap} onDragZone={updateZonePosition} onRenameZone={renameZone} onRemoveZone={(z) => setZoneToDelete(z)} onClearAll={clearAllZones} onToggleZone={toggleZone} weather={weather} />;
-    if (activePage === 'Histórico') return <HistoryView errors={errors} eventLog={eventLog} eventLogLoading={eventLogLoading} onRefresh={loadEvents} />;
-    if (activePage === 'Comandos') return <CommandsView zones={zones} pumpOn={pumpOn} systemRunning={systemRunning} starting={starting} startStep={startStep} autoMode={autoMode} onToggleZone={toggleZone} onTogglePump={togglePump} onToggleMode={toggleAutoMode} onEmergencyStop={handleEmergencyStop} onTestCycle={handleTestCycle} onStart={handleStart} onStop={handleStop} onReset={handleReset} />;
-    return <AlarmsView errors={errors} onResolve={(id) => setErrors((cur) => cur.map((e) => (e.id === id ? { ...e, resolved: true } : e)))} />;
+    if (activePage === 'Estado') return <StateView zones={zones} pumpOn={pumpOn} autoMode={autoMode} onToggleMode={toggleAutoMode} language={language} />;
+    if (activePage === 'Setpoints') return <SetpointsView zones={zones} pumpDelay={pumpDelay} setPumpDelay={setPumpDelay} onChange={(id, target) => setZones((cur) => cur.map((z) => (z.id === id ? { ...z, target } : z)))} onUpdateZone={(id, patch) => setZones((cur) => cur.map((z) => (z.id === id ? { ...z, ...patch } : z)))} onAddZone={addZone} onRemoveZone={(z) => setZoneToDelete(z)} language={language} />;
+    if (activePage === 'Mapa') return <MapView zones={zones} pumpOn={pumpOn} onAddZone={addZoneFromMap} onDuplicateZone={duplicateZoneFromMap} onDragZone={updateZonePosition} onRenameZone={renameZone} onRemoveZone={(z) => setZoneToDelete(z)} onClearAll={clearAllZones} onToggleZone={toggleZone} weather={weather} language={language} />;
+    if (activePage === 'Histórico') return <HistoryView errors={errors} eventLog={eventLog} eventLogLoading={eventLogLoading} onRefresh={loadEvents} language={language} />;
+    if (activePage === 'Comandos') return <CommandsView zones={zones} pumpOn={pumpOn} systemRunning={systemRunning} starting={starting} startStep={startStep} autoMode={autoMode} onToggleZone={toggleZone} onTogglePump={togglePump} onToggleMode={toggleAutoMode} onEmergencyStop={handleEmergencyStop} onTestCycle={handleTestCycle} onStart={handleStart} onStop={handleStop} onReset={handleReset} language={language} />;
+    return <AlarmsView errors={errors} onResolve={(id) => setErrors((cur) => cur.map((e) => (e.id === id ? { ...e, resolved: true } : e)))} language={language} />;
   };
 
   return (
@@ -475,20 +518,20 @@ function App() {
           <div><strong>GTC</strong><span>REGA</span></div>
           <button className="close-menu" onClick={() => setMobileOpen(false)} aria-label="Fechar menu"><X size={18} /></button>
         </div>
-        <div className="sidebar-label">CONTROLO CENTRAL</div>
+        <div className="sidebar-label">{t('sidebar.control', language)}</div>
         <nav className="side-nav" aria-label="Navegação principal">
           {pages.map(({ label, icon: Icon }) => (
-            <button key={label} className={activePage === label ? 'nav-item active' : 'nav-item'} onClick={() => { setActivePage(label); setMobileOpen(false); }}>
-              <Icon size={19} strokeWidth={1.8} /><span>{label}</span>
+            <button key={label} className={activePage === label ? 'nav-item active' : 'nav-item'} onClick={() => { if (label === 'Setpoints' || label === 'Mapa') { requireAuth(label); } else { setActivePage(label); } setMobileOpen(false); }}>
+              <Icon size={19} strokeWidth={1.8} /><span>{t(`nav.${label.toLowerCase()}`, language)}</span>
               {label === 'Alarmes' && alarmCount > 0 && <span className="nav-count">{alarmCount}</span>}
             </button>
           ))}
         </nav>
         <div className="sidebar-footer">
-          <StatusBadge tone="success">Sistema em operação</StatusBadge>
+          <StatusBadge tone="success">{t('sidebar.system', language)}</StatusBadge>
           <div className="footer-reading"><TimerReset size={17} /><div><strong>{clock || '21:16'}</strong><span>{dateStr || '10/08/2026'}</span></div></div>
           <div className="footer-reading"><CloudSun size={19} /><div><strong>{weather.temp}°C</strong><span>{weather.city} · {weather.desc}</span></div></div>
-          <div className="footer-reading"><Cpu size={17} /><div><strong>ESP32-S3</strong><span>Controlador principal</span></div></div>
+          <div className="footer-reading"><Cpu size={17} /><div><strong>ESP32-S3</strong><span>{t('sidebar.controller', language)}</span></div></div>
         </div>
       </aside>
       {mobileOpen && <button className="scrim" onClick={() => setMobileOpen(false)} aria-label="Fechar menu" />}
@@ -497,9 +540,12 @@ function App() {
           <div className="topbar-inner">
             <button className="mobile-menu" onClick={() => setMobileOpen(true)} aria-label="Abrir menu"><Menu size={22} /></button>
             <div className="topbar-title compact">
-              <h1>GTC <span>—</span> Sistema de Rega Automatizada</h1>
+              <h1>GTC <span>—</span> {t('topbar.title', language)}</h1>
             </div>
             <div className="topbar-right">
+              <button className="lang-toggle-btn" onClick={() => setLanguage(l => l === 'PT' ? 'EN' : 'PT')} aria-label="Trocar idioma" title={language === 'PT' ? 'Switch to English' : 'Mudar para Português'}>
+                <Globe2 size={18} /><span className="lang-label">{language}</span>
+              </button>
               <div className="weather"><CloudSun size={28} /><div><strong>{weather.temp}°C</strong><span>{weather.city}, {weather.country} · {weather.desc}</span></div></div>
               <button className="settings-btn" onClick={() => setSettingsOpen(true)} aria-label="Abrir definições"><Settings2 size={20} /></button>
             </div>
@@ -507,34 +553,36 @@ function App() {
         </header>
         <div className="content-wrap">
           <div className="page-heading">
-            <div><span className="section-kicker">VISÃO GERAL</span><h2>{activePage}</h2></div>
-            <div className="connection"><Radio size={15} /> Ligação estável <span className="pulse" /></div>
+            <div><span className="section-kicker">{t('heading.overview', language)}</span><h2>{t(`nav.${activePage.toLowerCase()}`, language)}</h2></div>
+            <div className="connection"><Radio size={15} /> {t('heading.connection', language)} <span className="pulse" /></div>
           </div>
           {renderPage()}
           <footer className="app-footer">
             <span>Desenvolvido por <strong>Deogracia de Castro</strong></span>
             <span className="footer-divider">·</span>
-            <span>GTC Rega v2.6 · ESP32-S3 · Build 2026-08-10</span>
+            <span>GTC Rega v2.7 · ESP32-S3 · Build 2026-08-12</span>
           </footer>
         </div>
       </main>
       {notice && <div className="toast"><CheckCircle2 size={18} />{notice}</div>}
       {zoneToDelete && <ConfirmDeleteModal zone={zoneToDelete} onCancel={() => setZoneToDelete(null)} onConfirm={confirmDeleteZone} />}
+      {loginOpen && <LoginModal language={language} reason={loginReason} onSubmit={handleLogin} onClose={() => { if (!authChecked || authenticated) setLoginOpen(false); }} />}
       {settingsOpen && <SettingsPanel language={language} setLanguage={setLanguage} username={username} setUsername={setUsername} password={password} setPassword={setPassword} saved={settingsSaved} onSave={saveSettings} onClose={() => setSettingsOpen(false)} />}
     </div>
   );
 }
 
 /* ---------- Overview ---------- */
-function Overview({ zones, pumpOn, autoMode, activeZones, onToggleZone, onTogglePump, onToggleMode, onOpenMap, weather }: { zones: Zone[]; pumpOn: boolean; autoMode: boolean; activeZones: number; onToggleZone: (id: string) => void; onTogglePump: () => void; onToggleMode: () => void; onOpenMap: () => void; weather: { temp: number; desc: string; city: string; country: string; icon: string } }) {
+function Overview({ zones, pumpOn, autoMode, activeZones, onToggleZone, onTogglePump, onToggleMode, onOpenMap, weather, language }: { zones: Zone[]; pumpOn: boolean; autoMode: boolean; activeZones: number; onToggleZone: (id: string) => void; onTogglePump: () => void; onToggleMode: () => void; onOpenMap: () => void; weather: { temp: number; desc: string; city: string; country: string; icon: string }; language: Language }) {
+  language: Language;
   return (
     <div className="content-stack">
       <Panel className="hero-panel">
         <div className="hero-status">
           <div className="system-orbit"><div className="orbit-ring" /><div className="orbit-core"><Leaf size={39} /></div></div>
           <div>
-            <span className="label">ESTADO DO SISTEMA</span>
-            <h3>{autoMode ? 'Automático' : 'Manual'}</h3>
+            <span className="label">{t('overview.systemState', language)}</span>
+            <h3>{autoMode ? t('overview.auto', language) : t('overview.manual', language)}</h3>
             <button className={`mode-toggle-btn ${autoMode ? 'mode-auto' : 'mode-manual'}`} onClick={onToggleMode}>
               <Settings2 size={14} />{autoMode ? 'Automático' : 'Manual'}<span className="mode-pulse" />
             </button>
@@ -542,7 +590,7 @@ function Overview({ zones, pumpOn, autoMode, activeZones, onToggleZone, onToggle
         </div>
         <div className="hero-divider" />
         <div className="actuator-list">
-          <div className="panel-title-row"><span>ATUADORES</span><small>{activeZones} ativos</small></div>
+          <div className="panel-title-row"><span>{t('overview.actuators', language)}</span><small>{activeZones} {t('overview.active', language)}</small></div>
           <ActuatorRow icon={<Waves />} label="Bomba" on={pumpOn} onToggle={onTogglePump} />
           {zones.map((z) => <ActuatorRow key={z.id} icon={<Droplets />} label={`${z.name} · Válvula ${z.id}`} on={z.on} onToggle={() => onToggleZone(z.id)} />)}
         </div>
@@ -556,17 +604,17 @@ function Overview({ zones, pumpOn, autoMode, activeZones, onToggleZone, onToggle
       </Panel>
       <div className="quick-grid">
         <Panel className="quick-panel">
-          <div className="panel-title-row"><div><span className="section-kicker">ATENÇÃO OPERACIONAL</span><h3>Próxima rega</h3></div><TimerReset size={20} /></div>
-          <div className="next-irrigation"><strong>Zona 2</strong><span>Agendada para amanhã às 06:30</span><ChevronRight size={18} /></div>
+          <div className="panel-title-row"><div><span className="section-kicker">{t('overview.attentionOps', language)}</span><h3>{t('overview.nextWater', language)}</h3></div><TimerReset size={20} /></div>
+          <div className="next-irrigation"><strong>Zona 2</strong><span>{t('overview.scheduled', language)}</span><ChevronRight size={18} /></div>
         </Panel>
         <Panel className="quick-panel alarm-preview">
-          <div className="panel-title-row"><div><span className="section-kicker">SISTEMA</span><h3>Alertas recentes</h3></div><AlertTriangle size={20} /></div>
+          <div className="panel-title-row"><div><span className="section-kicker">{t('overview.system', language)}</span><h3>{t('overview.recentAlerts', language)}</h3></div><AlertTriangle size={20} /></div>
           <div className="alert-line"><span className="alert-icon"><AlertTriangle size={15} /></span><div><strong>Sensor B2</strong><span>Leitura dentro do intervalo normal</span></div><small>há 4 min</small></div>
         </Panel>
       </div>
       <div className="overview-map-link">
         <Panel className="quick-panel">
-          <div className="panel-title-row"><div><span className="section-kicker">LOCALIZAÇÃO</span><h3>Mapa dos sensores</h3></div><MapIcon size={20} /></div>
+          <div className="panel-title-row"><div><span className="section-kicker">{t('overview.location', language)}</span><h3>{t('overview.sensorMap', language)}</h3></div><MapIcon size={20} /></div>
           <button className="action-button" onClick={onOpenMap}><MapIcon size={20} /><span><strong>Ver mapa completo</strong><small>Localização e estado de cada sensor na propriedade</small></span><ChevronRight size={17} /></button>
         </Panel>
       </div>
@@ -582,13 +630,13 @@ function SensorCard({ zone }: { zone: Zone }) {
   return (
     <Panel className="sensor-card">
       <div className="sensor-header">
-        <div><span className="section-kicker">SENSOR {zone.sensorId}</span><h3>{zone.name}</h3></div>
-        <StatusBadge tone={zone.moisture >= zone.target ? 'success' : 'warning'}>{zone.moisture >= zone.target ? 'Normal' : 'Atenção'}</StatusBadge>
+        <div><span className="section-kicker">{t('overview.sensor', language)} {zone.sensorId}</span><h3>{zone.name}</h3></div>
+        <StatusBadge tone={zone.moisture >= zone.target ? 'success' : 'warning'}>{zone.moisture >= zone.target ? t('overview.normal', language) : t('overview.attention', language)}</StatusBadge>
       </div>
       <div className="sensor-reading">
         <div className="water-icon"><Droplets size={24} /></div>
         <strong>{zone.moisture}<small>%</small></strong>
-        <span>Humidade do solo</span>
+        <span>{t('overview.moisture', language)}</span>
       </div>
       <div className="meter"><span style={{ width: `${zone.moisture}%` }} /></div>
       <div className="sensor-footer"><span>Setpoint <b>{zone.target}%</b></span><span>Atualizado agora</span></div>
@@ -601,7 +649,7 @@ function Metric({ icon, label, value, detail, accent }: { icon: React.ReactNode;
 }
 
 /* ---------- Estado ---------- */
-function StateView({ zones, pumpOn, autoMode, onToggleMode }: { zones: Zone[]; pumpOn: boolean; autoMode: boolean; onToggleMode: () => void }) {
+function StateView({ zones, pumpOn, autoMode, onToggleMode, language }: { zones: Zone[]; pumpOn: boolean; autoMode: boolean; onToggleMode: () => void; language: Language }) {
   return (
     <div className="two-column">
       <Panel>
@@ -721,7 +769,7 @@ function PanelHeader({ eyebrow, title, showIcon = true }: { eyebrow: string; tit
 }
 
 /* ---------- Setpoints com teclado alfanumérico ---------- */
-function SetpointsView({ zones, onChange, onUpdateZone, pumpDelay, setPumpDelay, onAddZone, onRemoveZone }: {
+function SetpointsView({ zones, onChange, onUpdateZone, pumpDelay, setPumpDelay, onAddZone, onRemoveZone, language }: {
   zones: Zone[];
   onChange: (id: string, target: number) => void;
   onUpdateZone: (id: string, patch: Partial<Zone>) => void;
@@ -729,6 +777,7 @@ function SetpointsView({ zones, onChange, onUpdateZone, pumpDelay, setPumpDelay,
   setPumpDelay: (n: number) => void;
   onAddZone: () => void;
   onRemoveZone: (zone: Zone) => void;
+  language: Language;
 }) {
   const [keyboard, setKeyboard] = useState<{ target: 'pump' | string; value: string } | null>(null);
 
@@ -833,7 +882,7 @@ const MAX_ZONE_SCALE = 1.7;
 const ZONE_SCALE_STEP = 0.15;
 type EditorTool = 'select' | 'add' | 'duplicate';
 
-function MapView({ zones, pumpOn, onAddZone, onDuplicateZone, onDragZone, onRenameZone, onRemoveZone, onClearAll, onToggleZone, weather }: {
+function MapView({ zones, pumpOn, onAddZone, onDuplicateZone, onDragZone, onRenameZone, onRemoveZone, onClearAll, onToggleZone, weather, language }: {
   zones: Zone[];
   pumpOn: boolean;
   onAddZone: (x: number, y: number) => void;
@@ -1474,7 +1523,7 @@ function SettingsPanel({ language, setLanguage, username, setUsername, password,
 }
 
 /* ---------- Histórico de Erros + Eventos Reais ---------- */
-function HistoryView({ errors, eventLog, eventLogLoading, onRefresh }: { errors: ErrorEvent[]; eventLog: EventLogEntry[]; eventLogLoading: boolean; onRefresh: () => void }) {
+function HistoryView({ errors, eventLog, eventLogLoading, onRefresh, language }: { errors: ErrorEvent[]; eventLog: EventLogEntry[]; eventLogLoading: boolean; onRefresh: () => void }) {
   const irrigationEvents = eventLog.filter((e) =>
     ['zone_toggle', 'system_start', 'system_stop', 'system_reset', 'emergency_stop', 'test_cycle', 'mode_change'].includes(e.event_type)
   );
@@ -1538,7 +1587,7 @@ function ErrorItem({ event }: { event: ErrorEvent }) {
 }
 
 /* ---------- Comandos com Start/Stop/Reset ---------- */
-function CommandsView({ zones, pumpOn, systemRunning, starting, startStep, autoMode, onToggleZone, onTogglePump, onToggleMode, onEmergencyStop, onTestCycle, onStart, onStop, onReset }: {
+function CommandsView({ zones, pumpOn, systemRunning, starting, startStep, autoMode, onToggleZone, onTogglePump, onToggleMode, onEmergencyStop, onTestCycle, onStart, onStop, onReset, language }: {
   zones: Zone[];
   pumpOn: boolean;
   systemRunning: boolean;
@@ -1600,7 +1649,7 @@ function CommandRow({ icon, label, description, on, onToggle }: { icon: React.Re
 }
 
 /* ---------- Alarmes refinados ---------- */
-function AlarmsView({ errors, onResolve }: { errors: ErrorEvent[]; onResolve: (id: string) => void }) {
+function AlarmsView({ errors, onResolve, language }: { errors: ErrorEvent[]; onResolve: (id: string) => void; language: Language }) {
   const active = errors.filter((e) => !e.resolved);
   const resolved = errors.filter((e) => e.resolved);
   const critical = active.filter((e) => e.severity === 'critical').length;
@@ -1682,6 +1731,58 @@ function AlarmItem({ event, onResolve }: { event: ErrorEvent; onResolve?: () => 
         <button className="resolve-btn" onClick={onResolve}><CheckCircle2 size={15} />Resolver</button>
       ) : (
         <StatusBadge tone="success">Resolvido</StatusBadge>
+      )}
+    </div>
+  );
+}
+
+/* ---------- Login Modal ---------- */
+function LoginModal({ language, reason, onSubmit, onClose }: { language: Language; reason: 'startup' | 'setpoints' | 'map'; onSubmit: (pass: string) => void; onClose: () => void }) {
+  const [pass, setPass] = useState('');
+  const [error, setError] = useState(false);
+  const [showKeyboard, setShowKeyboard] = useState(false);
+
+  const handleSubmit = () => {
+    if (pass === '1234') {
+      onSubmit(pass);
+      setError(false);
+    } else {
+      setError(true);
+      setTimeout(() => setError(false), 2000);
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={reason === 'startup' ? undefined : onClose}>
+      <div className="confirm-modal login-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="confirm-modal-icon"><LockKeyhole size={32} /></div>
+        <h3>{t('login.title', language)}</h3>
+        <p>{t('login.subtitle', language)}</p>
+        <div className="login-field" onClick={() => setShowKeyboard(true)}>
+          <LockKeyhole size={16} />
+          <input
+            type="password"
+            placeholder={t('login.password', language)}
+            value={pass}
+            onChange={(e) => { setPass(e.target.value); setError(false); }}
+            onFocus={() => setShowKeyboard(true)}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); }}
+            autoFocus
+          />
+        </div>
+        {error && <div className="login-error">{t('login.error', language)}</div>}
+        <div className="confirm-modal-actions">
+          {reason !== 'startup' && <button className="kb-clear" onClick={onClose}>{t('general.cancel', language)}</button>}
+          <button className="kb-confirm" onClick={handleSubmit}>{t('login.submit', language)}</button>
+        </div>
+      </div>
+      {showKeyboard && (
+        <TextKeyboard
+          value={pass}
+          onChange={setPass}
+          onSubmit={() => { handleSubmit(); setShowKeyboard(false); }}
+          onClose={() => setShowKeyboard(false)}
+        />
       )}
     </div>
   );
