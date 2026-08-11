@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Activity,
   AlertTriangle,
@@ -34,7 +34,10 @@ import {
   UserRound,
   Waves,
   X,
+  MapPin,
+  PencilLine,
 } from 'lucide-react';
+import { fetchEvents, logEvent, type EventLogEntry, type EventType } from '@/lib/supabase';
 
 type Page = 'Resumo' | 'Estado' | 'Setpoints' | 'Mapa' | 'Histórico' | 'Comandos' | 'Alarmes';
 type Zone = {
@@ -104,6 +107,31 @@ function sensorStatus(zone: Zone): 'ok' | 'warning' | 'offline' {
   return 'warning';
 }
 
+function formatTime(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatDateTime(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const isToday = d.toDateString() === now.toDateString();
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const isYesterday = d.toDateString() === yesterday.toDateString();
+  const time = d.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
+  if (isToday) return `Hoje, ${time}`;
+  if (isYesterday) return `Ontem, ${time}`;
+  return d.toLocaleDateString('pt-PT') + ', ' + time;
+}
+
+function eventToHistoryItem(ev: EventLogEntry): { time: string; zone: string; duration: string; eventType: string } {
+  const time = formatTime(ev.created_at);
+  const meta = ev.metadata as Record<string, unknown> | null;
+  const duration = meta?.duration ? `${meta.duration} min` : ev.event_type;
+  return { time, zone: ev.source, duration, eventType: ev.event_type };
+}
+
 function App() {
   const [activePage, setActivePage] = useState<Page>('Resumo');
   const [zones, setZones] = useState(initialZones);
@@ -122,26 +150,82 @@ function App() {
   const [username, setUsername] = useState('operador');
   const [password, setPassword] = useState('');
   const [settingsSaved, setSettingsSaved] = useState(false);
+  const [eventLog, setEventLog] = useState<EventLogEntry[]>([]);
+  const [eventLogLoading, setEventLogLoading] = useState(false);
   const startTimers = useRef<number[]>([]);
 
   useEffect(() => () => startTimers.current.forEach((t) => clearTimeout(t)), []);
 
+  const loadEvents = useCallback(async () => {
+    setEventLogLoading(true);
+    const events = await fetchEvents(100);
+    setEventLog(events);
+    setEventLogLoading(false);
+  }, []);
+
+  useEffect(() => {
+    loadEvents();
+  }, [loadEvents]);
+
   const activeZones = useMemo(() => zones.filter((z) => z.on).length, [zones]);
   const alarmCount = useMemo(() => errors.filter((e) => !e.resolved).length, [errors]);
 
-  const toggleZone = (id: string) => setZones((cur) => cur.map((z) => (z.id === id ? { ...z, on: !z.on } : z)));
   const showNotice = (message: string) => {
     setNotice(message);
     window.setTimeout(() => setNotice(''), 2800);
   };
 
+  const toggleZone = useCallback((id: string) => {
+    setZones((cur) => {
+      const zone = cur.find((z) => z.id === id);
+      if (!zone) return cur;
+      const newState = !zone.on;
+      logEvent('zone_toggle', `${zone.name} · Válvula ${zone.id}`, newState ? `Válvula ${zone.id} aberta` : `Válvula ${zone.id} fechada`, 'info', { zone_id: id, state: newState });
+      return cur.map((z) => (z.id === id ? { ...z, on: newState } : z));
+    });
+  }, []);
+
+  const togglePump = useCallback(() => {
+    setPumpOn((prev) => {
+      const next = !prev;
+      logEvent('pump_toggle', 'Bomba K1', next ? 'Bomba ligada' : 'Bomba desligada', 'info', { state: next });
+      return next;
+    });
+  }, []);
+
   const addZone = () => {
     const id = makeZoneId();
     const sensorId = makeSensorId();
     const num = zones.length + 1;
-    setZones((cur) => [...cur, { id, sensorId, name: `Zona ${num}`, moisture: 50, target: 50, lastWatered: '—', on: false, waterDuration: 30, x: 30 + Math.random() * 40, y: 30 + Math.random() * 40 }]);
+    const newZone: Zone = { id, sensorId, name: `Zona ${num}`, moisture: 50, target: 50, lastWatered: '—', on: false, waterDuration: 30, x: 30 + Math.random() * 40, y: 30 + Math.random() * 40 };
+    setZones((cur) => [...cur, newZone]);
+    logEvent('zone_add', `${newZone.name} · Sensor ${sensorId}`, `Sensor ${sensorId} e válvula ${id} adicionados`, 'info', { zone_id: id, sensor_id: sensorId });
     showNotice(`Sensor ${sensorId} adicionado`);
   };
+
+  const addZoneFromMap = useCallback((x: number, y: number) => {
+    const id = makeZoneId();
+    const sensorId = makeSensorId();
+    const num = zones.length + 1;
+    const newZone: Zone = { id, sensorId, name: `Zona ${num}`, moisture: 50, target: 50, lastWatered: '—', on: false, waterDuration: 30, x, y };
+    setZones((cur) => [...cur, newZone]);
+    logEvent('zone_add_map', `${newZone.name} · Sensor ${sensorId}`, `Local adicionado no mapa: válvula ${id}, sensor ${sensorId}`, 'info', { zone_id: id, sensor_id: sensorId, x, y });
+    showNotice(`Local adicionado: ${newZone.name}`);
+  }, [zones.length]);
+
+  const updateZonePosition = useCallback((id: string, x: number, y: number) => {
+    setZones((cur) => cur.map((z) => (z.id === id ? { ...z, x, y } : z)));
+  }, []);
+
+  const renameZone = useCallback((id: string, newName: string) => {
+    setZones((cur) => {
+      const zone = cur.find((z) => z.id === id);
+      if (zone) {
+        logEvent('zone_rename', `${zone.name} → ${newName}`, `Nome alterado para ${newName}`, 'info', { zone_id: id, old_name: zone.name, new_name: newName });
+      }
+      return cur.map((z) => (z.id === id ? { ...z, name: newName } : z));
+    });
+  }, []);
 
   const handleStart = () => {
     if (starting || systemRunning) return;
@@ -153,11 +237,17 @@ function App() {
 
     setPumpOn(true);
     setStartStep('A ligar bomba…');
+    logEvent('system_start', 'Sistema', 'Sistema iniciado — bomba ligada', 'info', { pump_delay: pumpDelay });
     showNotice('Bomba ligada');
 
     const t1 = window.setTimeout(() => {
       setStartStep('A abrir válvulas…');
-      setZones((cur) => cur.map((z) => ({ ...z, on: true })));
+      setZones((cur) => {
+        cur.forEach((z) => {
+          if (!z.on) logEvent('zone_toggle', `${z.name} · Válvula ${z.id}`, `Válvula ${z.id} aberta (sistema)`, 'info', { zone_id: z.id, state: true });
+        });
+        return cur.map((z) => ({ ...z, on: true }));
+      });
       showNotice('Válvulas abertas');
       const t2 = window.setTimeout(() => {
         setStarting(false);
@@ -176,7 +266,13 @@ function App() {
     setStarting(false);
     setStartStep('');
     setPumpOn(false);
-    setZones((cur) => cur.map((z) => ({ ...z, on: false })));
+    setZones((cur) => {
+      cur.forEach((z) => {
+        if (z.on) logEvent('zone_toggle', `${z.name} · Válvula ${z.id}`, `Válvula ${z.id} fechada (sistema parado)`, 'info', { zone_id: z.id, state: false });
+      });
+      return cur.map((z) => ({ ...z, on: false }));
+    });
+    logEvent('system_stop', 'Sistema', 'Sistema parado — todos os atuadores desligados', 'warning');
     showNotice('Sistema parado');
   };
   const handleReset = () => {
@@ -188,18 +284,38 @@ function App() {
     setPumpOn(false);
     setZones((cur) => cur.map((z) => ({ ...z, on: false, moisture: Math.max(20, Math.min(90, Math.round(z.moisture))) })));
     setErrors((cur) => cur.map((e) => ({ ...e, resolved: true })));
+    logEvent('system_reset', 'Sistema', 'Sistema reiniciado', 'warning');
     showNotice('Sistema reiniciado');
   };
 
   const toggleAutoMode = () => {
     const next = !autoMode;
     setAutoMode(next);
+    logEvent('mode_change', 'Modo de operação', next ? 'Modo automático ativado' : 'Modo manual ativado', 'info', { mode: next ? 'auto' : 'manual' });
     showNotice(next ? 'Modo automático ativado' : 'Modo manual ativado');
+  };
+
+  const handleEmergencyStop = () => {
+    setZones((cur) => {
+      cur.forEach((z) => {
+        if (z.on) logEvent('zone_toggle', `${z.name} · Válvula ${z.id}`, `Válvula ${z.id} fechada (emergência)`, 'critical', { zone_id: z.id, state: false });
+      });
+      return cur.map((z) => ({ ...z, on: false }));
+    });
+    setPumpOn(false);
+    logEvent('emergency_stop', 'Paragem de emergência', 'Paragem de emergência executada — todos os atuadores desligados', 'critical');
+    showNotice('Todas as zonas foram desligadas');
+  };
+
+  const handleTestCycle = () => {
+    logEvent('test_cycle', 'Ciclo de teste', 'Ciclo de teste iniciado — verificação de bomba e válvulas', 'info');
+    showNotice('Ciclo de teste iniciado');
   };
 
   const confirmDeleteZone = () => {
     if (!zoneToDelete) return;
     setZones((cur) => cur.filter((z) => z.id !== zoneToDelete.id));
+    logEvent('zone_remove', `${zoneToDelete.name} · Sensor ${zoneToDelete.sensorId}`, `Sensor ${zoneToDelete.sensorId} e válvula ${zoneToDelete.id} removidos`, 'warning', { zone_id: zoneToDelete.id, sensor_id: zoneToDelete.sensorId });
     showNotice(`Sensor ${zoneToDelete.sensorId} removido`);
     setZoneToDelete(null);
   };
@@ -212,13 +328,13 @@ function App() {
 
   const renderPage = () => {
     if (activePage === 'Resumo') {
-      return <Overview zones={zones} pumpOn={pumpOn} autoMode={autoMode} activeZones={activeZones} onToggleZone={toggleZone} onTogglePump={() => setPumpOn((v) => !v)} onToggleMode={toggleAutoMode} onOpenMap={() => setActivePage('Mapa')} />;
+      return <Overview zones={zones} pumpOn={pumpOn} autoMode={autoMode} activeZones={activeZones} onToggleZone={toggleZone} onTogglePump={togglePump} onToggleMode={toggleAutoMode} onOpenMap={() => setActivePage('Mapa')} />;
     }
     if (activePage === 'Estado') return <StateView zones={zones} pumpOn={pumpOn} autoMode={autoMode} onToggleMode={toggleAutoMode} />;
     if (activePage === 'Setpoints') return <SetpointsView zones={zones} pumpDelay={pumpDelay} setPumpDelay={setPumpDelay} onChange={(id, target) => setZones((cur) => cur.map((z) => (z.id === id ? { ...z, target } : z)))} onUpdateZone={(id, patch) => setZones((cur) => cur.map((z) => (z.id === id ? { ...z, ...patch } : z)))} onAddZone={addZone} onRemoveZone={(z) => setZoneToDelete(z)} />;
-    if (activePage === 'Mapa') return <MapView zones={zones} pumpOn={pumpOn} />;
-    if (activePage === 'Histórico') return <HistoryView errors={errors} />;
-    if (activePage === 'Comandos') return <CommandsView zones={zones} pumpOn={pumpOn} systemRunning={systemRunning} starting={starting} startStep={startStep} autoMode={autoMode} onToggleZone={toggleZone} onTogglePump={() => setPumpOn((v) => !v)} onToggleMode={toggleAutoMode} onAction={showNotice} onStart={handleStart} onStop={handleStop} onReset={handleReset} />;
+    if (activePage === 'Mapa') return <MapView zones={zones} pumpOn={pumpOn} onAddZone={addZoneFromMap} onDragZone={updateZonePosition} onRenameZone={renameZone} />;
+    if (activePage === 'Histórico') return <HistoryView errors={errors} eventLog={eventLog} eventLogLoading={eventLogLoading} onRefresh={loadEvents} />;
+    if (activePage === 'Comandos') return <CommandsView zones={zones} pumpOn={pumpOn} systemRunning={systemRunning} starting={starting} startStep={startStep} autoMode={autoMode} onToggleZone={toggleZone} onTogglePump={togglePump} onToggleMode={toggleAutoMode} onAction={showNotice} onEmergencyStop={handleEmergencyStop} onTestCycle={handleTestCycle} onStart={handleStart} onStop={handleStop} onReset={handleReset} />;
     return <AlarmsView errors={errors} onResolve={(id) => setErrors((cur) => cur.map((e) => (e.id === id ? { ...e, resolved: true } : e)))} />;
   };
 
@@ -250,7 +366,7 @@ function App() {
       <main className="main-content">
         <header className="topbar">
           <button className="mobile-menu" onClick={() => setMobileOpen(true)} aria-label="Abrir menu"><Menu size={22} /></button>
-          <div>
+          <div className="topbar-title">
             <div className="eyebrow">CENTRO DE OPERAÇÕES <span>•</span> 10 AGO 2026</div>
             <h1>GTC <span>—</span> Sistema de Rega Automatizada</h1>
             <p>Monitorização e controlo do sistema de rega · ESP32-S3</p>
@@ -473,8 +589,70 @@ function SetpointsView({ zones, onChange, onUpdateZone, pumpDelay, setPumpDelay,
 }
 
 /* ---------- Mapa ---------- */
-function MapView({ zones, pumpOn }: { zones: Zone[]; pumpOn: boolean }) {
+function MapView({ zones, pumpOn, onAddZone, onDragZone, onRenameZone }: {
+  zones: Zone[];
+  pumpOn: boolean;
+  onAddZone: (x: number, y: number) => void;
+  onDragZone: (id: string, x: number, y: number) => void;
+  onRenameZone: (id: string, name: string) => void;
+}) {
   const pumpPos = { x: 50, y: 82 };
+  const mcuPos = { x: 50, y: 90 };
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const [dragging, setDragging] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState<string | null>(null);
+  const [editNameValue, setEditNameValue] = useState('');
+
+  const handleCanvasClick = (e: React.MouseEvent) => {
+    if (dragging) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    if (x < 5 || x > 95 || y < 5 || y > 78) return;
+    onAddZone(x, y);
+  };
+
+  const handleMarkerMouseDown = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setDragging(id);
+  };
+
+  useEffect(() => {
+    if (!dragging) return;
+    const handleMove = (e: MouseEvent) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const x = Math.max(5, Math.min(95, ((e.clientX - rect.left) / rect.width) * 100));
+      const y = Math.max(5, Math.min(78, ((e.clientY - rect.top) / rect.height) * 100));
+      onDragZone(dragging, x, y);
+    };
+    const handleUp = () => setDragging(null);
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleUp);
+    };
+  }, [dragging, onDragZone]);
+
+  const startEditName = (e: React.MouseEvent, zone: Zone) => {
+    e.stopPropagation();
+    setEditingName(zone.id);
+    setEditNameValue(zone.name);
+  };
+
+  const submitNameEdit = () => {
+    if (editingName && editNameValue.trim()) {
+      onRenameZone(editingName, editNameValue.trim());
+    }
+    setEditingName(null);
+    setEditNameValue('');
+  };
+
   return (
     <Panel className="map-panel">
       <div className="panel-heading">
@@ -484,9 +662,11 @@ function MapView({ zones, pumpOn }: { zones: Zone[]; pumpOn: boolean }) {
           <span><i className="legend-dot legend-valve" /> Válvula</span>
           <span><i className="legend-dot legend-ok" /> Sensor OK</span>
           <span><i className="legend-dot legend-warning" /> Sensor atenção</span>
+          <span><i className="legend-dot legend-mcu" /> Microcontrolador</span>
         </div>
       </div>
-      <div className="map-canvas">
+      <div className="map-hint"><MapPin size={14} /> Clique no mapa para adicionar um novo local · Arraste os marcadores para reposicionar</div>
+      <div className="map-canvas" ref={canvasRef} onClick={handleCanvasClick}>
         <div className="map-grid-bg" />
         <div className="map-field field-a" />
         <div className="map-field field-b" />
@@ -498,8 +678,9 @@ function MapView({ zones, pumpOn }: { zones: Zone[]; pumpOn: boolean }) {
             const sy = zone.y - 4;
             return (
               <g key={zone.id}>
-                <line x1={pumpPos.x} y1={pumpPos.y} x2={vx} y2={vy} className={`pipe pipe-main ${zone.on ? 'pipe-active' : ''}`} />
-                <line x1={vx} y1={vy} x2={sx} y2={sy} className={`pipe pipe-sensor ${zone.on ? 'pipe-active' : ''}`} />
+                <line x1={mcuPos.x} y1={mcuPos.y} x2={sx} y2={sy} className={`pipe pipe-mcu ${zone.on ? 'pipe-active' : ''}`} />
+                <line x1={sx} y1={sy} x2={vx} y2={vy} className={`pipe pipe-sensor ${zone.on ? 'pipe-active' : ''}`} />
+                <line x1={vx} y1={vy} x2={pumpPos.x} y2={pumpPos.y} className={`pipe pipe-main ${zone.on ? 'pipe-active' : ''}`} />
               </g>
             );
           })}
@@ -511,6 +692,13 @@ function MapView({ zones, pumpOn }: { zones: Zone[]; pumpOn: boolean }) {
             <span>{pumpOn ? 'Ligada' : 'Desligada'}</span>
           </div>
         </div>
+        <div className="map-marker marker-mcu" style={{ left: `${mcuPos.x}%`, top: `${mcuPos.y}%` }}>
+          <span className="marker-pin marker-pin-mcu"><Cpu size={14} /></span>
+          <div className="marker-label">
+            <strong>ESP32-S3</strong>
+            <span>Microcontrolador</span>
+          </div>
+        </div>
         {zones.map((zone) => {
           const status = sensorStatus(zone);
           const vx = zone.x + 6;
@@ -519,24 +707,56 @@ function MapView({ zones, pumpOn }: { zones: Zone[]; pumpOn: boolean }) {
           const sy = zone.y - 4;
           return (
             <div key={zone.id} className="map-zone-group">
-              <div className={`map-marker marker-valve ${zone.on ? 'valve-open' : ''}`} style={{ left: `${vx}%`, top: `${vy}%` }}>
+              <div
+                className={`map-marker marker-valve ${zone.on ? 'valve-open' : ''} ${dragging === zone.id ? 'dragging' : ''}`}
+                style={{ left: `${vx}%`, top: `${vy}%` }}
+                onMouseDown={(e) => handleMarkerMouseDown(e, zone.id)}
+              >
                 <span className="marker-pin marker-pin-valve">{zone.id}</span>
                 <div className="marker-label">
                   <strong>Válvula {zone.id}</strong>
                   <span>{zone.on ? 'Aberta' : 'Fechada'}</span>
                 </div>
               </div>
-              <div className={`map-marker marker-sensor marker-${status}`} style={{ left: `${sx}%`, top: `${sy}%` }}>
+              <div
+                className={`map-marker marker-sensor marker-${status} ${dragging === zone.id ? 'dragging' : ''}`}
+                style={{ left: `${sx}%`, top: `${sy}%` }}
+                onMouseDown={(e) => handleMarkerMouseDown(e, zone.id)}
+              >
                 <span className="marker-pin">{zone.sensorId}</span>
                 <div className="marker-label">
-                  <strong>Sensor {zone.sensorId}</strong>
-                  <span>{status === 'ok' ? 'Normal' : 'Atenção'} · {zone.moisture}%</span>
+                  {editingName === zone.id ? (
+                    <input
+                      className="marker-name-input"
+                      value={editNameValue}
+                      onChange={(e) => setEditNameValue(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => { if (e.key === 'Enter') submitNameEdit(); if (e.key === 'Escape') { setEditingName(null); setEditNameValue(''); } }}
+                      onBlur={submitNameEdit}
+                      autoFocus
+                    />
+                  ) : (
+                    <>
+                      <strong>
+                        {zone.name} <button className="marker-edit-btn" onClick={(e) => startEditName(e, zone)} aria-label="Editar nome"><PencilLine size={11} /></button>
+                      </strong>
+                      <span>{status === 'ok' ? 'Normal' : 'Atenção'} · {zone.moisture}%</span>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
           );
         })}
       </div>
+      {editingName && (
+        <TextKeyboard
+          value={editNameValue}
+          onChange={setEditNameValue}
+          onSubmit={submitNameEdit}
+          onClose={() => { setEditingName(null); setEditNameValue(''); }}
+        />
+      )}
     </Panel>
   );
 }
@@ -576,6 +796,49 @@ function NumericKeyboard({ value, onChange, onSubmit, onClose }: { value: string
         </div>
         <div className="keyboard-actions">
           <button className="kb-clear" onClick={() => onChange('')}>Limpar</button>
+          <button className="kb-confirm" onClick={onSubmit}>Confirmar</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Text keyboard (themed, for map name editing) ---------- */
+function TextKeyboard({ value, onChange, onSubmit, onClose }: { value: string; onChange: (v: string) => void; onSubmit: () => void; onClose: () => void }) {
+  const rows = [
+    ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
+    ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', 'Ç'],
+    ['Z', 'X', 'C', 'V', 'B', 'N', 'M'],
+  ];
+  const nums = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
+  return (
+    <div className="keyboard-overlay" onClick={onClose}>
+      <div className="keyboard text-keyboard" onClick={(e) => e.stopPropagation()}>
+        <div className="keyboard-header">
+          <span>Editar nome do local</span>
+          <button onClick={onClose} aria-label="Fechar teclado"><X size={18} /></button>
+        </div>
+        <div className="keyboard-display text-display">{value || ' '}</div>
+        <div className="text-kb-nums">
+          {nums.map((n) => (
+            <button key={n} className="kb-key kb-key-sm" onClick={() => onChange(value + n)}>{n}</button>
+          ))}
+        </div>
+        <div className="text-kb-rows">
+          {rows.map((row, i) => (
+            <div key={i} className="text-kb-row">
+              {row.map((k) => (
+                <button key={k} className="kb-key kb-key-sm" onClick={() => onChange(value + k)}>{k}</button>
+              ))}
+            </div>
+          ))}
+        </div>
+        <div className="text-kb-actions">
+          <button className="kb-key kb-key-sm kb-space" onClick={() => onChange(value + ' ')}>Espaço</button>
+          <button className="kb-key kb-key-sm kb-backspace" onClick={() => onChange(value.slice(0, -1))} aria-label="Apagar"><Delete size={16} /></button>
+        </div>
+        <div className="keyboard-actions">
+          <button className="kb-clear" onClick={onClose}>Cancelar</button>
           <button className="kb-confirm" onClick={onSubmit}>Confirmar</button>
         </div>
       </div>
@@ -623,8 +886,11 @@ function SettingsPanel({ language, setLanguage, username, setUsername, password,
   );
 }
 
-/* ---------- Histórico de Erros ---------- */
-function HistoryView({ errors }: { errors: ErrorEvent[] }) {
+/* ---------- Histórico de Erros + Eventos Reais ---------- */
+function HistoryView({ errors, eventLog, eventLogLoading, onRefresh }: { errors: ErrorEvent[]; eventLog: EventLogEntry[]; eventLogLoading: boolean; onRefresh: () => void }) {
+  const irrigationEvents = eventLog.filter((e) =>
+    ['zone_toggle', 'system_start', 'system_stop', 'system_reset', 'emergency_stop', 'test_cycle', 'mode_change'].includes(e.event_type)
+  );
   return (
     <div className="two-column">
       <Panel className="chart-panel">
@@ -640,11 +906,17 @@ function HistoryView({ errors }: { errors: ErrorEvent[] }) {
         <div className="legend"><span><i className="legend-a" />Zona 1</span><span><i className="legend-b" />Zona 2</span></div>
       </Panel>
       <Panel>
-        <PanelHeader eyebrow="REGISTO DE ATIVIDADE" title="Últimas regas" />
+        <div className="panel-heading">
+          <div><span className="section-kicker">REGISTO DE ATIVIDADE</span><h3>Eventos recentes</h3></div>
+          <button className="refresh-btn" onClick={onRefresh} aria-label="Atualizar"><RotateCcw size={16} /></button>
+        </div>
         <div className="history-list">
-          <HistoryItem time="18:12" zone="Zona 1 · Válvula Y1" duration="08 min" />
-          <HistoryItem time="17:48" zone="Zona 2 · Válvula Y2" duration="06 min" />
-          <HistoryItem time="06:30" zone="Zona 1 · Válvula Y1" duration="10 min" />
+          {eventLogLoading && <div className="empty-state"><Activity size={28} /><span>A carregar eventos…</span></div>}
+          {!eventLogLoading && irrigationEvents.length === 0 && <div className="empty-state"><CheckCircle2 size={28} /><span>Nenhum evento registado</span></div>}
+          {!eventLogLoading && irrigationEvents.map((ev) => {
+            const item = eventToHistoryItem(ev);
+            return <HistoryItem key={ev.id} time={item.time} zone={item.zone} duration={ev.message} />;
+          })}
         </div>
       </Panel>
       <Panel className="error-history-panel">
@@ -659,7 +931,7 @@ function HistoryView({ errors }: { errors: ErrorEvent[] }) {
 }
 
 function HistoryItem({ time, zone, duration }: { time: string; zone: string; duration: string }) {
-  return <div className="history-item"><span className="history-time">{time}</span><div><strong>{zone}</strong><span>Rega concluída</span></div><small>{duration}</small></div>;
+  return <div className="history-item"><span className="history-time">{time}</span><div><strong>{zone}</strong><span>{duration}</span></div></div>;
 }
 
 function ErrorItem({ event }: { event: ErrorEvent }) {
@@ -679,7 +951,7 @@ function ErrorItem({ event }: { event: ErrorEvent }) {
 }
 
 /* ---------- Comandos com Start/Stop/Reset ---------- */
-function CommandsView({ zones, pumpOn, systemRunning, starting, startStep, autoMode, onToggleZone, onTogglePump, onToggleMode, onAction, onStart, onStop, onReset }: {
+function CommandsView({ zones, pumpOn, systemRunning, starting, startStep, autoMode, onToggleZone, onTogglePump, onToggleMode, onAction, onEmergencyStop, onTestCycle, onStart, onStop, onReset }: {
   zones: Zone[];
   pumpOn: boolean;
   systemRunning: boolean;
@@ -690,6 +962,8 @@ function CommandsView({ zones, pumpOn, systemRunning, starting, startStep, autoM
   onTogglePump: () => void;
   onToggleMode: () => void;
   onAction: (m: string) => void;
+  onEmergencyStop: () => void;
+  onTestCycle: () => void;
   onStart: () => void;
   onStop: () => void;
   onReset: () => void;
@@ -728,8 +1002,8 @@ function CommandsView({ zones, pumpOn, systemRunning, starting, startStep, autoM
       </Panel>
       <Panel>
         <PanelHeader eyebrow="AÇÃO RÁPIDA" title="Rotinas do sistema" />
-        <button className="action-button" onClick={() => onAction('Ciclo de teste iniciado')}><PlayCircle size={20} /><span><strong>Executar ciclo de teste</strong><small>Verifica bomba e válvulas durante 30 segundos</small></span><ChevronRight size={17} /></button>
-        <button className="action-button action-emergency" onClick={() => onAction('Todas as zonas foram desligadas')}><Power size={20} /><span><strong>Paragem de emergência</strong><small>Desliga todos os atuadores ativos</small></span><ChevronRight size={17} /></button>
+        <button className="action-button" onClick={onTestCycle}><PlayCircle size={20} /><span><strong>Executar ciclo de teste</strong><small>Verifica bomba e válvulas durante 30 segundos</small></span><ChevronRight size={17} /></button>
+        <button className="action-button action-emergency" onClick={onEmergencyStop}><Power size={20} /><span><strong>Paragem de emergência</strong><small>Desliga todos os atuadores ativos</small></span><ChevronRight size={17} /></button>
       </Panel>
     </div>
   );
