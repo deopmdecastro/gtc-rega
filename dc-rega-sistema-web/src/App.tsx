@@ -161,6 +161,62 @@ function App() {
   const [eventLogLoading, setEventLogLoading] = useState(false);
   const startTimers = useRef<number[]>([]);
 
+  // Weather state – real API
+  const [weather, setWeather] = useState({ temp: 24, desc: 'Parcialmente nublado', city: 'Leiria', country: 'Portugal', icon: '⛅' });
+  const [weatherLoading, setWeatherLoading] = useState(false);
+  const [clock, setClock] = useState('');
+  const [dateStr, setDateStr] = useState('');
+
+  useEffect(() => {
+    const tick = () => {
+      const now = new Date();
+      setClock(now.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' }));
+      setDateStr(now.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit', year: 'numeric' }));
+    };
+    tick();
+    const iv = setInterval(tick, 10000);
+    return () => clearInterval(iv);
+  }, []);
+
+  useEffect(() => {
+    const fetchWeather = async () => {
+      setWeatherLoading(true);
+      try {
+        const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=39.7437&longitude=-8.8071&current_weather=true&timezone=Europe/Lisbon');
+        if (res.ok) {
+          const data = await res.json();
+          const cw = data.current_weather;
+          const code = cw.weathercode;
+          const iconMap: Record<number, string> = {
+            0: '☀️', 1: '🌤️', 2: '⛅', 3: '☁️', 45: '🌫️', 48: '🌫️',
+            51: '🌦️', 53: '🌦️', 55: '🌧️', 61: '🌧️', 63: '🌧️', 65: '🌧️',
+            71: '🌨️', 73: '🌨️', 75: '🌨️', 80: '🌧️', 81: '🌧️', 82: '⛈️',
+            95: '⛈️', 96: '⛈️', 99: '⛈️',
+          };
+          const descMap: Record<number, string> = {
+            0: 'Céu limpo', 1: 'Pouco nublado', 2: 'Parcialmente nublado', 3: 'Nublado',
+            45: 'Nevoeiro', 48: 'Nevoeiro', 51: 'Chuvisco', 53: 'Chuvisco', 55: 'Chuvisco',
+            61: 'Chuva fraca', 63: 'Chuva moderada', 65: 'Chuva forte',
+            71: 'Neve fraca', 73: 'Neve moderada', 75: 'Neve forte',
+            80: 'Aguaceiros', 81: 'Aguaceiros', 82: 'Aguaceiros fortes',
+            95: 'Trovoada', 96: 'Trovoada', 99: 'Trovoada',
+          };
+          setWeather({
+            temp: Math.round(cw.temperature),
+            desc: descMap[code] || 'Desconhecido',
+            icon: iconMap[code] || '🌡️',
+            city: 'Leiria',
+            country: 'Portugal',
+          });
+        }
+      } catch { /* keep fallback */ }
+      setWeatherLoading(false);
+    };
+    fetchWeather();
+    const iv = setInterval(fetchWeather, 600000); // refresh every 10 minutes
+    return () => clearInterval(iv);
+  }, []);
+
   useEffect(() => () => startTimers.current.forEach((t) => clearTimeout(t)), []);
 
   const loadEvents = useCallback(async () => {
@@ -372,11 +428,11 @@ function App() {
 
   const renderPage = () => {
     if (activePage === 'Resumo') {
-      return <Overview zones={zones} pumpOn={pumpOn} autoMode={autoMode} activeZones={activeZones} onToggleZone={toggleZone} onTogglePump={togglePump} onToggleMode={toggleAutoMode} onOpenMap={() => setActivePage('Mapa')} />;
+      return <Overview zones={zones} pumpOn={pumpOn} autoMode={autoMode} activeZones={activeZones} onToggleZone={toggleZone} onTogglePump={togglePump} onToggleMode={toggleAutoMode} onOpenMap={() => setActivePage('Mapa')} weather={weather} />;
     }
     if (activePage === 'Estado') return <StateView zones={zones} pumpOn={pumpOn} autoMode={autoMode} onToggleMode={toggleAutoMode} />;
     if (activePage === 'Setpoints') return <SetpointsView zones={zones} pumpDelay={pumpDelay} setPumpDelay={setPumpDelay} onChange={(id, target) => setZones((cur) => cur.map((z) => (z.id === id ? { ...z, target } : z)))} onUpdateZone={(id, patch) => setZones((cur) => cur.map((z) => (z.id === id ? { ...z, ...patch } : z)))} onAddZone={addZone} onRemoveZone={(z) => setZoneToDelete(z)} />;
-    if (activePage === 'Mapa') return <MapView zones={zones} pumpOn={pumpOn} onAddZone={addZoneFromMap} onDuplicateZone={duplicateZoneFromMap} onDragZone={updateZonePosition} onRenameZone={renameZone} onRemoveZone={(z) => setZoneToDelete(z)} onClearAll={clearAllZones} onToggleZone={toggleZone} />;
+    if (activePage === 'Mapa') return <MapView zones={zones} pumpOn={pumpOn} onAddZone={addZoneFromMap} onDuplicateZone={duplicateZoneFromMap} onDragZone={updateZonePosition} onRenameZone={renameZone} onRemoveZone={(z) => setZoneToDelete(z)} onClearAll={clearAllZones} onToggleZone={toggleZone} weather={weather} />;
     if (activePage === 'Histórico') return <HistoryView errors={errors} eventLog={eventLog} eventLogLoading={eventLogLoading} onRefresh={loadEvents} />;
     if (activePage === 'Comandos') return <CommandsView zones={zones} pumpOn={pumpOn} systemRunning={systemRunning} starting={starting} startStep={startStep} autoMode={autoMode} onToggleZone={toggleZone} onTogglePump={togglePump} onToggleMode={toggleAutoMode} onEmergencyStop={handleEmergencyStop} onTestCycle={handleTestCycle} onStart={handleStart} onStop={handleStop} onReset={handleReset} />;
     return <AlarmsView errors={errors} onResolve={(id) => setErrors((cur) => cur.map((e) => (e.id === id ? { ...e, resolved: true } : e)))} />;
@@ -401,8 +457,8 @@ function App() {
         </nav>
         <div className="sidebar-footer">
           <StatusBadge tone="success">Sistema em operação</StatusBadge>
-          <div className="footer-reading"><TimerReset size={17} /><div><strong>21:16</strong><span>10/08/2026</span></div></div>
-          <div className="footer-reading"><CloudSun size={19} /><div><strong>24°C</strong><span>Leiria · Parcialmente nublado</span></div></div>
+          <div className="footer-reading"><TimerReset size={17} /><div><strong>{clock || '21:16'}</strong><span>{dateStr || '10/08/2026'}</span></div></div>
+          <div className="footer-reading"><CloudSun size={19} /><div><strong>{weather.temp}°C</strong><span>{weather.city} · {weather.desc}</span></div></div>
           <div className="footer-reading"><Cpu size={17} /><div><strong>ESP32-S3</strong><span>Controlador principal</span></div></div>
         </div>
       </aside>
@@ -415,7 +471,7 @@ function App() {
               <h1>GTC <span>—</span> Sistema de Rega Automatizada</h1>
             </div>
             <div className="topbar-right">
-              <div className="weather"><CloudSun size={28} /><div><strong>24°C</strong><span>Leiria, Portugal · Parcialmente nublado</span></div></div>
+              <div className="weather"><CloudSun size={28} /><div><strong>{weather.temp}°C</strong><span>{weather.city}, {weather.country} · {weather.desc}</span></div></div>
               <button className="settings-btn" onClick={() => setSettingsOpen(true)} aria-label="Abrir definições"><Settings2 size={20} /></button>
             </div>
           </div>
@@ -441,7 +497,7 @@ function App() {
 }
 
 /* ---------- Overview ---------- */
-function Overview({ zones, pumpOn, autoMode, activeZones, onToggleZone, onTogglePump, onToggleMode, onOpenMap }: { zones: Zone[]; pumpOn: boolean; autoMode: boolean; activeZones: number; onToggleZone: (id: string) => void; onTogglePump: () => void; onToggleMode: () => void; onOpenMap: () => void }) {
+function Overview({ zones, pumpOn, autoMode, activeZones, onToggleZone, onTogglePump, onToggleMode, onOpenMap, weather }: { zones: Zone[]; pumpOn: boolean; autoMode: boolean; activeZones: number; onToggleZone: (id: string) => void; onTogglePump: () => void; onToggleMode: () => void; onOpenMap: () => void; weather: { temp: number; desc: string; city: string; country: string; icon: string } }) {
   return (
     <div className="content-stack">
       <Panel className="hero-panel">
@@ -545,6 +601,82 @@ function StateView({ zones, pumpOn, autoMode, onToggleMode }: { zones: Zone[]; p
           <div><span>Sensores ativos</span><strong>{zones.length} zonas</strong></div>
         </div>
       </Panel>
+
+      {/* ESP32-S3 Pinout Diagram */}
+      <Panel className="estado-pinout-panel" style={{ gridColumn: '1 / -1' }}>
+        <PanelHeader eyebrow="HARDWARE" title="ESP32-S3 · Mapa de pinos GPIO" />
+        <div className="pinout-full-grid">
+          {/* Diagrama visual */}
+          <div className="pinout-visual">
+            <div className="pinout-chip">
+              <div className="pinout-chip-header">
+                <Cpu size={20} />
+                <span>ESP32-S3</span>
+              </div>
+              <div className="pinout-chip-body">
+                <div className="pinout-side pinout-left">
+                  <div className="pinout-side-label">INPUT</div>
+                  <PinSlot gpio={4} label="B1" func="Sensor B1" direction="INPUT" connected={zones.some(z => z.sensorId === 'B1')} />
+                  <PinSlot gpio={5} label="B2" func="Sensor B2" direction="INPUT" connected={zones.some(z => z.sensorId === 'B2')} />
+                  {zones.filter(z => !['B1','B2'].includes(z.sensorId)).map((z, i) => (
+                    <PinSlot key={z.sensorId} gpio={null} label={z.sensorId} func={z.name} direction="INPUT" connected={true} />
+                  ))}
+                </div>
+                <div className="pinout-side pinout-right">
+                  <div className="pinout-side-label">OUTPUT → Módulo 8 Relés</div>
+                  {SYSTEM_RELAYS.map((r) => {
+                    const zone = zones.find(z => VALVE_RELAY_MAP[z.id]?.gpio === r.gpio);
+                    const label = zone ? `V.${zone.id}` : r.relay;
+                    const func = zone ? `Comando ${zone.sensorId}` : r.func;
+                    return <PinSlot key={r.relay} gpio={r.gpio} label={label} func={func} direction="OUTPUT" inChannel={r.inChannel} connected={true} />;
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+          {/* Tabela de referência */}
+          <div className="pinout-table-wrap">
+            <table className="pinout-ref-table">
+              <thead>
+                <tr>
+                  <th>GPIO</th>
+                  <th>Direção</th>
+                  <th>Ligação</th>
+                  <th>Função</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td><span className="gpio-badge">4</span></td><td><span className="dir-badge dir-in">INPUT</span></td><td>B1</td><td>Sensor B1</td><td>{zones.some(z => z.sensorId === 'B1') ? <StatusBadge tone="success">Ativo</StatusBadge> : <StatusBadge tone="neutral">—</StatusBadge>}</td></tr>
+                <tr><td><span className="gpio-badge">5</span></td><td><span className="dir-badge dir-in">INPUT</span></td><td>B2</td><td>Sensor B2</td><td>{zones.some(z => z.sensorId === 'B2') ? <StatusBadge tone="success">Ativo</StatusBadge> : <StatusBadge tone="neutral">—</StatusBadge>}</td></tr>
+                <tr className="pinout-sep"><td colSpan={5}><span className="pinout-sep-label">— Módulo de 8 Relés (IN1–IN8) —</span></td></tr>
+                {SYSTEM_RELAYS.map((r) => {
+                  const zone = zones.find(z => VALVE_RELAY_MAP[z.id]?.gpio === r.gpio);
+                  return (
+                    <tr key={r.relay}>
+                      <td><span className="gpio-badge">{r.gpio}</span></td>
+                      <td><span className="dir-badge dir-out">OUTPUT</span></td>
+                      <td>{r.inChannel} / {r.relay}</td>
+                      <td>{zone ? `Comando ${zone.sensorId} (Válvula ${zone.id})` : r.func}</td>
+                      <td><StatusBadge tone={zone?.on ? 'cyan' : 'neutral'}>{zone?.on ? 'Ligado' : 'Pronto'}</StatusBadge></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </Panel>
+    </div>
+  );
+}
+
+function PinSlot({ gpio, label, func, direction, inChannel, connected }: { gpio: number | null; label: string; func: string; direction: 'INPUT' | 'OUTPUT'; inChannel?: string; connected: boolean }) {
+  return (
+    <div className={`pin-slot ${direction === 'INPUT' ? 'pin-slot-in' : 'pin-slot-out'} ${connected ? 'connected' : 'disconnected'}`}>
+      <span className={`pin-slot-gpio ${connected ? 'active' : ''}`}>{gpio !== null ? `GPIO ${gpio}` : '—'}</span>
+      <span className="pin-slot-label">{label}</span>
+      <span className="pin-slot-func">{func}{inChannel ? ` · ${inChannel}` : ''}</span>
     </div>
   );
 }
@@ -676,7 +808,7 @@ const MAX_ZONE_SCALE = 1.7;
 const ZONE_SCALE_STEP = 0.15;
 type EditorTool = 'select' | 'add' | 'duplicate';
 
-function MapView({ zones, pumpOn, onAddZone, onDuplicateZone, onDragZone, onRenameZone, onRemoveZone, onClearAll, onToggleZone }: {
+function MapView({ zones, pumpOn, onAddZone, onDuplicateZone, onDragZone, onRenameZone, onRemoveZone, onClearAll, onToggleZone, weather }: {
   zones: Zone[];
   pumpOn: boolean;
   onAddZone: (x: number, y: number) => void;
@@ -686,6 +818,7 @@ function MapView({ zones, pumpOn, onAddZone, onDuplicateZone, onDragZone, onRena
   onRemoveZone: (zone: Zone) => void;
   onClearAll: () => void;
   onToggleZone: (id: string) => void;
+  weather: { temp: number; desc: string; city: string; country: string; icon: string };
 }) {
   const [pumpPos, setPumpPos] = useState<MapElement>(DEFAULT_PUMP_POS);
   const [mcuPos, setMcuPos] = useState<MapElement>(DEFAULT_MCU_POS);
@@ -705,6 +838,7 @@ function MapView({ zones, pumpOn, onAddZone, onDuplicateZone, onDragZone, onRena
   const [confirmClearAll, setConfirmClearAll] = useState(false);
   const [selectedPart, setSelectedPart] = useState<'sensor' | 'valve' | null>(null);
   const [showPinout, setShowPinout] = useState(false);
+  const [layoutSaved, setLayoutSaved] = useState(false);
 
   const getZoneScale = (id: string) => zoneScale[id] ?? 1;
 
@@ -839,6 +973,13 @@ function MapView({ zones, pumpOn, onAddZone, onDuplicateZone, onDragZone, onRena
     setSelected(null);
   };
 
+  const handleSaveLayout = () => {
+    const layout = { pumpPos, mcuPos, fields, curvedPipes, zoneScale, timestamp: new Date().toISOString() };
+    localStorage.setItem('gtc-rega-map-layout', JSON.stringify(layout));
+    setLayoutSaved(true);
+    setTimeout(() => setLayoutSaved(false), 2000);
+  };
+
   const selectedZone = zones.find((z) => z.id === selected);
 
   return (
@@ -870,6 +1011,9 @@ function MapView({ zones, pumpOn, onAddZone, onDuplicateZone, onDragZone, onRena
         </button>
         <button className={`map-tool-btn ${showPinout ? 'active' : ''}`} onClick={() => setShowPinout(v => !v)}>
           <CircuitBoard size={15} />Pinout ESP32-S3
+        </button>
+        <button className={`map-tool-btn ${layoutSaved ? 'active' : ''}`} onClick={handleSaveLayout}>
+          <Save size={15} />{layoutSaved ? 'Layout guardado!' : 'Guardar layout'}
         </button>
         {editMode && (
           <>
@@ -1062,11 +1206,9 @@ function MapView({ zones, pumpOn, onAddZone, onDuplicateZone, onDragZone, onRena
                 ? <span className="gpio-chip"><CircuitBoard size={13} /> GPIO {SENSOR_GPIO_MAP[selectedZone.sensorId]} · INPUT</span>
                 : <span className="gpio-chip gpio-unassigned"><CircuitBoard size={13} /> Sem GPIO atribuído</span>)}
           </div>
-          {selectedPart === 'valve' && VALVE_RELAY_MAP[selectedZone.id] && (
-            <button className={`map-sel-btn ${selectedZone.on ? 'valve-open-btn' : 'valve-closed-btn'}`} onClick={() => onToggleZone(selectedZone.id)}>
-              <Zap size={14} />{selectedZone.on ? 'Fechar válvula' : 'Abrir válvula'}
-            </button>
-          )}
+          <button className={`map-sel-btn ${selectedZone.on ? 'valve-open-btn' : 'valve-closed-btn'}`} onClick={() => onToggleZone(selectedZone.id)}>
+            <Zap size={14} />{selectedZone.on ? 'Fechar válvula' : 'Abrir válvula'}
+          </button>
           {editMode && (
             <>
               <div className="map-sel-size">
@@ -1077,9 +1219,17 @@ function MapView({ zones, pumpOn, onAddZone, onDuplicateZone, onDragZone, onRena
               </div>
               <div className="map-sel-actions">
                 <button className="map-sel-btn" onClick={() => { setEditingName(selectedZone.id); setEditNameValue(selectedZone.name); }}><PencilLine size={14} />Renomear</button>
-                <button className="map-sel-btn map-sel-delete" onClick={() => { onRemoveZone(selectedZone); setSelected(null); setSelectedPart(null); }}><Trash2 size={14} />Apagar sensor</button>
+                <button className="map-sel-btn" onClick={() => { onDuplicateZone(selectedZone); }}><Copy size={14} />Duplicar</button>
+                <button className="map-sel-btn map-sel-delete" onClick={() => { onRemoveZone(selectedZone); setSelected(null); setSelectedPart(null); }}><Trash2 size={14} />Apagar</button>
               </div>
             </>
+          )}
+          {!editMode && (
+            <div className="map-sel-actions">
+              <button className="map-sel-btn" onClick={() => setSelectedPart(selectedPart === 'valve' ? 'sensor' : 'valve')}>
+                <MapPin size={14} />Ver {selectedPart === 'valve' ? 'sensor' : 'válvula'}
+              </button>
+            </div>
           )}
         </div>
       )}
