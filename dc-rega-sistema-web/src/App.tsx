@@ -37,7 +37,7 @@ import {
   MapPin,
   PencilLine,
 } from 'lucide-react';
-import { fetchEvents, logEvent, type EventLogEntry, type EventType } from '@/lib/supabase';
+import { fetchEvents, logEvent, type EventLogEntry } from '@/lib/supabase';
 
 type Page = 'Resumo' | 'Estado' | 'Setpoints' | 'Mapa' | 'Histórico' | 'Comandos' | 'Alarmes';
 type Zone = {
@@ -110,19 +110,6 @@ function sensorStatus(zone: Zone): 'ok' | 'warning' | 'offline' {
 function formatTime(iso: string): string {
   const d = new Date(iso);
   return d.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
-}
-
-function formatDateTime(iso: string): string {
-  const d = new Date(iso);
-  const now = new Date();
-  const isToday = d.toDateString() === now.toDateString();
-  const yesterday = new Date(now);
-  yesterday.setDate(yesterday.getDate() - 1);
-  const isYesterday = d.toDateString() === yesterday.toDateString();
-  const time = d.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
-  if (isToday) return `Hoje, ${time}`;
-  if (isYesterday) return `Ontem, ${time}`;
-  return d.toLocaleDateString('pt-PT') + ', ' + time;
 }
 
 function eventToHistoryItem(ev: EventLogEntry): { time: string; zone: string; duration: string; eventType: string } {
@@ -332,9 +319,9 @@ function App() {
     }
     if (activePage === 'Estado') return <StateView zones={zones} pumpOn={pumpOn} autoMode={autoMode} onToggleMode={toggleAutoMode} />;
     if (activePage === 'Setpoints') return <SetpointsView zones={zones} pumpDelay={pumpDelay} setPumpDelay={setPumpDelay} onChange={(id, target) => setZones((cur) => cur.map((z) => (z.id === id ? { ...z, target } : z)))} onUpdateZone={(id, patch) => setZones((cur) => cur.map((z) => (z.id === id ? { ...z, ...patch } : z)))} onAddZone={addZone} onRemoveZone={(z) => setZoneToDelete(z)} />;
-    if (activePage === 'Mapa') return <MapView zones={zones} pumpOn={pumpOn} onAddZone={addZoneFromMap} onDragZone={updateZonePosition} onRenameZone={renameZone} />;
+    if (activePage === 'Mapa') return <MapView zones={zones} pumpOn={pumpOn} onAddZone={addZoneFromMap} onDragZone={updateZonePosition} onRenameZone={renameZone} onRemoveZone={(z) => setZoneToDelete(z)} />;
     if (activePage === 'Histórico') return <HistoryView errors={errors} eventLog={eventLog} eventLogLoading={eventLogLoading} onRefresh={loadEvents} />;
-    if (activePage === 'Comandos') return <CommandsView zones={zones} pumpOn={pumpOn} systemRunning={systemRunning} starting={starting} startStep={startStep} autoMode={autoMode} onToggleZone={toggleZone} onTogglePump={togglePump} onToggleMode={toggleAutoMode} onAction={showNotice} onEmergencyStop={handleEmergencyStop} onTestCycle={handleTestCycle} onStart={handleStart} onStop={handleStop} onReset={handleReset} />;
+    if (activePage === 'Comandos') return <CommandsView zones={zones} pumpOn={pumpOn} systemRunning={systemRunning} starting={starting} startStep={startStep} autoMode={autoMode} onToggleZone={toggleZone} onTogglePump={togglePump} onToggleMode={toggleAutoMode} onEmergencyStop={handleEmergencyStop} onTestCycle={handleTestCycle} onStart={handleStart} onStop={handleStop} onReset={handleReset} />;
     return <AlarmsView errors={errors} onResolve={(id) => setErrors((cur) => cur.map((e) => (e.id === id ? { ...e, resolved: true } : e)))} />;
   };
 
@@ -598,23 +585,38 @@ function SetpointsView({ zones, onChange, onUpdateZone, pumpDelay, setPumpDelay,
 type MapElement = { x: number; y: number };
 type MapField = { id: string; x: number; y: number; w: number; h: number; name: string };
 
-function MapView({ zones, pumpOn, onAddZone, onDragZone, onRenameZone }: {
+const DEFAULT_PUMP_POS: MapElement = { x: 50, y: 82 };
+const DEFAULT_MCU_POS: MapElement = { x: 50, y: 92 };
+const DEFAULT_FIELDS: MapField[] = [
+  { id: 'F1', x: 6, y: 8, w: 40, h: 42, name: 'Terreno A' },
+  { id: 'F2', x: 52, y: 36, w: 42, h: 46, name: 'Terreno B' },
+];
+
+let nextFieldId = 3;
+function makeFieldId() {
+  return `F${nextFieldId++}`;
+}
+
+function MapView({ zones, pumpOn, onAddZone, onDragZone, onRenameZone, onRemoveZone }: {
   zones: Zone[];
   pumpOn: boolean;
   onAddZone: (x: number, y: number) => void;
   onDragZone: (id: string, x: number, y: number) => void;
   onRenameZone: (id: string, name: string) => void;
+  onRemoveZone: (zone: Zone) => void;
 }) {
-  const [pumpPos, setPumpPos] = useState<MapElement>({ x: 50, y: 82 });
-  const [mcuPos, setMcuPos] = useState<MapElement>({ x: 50, y: 92 });
-  const [fields, setFields] = useState<MapField[]>([
-    { id: 'F1', x: 6, y: 8, w: 40, h: 42, name: 'Terreno A' },
-    { id: 'F2', x: 52, y: 36, w: 42, h: 46, name: 'Terreno B' },
-  ]);
+  const [pumpPos, setPumpPos] = useState<MapElement>(DEFAULT_PUMP_POS);
+  const [mcuPos, setMcuPos] = useState<MapElement>(DEFAULT_MCU_POS);
+  const [fields, setFields] = useState<MapField[]>(DEFAULT_FIELDS);
   const canvasRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState<string | null>(null);
+  const [resizing, setResizing] = useState<string | null>(null);
+  const [editMode, setEditMode] = useState(false);
+  const [selected, setSelected] = useState<string | null>(null);
   const [editingName, setEditingName] = useState<string | null>(null);
   const [editNameValue, setEditNameValue] = useState('');
+  const [fieldNameEdit, setFieldNameEdit] = useState<string | null>(null);
+  const [fieldNameValue, setFieldNameValue] = useState('');
 
   const getXY = (e: MouseEvent | React.MouseEvent): { x: number; y: number } | null => {
     const canvas = canvasRef.current;
@@ -627,7 +629,12 @@ function MapView({ zones, pumpOn, onAddZone, onDragZone, onRenameZone }: {
   };
 
   const handleCanvasClick = (e: React.MouseEvent) => {
-    if (dragging) return;
+    if (dragging || resizing) return;
+    // clicar em zona vazia limpa a seleção
+    if (e.target === canvasRef.current || (e.target as HTMLElement).classList.contains('map-grid-bg')) {
+      setSelected(null);
+    }
+    if (!editMode) return;
     const pos = getXY(e);
     if (!pos) return;
     if (pos.y > 80) return;
@@ -637,14 +644,29 @@ function MapView({ zones, pumpOn, onAddZone, onDragZone, onRenameZone }: {
   const handleMouseDown = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     e.preventDefault();
+    setSelected(id);
     setDragging(id);
   };
 
+  const handleResizeDown = (e: React.MouseEvent, fieldId: string) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setResizing(fieldId);
+    setSelected(`field-${fieldId}`);
+  };
+
   useEffect(() => {
-    if (!dragging) return;
+    if (!dragging && !resizing) return;
     const handleMove = (e: MouseEvent) => {
       const pos = getXY(e);
       if (!pos) return;
+      if (resizing) {
+        setFields((cur) => cur.map((f) => (f.id === resizing
+          ? { ...f, w: Math.max(10, Math.min(96 - f.x, pos.x - f.x)), h: Math.max(10, Math.min(96 - f.y, pos.y - f.y)) }
+          : f)));
+        return;
+      }
+      if (!dragging) return;
       if (dragging === 'pump') setPumpPos(pos);
       else if (dragging === 'mcu') setMcuPos(pos);
       else if (dragging.startsWith('field-')) {
@@ -654,14 +676,14 @@ function MapView({ zones, pumpOn, onAddZone, onDragZone, onRenameZone }: {
         onDragZone(dragging, pos.x, pos.y);
       }
     };
-    const handleUp = () => setDragging(null);
+    const handleUp = () => { setDragging(null); setResizing(null); };
     window.addEventListener('mousemove', handleMove);
     window.addEventListener('mouseup', handleUp);
     return () => {
       window.removeEventListener('mousemove', handleMove);
       window.removeEventListener('mouseup', handleUp);
     };
-  }, [dragging, onDragZone]);
+  }, [dragging, resizing, onDragZone]);
 
   const startEditName = (e: React.MouseEvent, zone: Zone) => {
     e.stopPropagation();
@@ -677,8 +699,42 @@ function MapView({ zones, pumpOn, onAddZone, onDragZone, onRenameZone }: {
     setEditNameValue('');
   };
 
+  const addField = () => {
+    const id = makeFieldId();
+    setFields((cur) => [...cur, { id, x: 30, y: 20, w: 30, h: 30, name: `Terreno ${String.fromCharCode(64 + cur.length + 1)}` }]);
+    setSelected(`field-${id}`);
+  };
+
+  const removeField = (id: string) => {
+    setFields((cur) => cur.filter((f) => f.id !== id));
+    if (selected === `field-${id}`) setSelected(null);
+  };
+
+  const startFieldNameEdit = (e: React.MouseEvent, f: MapField) => {
+    e.stopPropagation();
+    setFieldNameEdit(f.id);
+    setFieldNameValue(f.name);
+  };
+
+  const submitFieldName = () => {
+    if (fieldNameEdit && fieldNameValue.trim()) {
+      setFields((cur) => cur.map((f) => (f.id === fieldNameEdit ? { ...f, name: fieldNameValue.trim() } : f)));
+    }
+    setFieldNameEdit(null);
+    setFieldNameValue('');
+  };
+
+  const resetLayout = () => {
+    setPumpPos(DEFAULT_PUMP_POS);
+    setMcuPos(DEFAULT_MCU_POS);
+    setFields(DEFAULT_FIELDS.map((f) => ({ ...f })));
+    setSelected(null);
+  };
+
+  const selectedZone = zones.find((z) => z.id === selected);
+
   return (
-    <Panel className="map-panel">
+    <Panel className={`map-panel ${editMode ? 'map-editing' : ''}`}>
       <div className="panel-heading">
         <div><span className="section-kicker">LOCALIZAÇÃO EM TEMPO REAL</span><h3>Quinta GTC · Leiria</h3></div>
         <div className="map-legend">
@@ -689,19 +745,50 @@ function MapView({ zones, pumpOn, onAddZone, onDragZone, onRenameZone }: {
           <span><i className="legend-dot legend-mcu" /> Microcontrolador</span>
         </div>
       </div>
-      <div className="map-hint"><MapPin size={14} /> Clique no mapa para adicionar um local · Arraste qualquer elemento para reposicionar</div>
+
+      <div className="map-toolbar">
+        <button className={`map-tool-btn ${editMode ? 'active' : ''}`} onClick={() => { setEditMode((v) => !v); setSelected(null); }}>
+          <PencilLine size={15} />{editMode ? 'Modo edição ativo' : 'Editar mapa'}
+        </button>
+        {editMode && (
+          <>
+            <button className="map-tool-btn" onClick={addField}><Plus size={15} />Adicionar terreno</button>
+            <button className="map-tool-btn map-tool-reset" onClick={resetLayout}><RotateCcw size={15} />Repor layout</button>
+          </>
+        )}
+        <span className="map-tool-status">{zones.length} sensores · {fields.length} terrenos</span>
+      </div>
+
+      <div className="map-hint">
+        <MapPin size={14} />
+        {editMode
+          ? 'Clique numa área livre para adicionar um sensor · Arraste elementos · Selecione para editar/apagar'
+          : 'Ative "Editar mapa" para adicionar, mover, redimensionar ou apagar elementos'}
+      </div>
+
       <div className="map-canvas" ref={canvasRef} onClick={handleCanvasClick}>
         <div className="map-grid-bg" />
-        {fields.map((f) => (
-          <div
-            key={f.id}
-            className={`map-field-draggable ${dragging === `field-${f.id}` ? 'dragging' : ''}`}
-            style={{ left: `${f.x}%`, top: `${f.y}%`, width: `${f.w}%`, height: `${f.h}%` }}
-            onMouseDown={(e) => handleMouseDown(e, `field-${f.id}`)}
-          >
-            <span className="field-label">{f.name}</span>
-          </div>
-        ))}
+        {fields.map((f) => {
+          const isSel = selected === `field-${f.id}`;
+          return (
+            <div
+              key={f.id}
+              className={`map-field-draggable ${dragging === `field-${f.id}` ? 'dragging' : ''} ${isSel ? 'selected' : ''} ${editMode ? 'editable' : ''}`}
+              style={{ left: `${f.x}%`, top: `${f.y}%`, width: `${f.w}%`, height: `${f.h}%` }}
+              onMouseDown={(e) => editMode && handleMouseDown(e, `field-${f.id}`)}
+              onClick={(e) => { e.stopPropagation(); if (editMode) setSelected(`field-${f.id}`); }}
+            >
+              <span className="field-label">{f.name}</span>
+              {editMode && isSel && (
+                <>
+                  <button className="field-action field-edit" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => startFieldNameEdit(e, f)} aria-label="Renomear terreno"><PencilLine size={12} /></button>
+                  <button className="field-action field-delete" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); removeField(f.id); }} aria-label="Apagar terreno"><Trash2 size={12} /></button>
+                  <span className="field-resize-handle" onMouseDown={(e) => handleResizeDown(e, f.id)} aria-label="Redimensionar terreno" />
+                </>
+              )}
+            </div>
+          );
+        })}
         <svg className="map-pipes" viewBox="0 0 100 100" preserveAspectRatio="none">
           {zones.map((zone) => {
             const vx = zone.x + 5;
@@ -719,9 +806,9 @@ function MapView({ zones, pumpOn, onAddZone, onDragZone, onRenameZone }: {
           <line x1={mcuPos.x} y1={mcuPos.y} x2={pumpPos.x} y2={pumpPos.y} className={`pipe pipe-mcu ${pumpOn ? 'pipe-active' : ''}`} />
         </svg>
         <div
-          className={`map-marker marker-pump ${dragging === 'pump' ? 'dragging' : ''}`}
+          className={`map-marker marker-pump ${dragging === 'pump' ? 'dragging' : ''} ${selected === 'pump' ? 'selected' : ''} ${editMode ? 'editable' : ''}`}
           style={{ left: `${pumpPos.x}%`, top: `${pumpPos.y}%` }}
-          onMouseDown={(e) => handleMouseDown(e, 'pump')}
+          onMouseDown={(e) => editMode && handleMouseDown(e, 'pump')}
         >
           <span className="marker-pin marker-pin-pump"><Waves size={16} /></span>
           <div className="marker-label">
@@ -730,9 +817,9 @@ function MapView({ zones, pumpOn, onAddZone, onDragZone, onRenameZone }: {
           </div>
         </div>
         <div
-          className={`map-marker marker-mcu ${dragging === 'mcu' ? 'dragging' : ''}`}
+          className={`map-marker marker-mcu ${dragging === 'mcu' ? 'dragging' : ''} ${selected === 'mcu' ? 'selected' : ''} ${editMode ? 'editable' : ''}`}
           style={{ left: `${mcuPos.x}%`, top: `${mcuPos.y}%` }}
-          onMouseDown={(e) => handleMouseDown(e, 'mcu')}
+          onMouseDown={(e) => editMode && handleMouseDown(e, 'mcu')}
         >
           <span className="marker-pin marker-pin-mcu"><Cpu size={14} /></span>
           <div className="marker-label">
@@ -746,12 +833,13 @@ function MapView({ zones, pumpOn, onAddZone, onDragZone, onRenameZone }: {
           const vy = zone.y;
           const sx = zone.x - 5;
           const sy = zone.y;
+          const isSel = selected === zone.id;
           return (
             <div key={zone.id} className="map-zone-group">
               <div
-                className={`map-marker marker-valve ${zone.on ? 'valve-open' : ''} ${dragging === zone.id ? 'dragging' : ''}`}
+                className={`map-marker marker-valve ${zone.on ? 'valve-open' : ''} ${dragging === zone.id ? 'dragging' : ''} ${isSel ? 'selected' : ''} ${editMode ? 'editable' : ''}`}
                 style={{ left: `${vx}%`, top: `${vy}%` }}
-                onMouseDown={(e) => handleMouseDown(e, zone.id)}
+                onMouseDown={(e) => editMode && handleMouseDown(e, zone.id)}
               >
                 <span className="marker-pin marker-pin-valve">{zone.id}</span>
                 <div className="marker-label">
@@ -760,9 +848,9 @@ function MapView({ zones, pumpOn, onAddZone, onDragZone, onRenameZone }: {
                 </div>
               </div>
               <div
-                className={`map-marker marker-sensor marker-${status} ${dragging === zone.id ? 'dragging' : ''}`}
+                className={`map-marker marker-sensor marker-${status} ${dragging === zone.id ? 'dragging' : ''} ${isSel ? 'selected' : ''} ${editMode ? 'editable' : ''}`}
                 style={{ left: `${sx}%`, top: `${sy}%` }}
-                onMouseDown={(e) => handleMouseDown(e, zone.id)}
+                onMouseDown={(e) => editMode && handleMouseDown(e, zone.id)}
               >
                 <span className="marker-pin">{zone.sensorId}</span>
                 <div className="marker-label">
@@ -779,7 +867,8 @@ function MapView({ zones, pumpOn, onAddZone, onDragZone, onRenameZone }: {
                   ) : (
                     <>
                       <strong>
-                        {zone.name} <button className="marker-edit-btn" onClick={(e) => startEditName(e, zone)} aria-label="Editar nome"><PencilLine size={11} /></button>
+                        {zone.name}
+                        {editMode && <button className="marker-edit-btn" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => startEditName(e, zone)} aria-label="Editar nome"><PencilLine size={11} /></button>}
                       </strong>
                       <span>{status === 'ok' ? 'Normal' : 'Atenção'} · {zone.moisture}%</span>
                     </>
@@ -790,12 +879,37 @@ function MapView({ zones, pumpOn, onAddZone, onDragZone, onRenameZone }: {
           );
         })}
       </div>
+
+      {editMode && selectedZone && (
+        <div className="map-selection-bar">
+          <div className="map-sel-info">
+            <span className="map-sel-pin">{selectedZone.sensorId}</span>
+            <div>
+              <strong>{selectedZone.name}</strong>
+              <span>Válvula {selectedZone.id} · Sensor {selectedZone.sensorId} · Humidade {selectedZone.moisture}%</span>
+            </div>
+          </div>
+          <div className="map-sel-actions">
+            <button className="map-sel-btn" onClick={() => { setEditingName(selectedZone.id); setEditNameValue(selectedZone.name); }}><PencilLine size={14} />Renomear</button>
+            <button className="map-sel-btn map-sel-delete" onClick={() => { onRemoveZone(selectedZone); setSelected(null); }}><Trash2 size={14} />Apagar sensor</button>
+          </div>
+        </div>
+      )}
+
       {editingName && (
         <TextKeyboard
           value={editNameValue}
           onChange={setEditNameValue}
           onSubmit={submitNameEdit}
           onClose={() => { setEditingName(null); setEditNameValue(''); }}
+        />
+      )}
+      {fieldNameEdit && (
+        <TextKeyboard
+          value={fieldNameValue}
+          onChange={setFieldNameValue}
+          onSubmit={submitFieldName}
+          onClose={() => { setFieldNameEdit(null); setFieldNameValue(''); }}
         />
       )}
     </Panel>
@@ -992,7 +1106,7 @@ function ErrorItem({ event }: { event: ErrorEvent }) {
 }
 
 /* ---------- Comandos com Start/Stop/Reset ---------- */
-function CommandsView({ zones, pumpOn, systemRunning, starting, startStep, autoMode, onToggleZone, onTogglePump, onToggleMode, onAction, onEmergencyStop, onTestCycle, onStart, onStop, onReset }: {
+function CommandsView({ zones, pumpOn, systemRunning, starting, startStep, autoMode, onToggleZone, onTogglePump, onToggleMode, onEmergencyStop, onTestCycle, onStart, onStop, onReset }: {
   zones: Zone[];
   pumpOn: boolean;
   systemRunning: boolean;
@@ -1002,7 +1116,6 @@ function CommandsView({ zones, pumpOn, systemRunning, starting, startStep, autoM
   onToggleZone: (id: string) => void;
   onTogglePump: () => void;
   onToggleMode: () => void;
-  onAction: (m: string) => void;
   onEmergencyStop: () => void;
   onTestCycle: () => void;
   onStart: () => void;

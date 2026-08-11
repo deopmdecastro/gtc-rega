@@ -1,51 +1,60 @@
-# DC Rega — UI Prototype
+# GTC — Sistema de Rega Automatizada (Web)
 
-Projeto mínimo que converte o ficheiro `dc-rega-sistema.html` numa interface web utilizável como protótipo.
+Painel de monitorização e controlo do sistema de rega baseado em ESP32-S3.
+Aplicação web em **React + Vite + TypeScript**, com registo de eventos
+opcional via **Supabase**.
 
-## Conteúdo
-- `index.html` — mockup LVGL convertido para HTML/CSS (interface prevista)
-- `index-api.html` — protótipo funcional que consome o mock backend e mostra estado em tempo real
-- `package.json` — script `npm start` para servir a pasta localmente via `http-server`
+## Funcionalidades
+- **Resumo** — estado geral do sistema, atuadores (bomba + válvulas) e sensores.
+- **Estado** — leitura em tempo real dos equipamentos e modo de operação.
+- **Setpoints** — configuração de humidade mínima, tempo de rega e delay da bomba (teclado numérico).
+- **Mapa** — editor visual da propriedade com sensores, válvulas, bomba, microcontrolador e terrenos.
+- **Histórico** — eventos de rega e histórico de erros.
+- **Comandos** — Start / Stop / Reset, controlo manual e paragem de emergência.
+- **Alarmes** — gestão de alarmes ativos e resolvidos.
+- **Definições** — idioma (PT/EN) e conta do operador.
 
-## Como correr (opções)
+## Editor de Mapa (melhorado)
+O separador **Mapa** tem agora um modo de edição completo:
+- Botão **"Editar mapa"** para entrar/sair do modo de edição.
+- **Adicionar sensor** — clicar numa área livre do mapa (em modo edição).
+- **Mover** — arrastar qualquer elemento (sensores, válvulas, bomba, ESP32, terrenos).
+- **Selecionar** — clicar num elemento mostra a barra de ação com opções.
+- **Renomear** — sensores e terrenos (teclado on-screen).
+- **Apagar** — sensores (com confirmação) e terrenos.
+- **Adicionar terreno** e **redimensionar** terrenos (pega no canto inferior direito).
+- **Repor layout** — volta às posições originais.
 
-Opcional A — com Node (recomendado se tem npm):
+Fora do modo de edição o mapa é apenas de visualização (evita alterações acidentais).
 
+## Configuração do Supabase (opcional)
+O painel funciona **sem** Supabase — o registo de eventos fica em memória
+durante a sessão. Para persistir o histórico numa base de dados:
+
+1. Copie `.env.example` para `.env.local`.
+2. Preencha `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`.
+
+> A correção do erro `supabaseUrl is required` torna o cliente Supabase
+> resiliente: quando as variáveis não existem, a app degrada de forma
+> silenciosa em vez de rebentar no arranque.
+
+## Como correr
 ```bash
-npm install -g http-server   # opcional, ou use npx
-npm start
-# depois abra http://localhost:8080
+npm install
+npm run dev        # servidor de desenvolvimento (Vite)
+npm run build      # build de produção -> dist/
+npm run preview    # pré-visualizar o build
+npm run typecheck  # verificação de tipos
+npm run lint       # ESLint
 ```
 
-Opcional B — com Python (sem instalar nada extra):
+## Arquitetura de dados
+- **Modelos**: `Zone` (sensor + válvula), `MapField` (terreno), `EventLogEntry`, `ErrorEvent`.
+- **Armazenamento**: Supabase (tabela `event_log`) — opcional; fallback em memória.
+- **Fluxo**: ações no painel → `logEvent()` → Supabase / cache local → separador Histórico.
 
-```bash
-# Python 3
-python -m http.server 8080
-# depois abra http://localhost:8080
-```
-
-## Próximos passos sugeridos
-- Separar o CSS numa folha própria e assets em `assets/`.
-- Criar um pequeno backend REST no ESP32 (ESP-IDF) e um protótipo da app Flutter que consuma a API.
-- Converter os componentes visuais para LVGL (C) no firmware do ESP32-S3.
+## Stack
+- React 18 · TypeScript · Vite 5 · lucide-react · Supabase JS
 
 ## Notas
-Este repositório é um protótipo de UI para validação visual e contém um *mock backend* para desenvolvimento local.
-
-## Docker
-Inclui definições para correr front e back via Docker Compose.
-
-### Como correr com Docker Compose
-
-```bash
-# a partir da pasta dc-rega-sistema-web
-docker compose up --build
-# depois abra http://localhost:8080 (front) e a API fica em http://localhost:3000
-```
-
-### Endpoints do mock backend
-- `GET /api/status` — devolve o estado atual
-- `POST /api/command` — envia comandos JSON, ex: `{ "command":"START" }`
-- WebSocket — em `ws://localhost:3000` (Socket.IO) emite eventos `update`
-
+- `backend/` contém um mock backend Express + Socket.IO para desenvolvimento local (não é usado pela app React).

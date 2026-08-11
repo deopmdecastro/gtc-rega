@@ -1,9 +1,20 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+/**
+ * Supabase é opcional: o painel funciona mesmo sem credenciais configuradas.
+ * Quando VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY não existem, o cliente
+ * fica desativado (isSupabaseEnabled = false) e as funções de registo de
+ * eventos degradam de forma silenciosa em vez de rebentar a aplicação com
+ * "supabaseUrl is required".
+ */
+export const isSupabaseEnabled = Boolean(supabaseUrl && supabaseAnonKey);
+
+export const supabase: SupabaseClient | null = isSupabaseEnabled
+  ? createClient(supabaseUrl as string, supabaseAnonKey as string)
+  : null;
 
 export type EventType =
   | 'zone_toggle'
@@ -32,6 +43,14 @@ export type EventLogEntry = {
   created_at: string;
 };
 
+/**
+ * Registo local (fallback) usado quando o Supabase não está configurado.
+ * Mantém os eventos em memória para que o Histórico continue a funcionar
+ * durante a sessão, sem depender de qualquer serviço externo.
+ */
+const localEventLog: EventLogEntry[] = [];
+let localSeq = 0;
+
 export async function logEvent(
   eventType: EventType,
   source: string,
@@ -39,6 +58,19 @@ export async function logEvent(
   severity: EventSeverity = 'info',
   metadata: Record<string, unknown> | null = null,
 ): Promise<void> {
+  // fallback local — sempre alimentado, também serve de cache quando há Supabase
+  localEventLog.unshift({
+    id: `local-${Date.now()}-${localSeq++}`,
+    event_type: eventType,
+    source,
+    message,
+    severity,
+    metadata,
+    created_at: new Date().toISOString(),
+  });
+  if (localEventLog.length > 200) localEventLog.length = 200;
+
+  if (!supabase) return;
   try {
     await supabase.from('event_log').insert({
       event_type: eventType,
@@ -53,11 +85,18 @@ export async function logEvent(
 }
 
 export async function fetchEvents(limit = 50): Promise<EventLogEntry[]> {
-  const { data, error } = await supabase
-    .from('event_log')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(limit);
-  if (error) return [];
-  return (data as EventLogEntry[]) ?? [];
+  if (!supabase) {
+    return localEventLog.slice(0, limit);
+  }
+  try {
+    const { data, error } = await supabase
+      .from('event_log')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (error || !data) return localEventLog.slice(0, limit);
+    return data as EventLogEntry[];
+  } catch {
+    return localEventLog.slice(0, limit);
+  }
 }

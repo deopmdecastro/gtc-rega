@@ -511,6 +511,42 @@ button { cursor: pointer; }
 .marker-label strong { display: block; color: #dce5e8; font-size: 10px; }
 .marker-label span { display: block; margin-top: 2px; color: #8499a2; font-size: 9px; }
 
+/* ---------- Editor de mapa ---------- */
+.map-canvas { cursor: default; }
+.map-editing .map-canvas { cursor: crosshair; }
+.map-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 16px; }
+.map-tool-btn { display: inline-flex; align-items: center; gap: 7px; padding: 9px 14px; border: 1px solid #263943; border-radius: 10px; color: #b7c6cd; background: #0b171d; font-size: 12px; font-weight: 600; font-family: inherit; cursor: pointer; transition: .2s; }
+.map-tool-btn:hover { border-color: #12bcb6; color: #dce5e8; background: rgba(20,221,214,.06); }
+.map-tool-btn.active { border-color: #12bcb6; background: linear-gradient(135deg, rgba(20,221,214,.16), rgba(94,229,138,.12)); color: #1ad5d0; box-shadow: 0 0 0 1px rgba(20,221,214,.25); }
+.map-tool-btn svg { color: currentColor; }
+.map-tool-reset:hover { border-color: #f2b35d; color: #f2b35d; background: rgba(242,179,93,.08); }
+.map-tool-status { margin-left: auto; color: #6e858f; font-size: 11px; font-weight: 600; letter-spacing: .04em; }
+
+.map-marker.editable { cursor: grab; }
+.map-marker.editable:hover .marker-pin { transform: scale(1.12); }
+.map-marker.selected .marker-pin { box-shadow: 0 0 0 3px currentColor, 0 0 0 6px rgba(20,221,214,.5), 0 4px 12px rgba(0,0,0,.4); }
+
+.map-field-draggable { cursor: default; }
+.map-field-draggable.editable { cursor: grab; }
+.map-field-draggable.selected { border-color: #12bcb6; background: rgba(20,221,214,.08); box-shadow: 0 0 0 1px rgba(20,221,214,.3); z-index: 6; }
+.field-action { position: absolute; top: 6px; display: grid; place-items: center; width: 24px; height: 24px; border: 1px solid #263943; border-radius: 7px; background: #0d171e; cursor: pointer; transition: .2s; z-index: 7; }
+.field-edit { right: 34px; color: #1ad5d0; }
+.field-edit:hover { border-color: #12bcb6; background: rgba(20,221,214,.12); }
+.field-delete { right: 6px; color: #ff7a7a; }
+.field-delete:hover { border-color: #ff7a7a; background: rgba(255,122,122,.12); }
+.field-resize-handle { position: absolute; right: -1px; bottom: -1px; width: 18px; height: 18px; border-right: 3px solid #12bcb6; border-bottom: 3px solid #12bcb6; border-bottom-right-radius: 10px; cursor: nwse-resize; z-index: 7; }
+
+.map-selection-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-top: 14px; padding: 12px 16px; border: 1px solid #1a2a34; border-radius: 12px; background: #0b171d; }
+.map-sel-info { display: flex; align-items: center; gap: 12px; }
+.map-sel-pin { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: #5ee58a; color: #06121a; font-size: 11px; font-weight: 700; }
+.map-sel-info strong { display: block; color: #dce5e8; font-size: 13px; }
+.map-sel-info span { display: block; margin-top: 2px; color: #8499a2; font-size: 11px; }
+.map-sel-actions { display: flex; gap: 10px; margin-left: auto; }
+.map-sel-btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border: 1px solid #263943; border-radius: 9px; color: #b7c6cd; background: #0d171e; font-size: 12px; font-weight: 600; font-family: inherit; cursor: pointer; transition: .2s; }
+.map-sel-btn:hover { border-color: #12bcb6; color: #dce5e8; }
+.map-sel-delete { color: #ff7a7a; }
+.map-sel-delete:hover { border-color: #ff7a7a; background: rgba(255,122,122,.1); color: #ff7a7a; }
+
 /* ---------- Painel de definições ---------- */
 .settings-drawer { position: fixed; right: 0; top: 0; bottom: 0; width: min(420px, 100%); z-index: 101; background: #0a131a; border-left: 1px solid #1f3a42; padding: 28px; box-shadow: -16px 0 40px rgba(0,0,0,.4); animation: drawer-in .25s ease; overflow-y: auto; }
 @keyframes drawer-in { from { transform: translateX(30px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
@@ -547,8 +583,16 @@ button { cursor: pointer; }
   .topbar { flex-wrap: wrap; }
   .topbar-right { gap: 10px; }
   .settings-btn { width: 38px; height: 38px; }
-  .map-canvas { height: 320px; cursor: crosshair; }
+  .map-canvas { height: 320px; }
+  .map-editing .map-canvas { cursor: crosshair; }
   .marker-label { display: none; }
+  .map-marker.selected .marker-label { display: block; }
   .map-hint { font-size: 10px; }
   .settings-drawer { width: 100%; padding: 22px; }
+  .map-toolbar { gap: 8px; }
+  .map-tool-btn { padding: 8px 11px; font-size: 11px; }
+  .map-tool-status { width: 100%; margin-left: 0; }
+  .map-selection-bar { padding: 12px; }
+  .map-sel-actions { margin-left: 0; width: 100%; }
+  .map-sel-btn { flex: 1; justify-content: center; }
 }
