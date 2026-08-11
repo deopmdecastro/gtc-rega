@@ -621,7 +621,18 @@ button { cursor: pointer; }
 .legend-warning { background: #f2b35d; box-shadow: 0 0 6px rgba(242,179,93,.5); }
 .legend-offline { background: #6a7a82; }
 .legend-mcu { background: #ff9f43; box-shadow: 0 0 6px rgba(255,159,67,.5); }
-.map-canvas { position: relative; height: 520px; margin-top: 16px; border: 1px solid #1a2a34; border-radius: 13px; overflow: hidden; background: #0a141a; cursor: crosshair; }
+
+/* ---------- Map layout improvements ---------- */
+.map-canvas { position: relative; width: 100%; aspect-ratio: 16/10; min-height: 420px; background: #080f14; border: 1px solid #1a2a33; border-radius: 12px; overflow: hidden; }
+.map-grid-bg { position: absolute; inset: 0; background-image: radial-gradient(circle, #0d1a22 1px, transparent 1px); background-size: 24px 24px; opacity: .4; }
+.map-field-draggable { position: absolute; border: 1.5px dashed #1a2a33; border-radius: 12px; background: rgba(18,188,182,.03); transition: border-color .2s, background .2s; pointer-events: auto; }
+.map-field-draggable.editable { border-color: rgba(18,188,182,.15); }
+.map-field-draggable.selected { border-color: rgba(18,188,182,.5); background: rgba(18,188,182,.06); }
+.map-field-draggable.dragging { border-color: #1ad5d0; background: rgba(18,188,182,.1); z-index: 5; }
+.map-field-label { position: absolute; top: 6px; left: 10px; font-size: 11px; font-weight: 700; color: #3a4a52; letter-spacing: .06em; pointer-events: none; transition: color .2s; }
+.map-field-draggable.editable .map-field-label { color: #7e909c; }
+.map-field-draggable.selected .map-field-label { color: #1ad5d0; }
+
 .map-hint { display: flex; align-items: flex-start; gap: 6px; margin-top: 14px; color: #6e858f; font-size: 11px; line-height: 1.45; }
 .map-hint svg { color: #1ad5d0; }
 .map-marker.dragging { z-index: 10; cursor: grabbing; }
