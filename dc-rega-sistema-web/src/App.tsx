@@ -216,7 +216,7 @@ function App() {
     }
     if (activePage === 'Estado') return <StateView zones={zones} pumpOn={pumpOn} autoMode={autoMode} onToggleMode={toggleAutoMode} />;
     if (activePage === 'Setpoints') return <SetpointsView zones={zones} pumpDelay={pumpDelay} setPumpDelay={setPumpDelay} onChange={(id, target) => setZones((cur) => cur.map((z) => (z.id === id ? { ...z, target } : z)))} onUpdateZone={(id, patch) => setZones((cur) => cur.map((z) => (z.id === id ? { ...z, ...patch } : z)))} onAddZone={addZone} onRemoveZone={(z) => setZoneToDelete(z)} />;
-    if (activePage === 'Mapa') return <MapView zones={zones} />;
+    if (activePage === 'Mapa') return <MapView zones={zones} pumpOn={pumpOn} />;
     if (activePage === 'Histórico') return <HistoryView errors={errors} />;
     if (activePage === 'Comandos') return <CommandsView zones={zones} pumpOn={pumpOn} systemRunning={systemRunning} starting={starting} startStep={startStep} autoMode={autoMode} onToggleZone={toggleZone} onTogglePump={() => setPumpOn((v) => !v)} onToggleMode={toggleAutoMode} onAction={showNotice} onStart={handleStart} onStop={handleStop} onReset={handleReset} />;
     return <AlarmsView errors={errors} onResolve={(id) => setErrors((cur) => cur.map((e) => (e.id === id ? { ...e, resolved: true } : e)))} />;
@@ -473,32 +473,65 @@ function SetpointsView({ zones, onChange, onUpdateZone, pumpDelay, setPumpDelay,
 }
 
 /* ---------- Mapa ---------- */
-function MapView({ zones }: { zones: Zone[] }) {
+function MapView({ zones, pumpOn }: { zones: Zone[]; pumpOn: boolean }) {
+  const pumpPos = { x: 50, y: 82 };
   return (
     <Panel className="map-panel">
       <div className="panel-heading">
         <div><span className="section-kicker">LOCALIZAÇÃO EM TEMPO REAL</span><h3>Quinta GTC · Leiria</h3></div>
         <div className="map-legend">
-          <span><i className="legend-dot legend-ok" /> Normal</span>
-          <span><i className="legend-dot legend-warning" /> Atenção</span>
-          <span><i className="legend-dot legend-offline" /> Offline</span>
+          <span><i className="legend-dot legend-pump" /> Bomba</span>
+          <span><i className="legend-dot legend-valve" /> Válvula</span>
+          <span><i className="legend-dot legend-ok" /> Sensor OK</span>
+          <span><i className="legend-dot legend-warning" /> Sensor atenção</span>
         </div>
       </div>
       <div className="map-canvas">
         <div className="map-grid-bg" />
-        <div className="map-road road-h" />
-        <div className="map-road road-v" />
         <div className="map-field field-a" />
         <div className="map-field field-b" />
-        <div className="map-water" />
+        <svg className="map-pipes" viewBox="0 0 100 100" preserveAspectRatio="none">
+          {zones.map((zone) => {
+            const vx = zone.x + 6;
+            const vy = zone.y + 4;
+            const sx = zone.x - 6;
+            const sy = zone.y - 4;
+            return (
+              <g key={zone.id}>
+                <line x1={pumpPos.x} y1={pumpPos.y} x2={vx} y2={vy} className={`pipe pipe-main ${zone.on ? 'pipe-active' : ''}`} />
+                <line x1={vx} y1={vy} x2={sx} y2={sy} className={`pipe pipe-sensor ${zone.on ? 'pipe-active' : ''}`} />
+              </g>
+            );
+          })}
+        </svg>
+        <div className="map-marker marker-pump" style={{ left: `${pumpPos.x}%`, top: `${pumpPos.y}%` }}>
+          <span className="marker-pin marker-pin-pump"><Waves size={16} /></span>
+          <div className="marker-label">
+            <strong>Bomba K1</strong>
+            <span>{pumpOn ? 'Ligada' : 'Desligada'}</span>
+          </div>
+        </div>
         {zones.map((zone) => {
           const status = sensorStatus(zone);
+          const vx = zone.x + 6;
+          const vy = zone.y + 4;
+          const sx = zone.x - 6;
+          const sy = zone.y - 4;
           return (
-            <div key={zone.id} className={`map-marker marker-${status}`} style={{ left: `${zone.x}%`, top: `${zone.y}%` }}>
-              <span className="marker-pin">{zone.sensorId}</span>
-              <div className="marker-label">
-                <strong>{zone.name}</strong>
-                <span>{status === 'ok' ? 'Normal' : 'Atenção'} · {zone.moisture}%</span>
+            <div key={zone.id} className="map-zone-group">
+              <div className={`map-marker marker-valve ${zone.on ? 'valve-open' : ''}`} style={{ left: `${vx}%`, top: `${vy}%` }}>
+                <span className="marker-pin marker-pin-valve">{zone.id}</span>
+                <div className="marker-label">
+                  <strong>Válvula {zone.id}</strong>
+                  <span>{zone.on ? 'Aberta' : 'Fechada'}</span>
+                </div>
+              </div>
+              <div className={`map-marker marker-sensor marker-${status}`} style={{ left: `${sx}%`, top: `${sy}%` }}>
+                <span className="marker-pin">{zone.sensorId}</span>
+                <div className="marker-label">
+                  <strong>Sensor {zone.sensorId}</strong>
+                  <span>{status === 'ok' ? 'Normal' : 'Atenção'} · {zone.moisture}%</span>
+                </div>
               </div>
             </div>
           );
