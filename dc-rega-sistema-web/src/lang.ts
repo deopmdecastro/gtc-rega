@@ -177,6 +177,7 @@ const pt: Dict = {
   // Login
   'login.title': 'Acesso Restrito',
   'login.subtitle': 'Introduza a senha de administrador para continuar',
+  'login.user': 'Utilizador',
   'login.password': 'Senha',
   'login.submit': 'Entrar',
   'login.error': 'Senha incorreta',
@@ -345,6 +346,7 @@ const en: Dict = {
 
   'login.title': 'Restricted Access',
   'login.subtitle': 'Enter the admin password to continue',
+  'login.user': 'Username',
   'login.password': 'Password',
   'login.submit': 'Login',
   'login.error': 'Incorrect password',

@@ -423,6 +423,7 @@ button { cursor: pointer; }
 .login-input-group svg { color: #5a6f7a; flex: 0 0 auto; }
 .login-input-group input { flex: 1; border: 0; background: none; color: #dce5e8; font-size: 16px; font-family: inherit; outline: none; letter-spacing: .15em; }
 .login-input-group input::placeholder { color: #3a4a52; letter-spacing: 0; }
+.login-input-active { border-color: #12bcb6 !important; box-shadow: 0 0 0 3px rgba(18,188,182,.08) !important; }
 .login-input-error { border-color: #f06565 !important; box-shadow: 0 0 0 3px rgba(240,101,101,.08) !important; }
 .login-caps-warning { font-size: 11px; color: #f0a045; padding: 2px 0; }
 .login-message { font-size: 12px; font-weight: 600; padding: 8px 12px; border-radius: 8px; }
@@ -504,6 +505,15 @@ button { cursor: pointer; }
 .gpio-input { width: 100%; padding: 6px 8px; border: 1px solid #263943; border-radius: 5px; background: #0d171e; color: #dce5e8; font: 11px 'DM Mono', monospace; }
 .gpio-input:focus, .gpio-select:focus { outline: none; border-color: #12bcb6; }
 .gpio-input-sm { max-width: 70px; }
+
+
+/* ---------- Full Keyboard ---------- */
+.full-keyboard { max-width: 520px; margin: 0 auto; }
+.text-kb-accents { padding-top: 6px; border-top: 1px solid #1a2a33; margin-top: 4px; }
+.kb-accent-toggle { min-width: 42px; background: rgba(18,188,182,.12); border-color: rgba(18,188,182,.2); color: #1ad5d0; font-weight: 700; font-size: 11px; }
+.kb-accent-toggle:hover { background: rgba(18,188,182,.2); }
+.kb-accent { color: #f0a145; font-size: 13px; font-weight: 600; }
+.kb-accent:hover { background: rgba(240,161,69,.15); border-color: rgba(240,161,69,.3); }
 
 @media (max-width: 1000px) {
   .content-wrap { padding: 0 22px 40px; }
