@@ -908,64 +908,64 @@ function StateView({ zones, pumpOn, autoMode, onToggleMode, language, gpioConfig
         </div>
       </Panel>
 
-      {/* ESP32-S3 Hardware Diagram */}
+      {/* ESP32-S3 Hardware Diagram — Design da imagem */}
       <Panel className="estado-pinout-panel" style={{ gridColumn: '1 / -1' }}>
-        <div className="hardware-panel-header">
-          <div className="hardware-header-left">
+        <div className="hw3-header">
+          <div>
             <span className="section-kicker">HARDWARE</span>
             <h3>ESP32-S3 · Mapa de Ligações GPIO</h3>
           </div>
-          <div className="hardware-header-right">
-            <button className="gpio-edit-btn" onClick={() => setEditingGpio(editingGpio === null ? -1 : null)}>
-              <Settings2 size={15} /> {editingGpio === null ? (language === 'PT' ? 'Editar GPIO' : 'Edit GPIO') : (language === 'PT' ? 'Concluído' : 'Done')}
-            </button>
-          </div>
+          <button className="gpio-edit-btn" onClick={() => setEditingGpio(editingGpio === null ? -1 : null)}>
+            <Settings2 size={15} /> {editingGpio === null ? (language === 'PT' ? 'Editar GPIO' : 'Edit GPIO') : (language === 'PT' ? 'Concluído' : 'Done')}
+          </button>
         </div>
-        <div className="hardware-diagram">
-          {/* Left: Sensors */}
-          <div className="hw-section hw-inputs">
-            <div className="hw-section-header">
-              <span className="hw-section-kicker">INPUT</span>
+
+        <div className="hw3-diagram">
+          {/* ── Coluna 1: Sensores (INPUT) ── */}
+          <div className="hw3-col hw3-col-left">
+            <div className="hw3-col-title hw3-title-input">
+              <span className="hw3-title-dot hw3-dot-green" />
+              INPUT
             </div>
             {zones.map((z) => (
-              <div key={z.sensorId} className="hw-sensor-node">
-                <div className="hw-sensor-info">
-                  <div className="hw-sensor-badge">{z.sensorId}</div>
-                  <div className="hw-sensor-detail">
+              <div key={z.sensorId} className="hw3-sensor-block">
+                <div className="hw3-block hw3-block-input">
+                  <span className="hw3-block-label">{z.sensorId}</span>
+                  <div className="hw3-block-info">
                     <strong>Sensor {z.sensorId}</strong>
                     <span>{z.name} · {z.moisture}%</span>
                   </div>
                 </div>
-                <div className={`hw-arrow hw-arrow-input ${z.sensorId === 'B1' ? 'hw-arrow-b1' : 'hw-arrow-b2'}`} />
-                <div className="hw-gpio-tag hw-input-tag">
-                  <span>GPIO {z.sensorId === 'B1' ? 4 : z.sensorId === 'B2' ? 5 : '—'}</span>
-                  <span className="hw-gpio-dir">INPUT</span>
-                </div>
+                <div className="hw3-arrow-line hw3-arrow-right" />
               </div>
             ))}
           </div>
 
-          {/* Center: ESP32-S3 */}
-          <div className="hw-section hw-controller">
-            <div className="hw-chip">
-              <div className="hw-chip-top">
-                <Cpu size={22} />
+          {/* ── Coluna 2: ESP32-S3 (centro) ── */}
+          <div className="hw3-col hw3-col-center">
+            <div className="hw3-chip-frame">
+              <div className="hw3-chip-header">
+                <Cpu size={20} />
                 <span>ESP32-S3</span>
               </div>
-              <div className="hw-chip-pins">
-                <div className="hw-chip-column hw-column-in">
+              <div className="hw3-chip-body">
+                {/* INPUT pins */}
+                <div className="hw3-pin-group">
                   {gpioConfig.filter(g => g.direction === 'INPUT').map(g => (
-                    <div key={g.gpio} className={`hw-pin-tag ${g.direction === 'INPUT' ? 'hw-pin-in' : 'hw-pin-out'}`}>
-                      <span className="hw-pin-num">GPIO {g.gpio}</span>
-                      <span className="hw-pin-dir">{g.direction}</span>
+                    <div key={g.gpio} className="hw3-pin hw3-pin-input">
+                      <span className="hw3-pin-num">GPIO {g.gpio}</span>
+                      <span className="hw3-pin-badge hw3-badge-input">INPUT</span>
                     </div>
                   ))}
                 </div>
-                <div className="hw-chip-column hw-column-out">
+                {/* Separator */}
+                <div className="hw3-chip-divider" />
+                {/* OUTPUT pins */}
+                <div className="hw3-pin-group">
                   {gpioConfig.filter(g => g.direction === 'OUTPUT').map(g => (
-                    <div key={g.gpio} className={`hw-pin-tag ${g.direction === 'INPUT' ? 'hw-pin-in' : 'hw-pin-out'}`}>
-                      <span className="hw-pin-num">GPIO {g.gpio}</span>
-                      <span className="hw-pin-dir">{g.direction}</span>
+                    <div key={g.gpio} className="hw3-pin hw3-pin-output">
+                      <span className="hw3-pin-num">GPIO {g.gpio}</span>
+                      <span className="hw3-pin-badge hw3-badge-output">OUTPUT</span>
                     </div>
                   ))}
                 </div>
@@ -973,21 +973,18 @@ function StateView({ zones, pumpOn, autoMode, onToggleMode, language, gpioConfig
             </div>
           </div>
 
-          {/* Right: Relay outputs */}
-          <div className="hw-section hw-outputs">
-            <div className="hw-section-header">
-              <span className="hw-section-kicker">OUTPUT · Módulo 8 Relés</span>
+          {/* ── Coluna 3: Relés (OUTPUT) ── */}
+          <div className="hw3-col hw3-col-right">
+            <div className="hw3-col-title hw3-title-output">
+              <span className="hw3-title-dot hw3-dot-orange" />
+              OUTPUT
             </div>
             {gpioConfig.filter(g => g.direction === 'OUTPUT').map((g) => (
-              <div key={g.gpio} className="hw-relay-node">
-                <div className="hw-gpio-tag hw-output-tag">
-                  <span>GPIO {g.gpio}</span>
-                  <span className="hw-gpio-dir">OUTPUT</span>
-                </div>
-                <div className="hw-arrow hw-arrow-output" />
-                <div className="hw-relay-info">
-                  <div className="hw-relay-badge">{g.label}</div>
-                  <div className="hw-relay-detail">
+              <div key={g.gpio} className="hw3-relay-row">
+                <div className="hw3-arrow-line hw3-arrow-left" />
+                <div className="hw3-block hw3-block-output">
+                  <span className="hw3-block-label">{g.label}</span>
+                  <div className="hw3-block-info">
                     <strong>{g.func}</strong>
                     {g.inChannel && <span>{g.inChannel}</span>}
                   </div>
@@ -998,12 +995,20 @@ function StateView({ zones, pumpOn, autoMode, onToggleMode, language, gpioConfig
         </div>
 
         {/* Legend */}
-        <div className="hw-legend">
-          <div className="hw-legend-item"><span className="hw-legend-dot hw-legend-in" /> {language === 'PT' ? 'INPUT · Entrada' : 'INPUT · Input'}</div>
-          <div className="hw-legend-item"><span className="hw-legend-dot hw-legend-out" /> {language === 'PT' ? 'OUTPUT · Saída' : 'OUTPUT · Output'}</div>
+        <div className="hw3-legend">
+          <div className="hw3-legend-item">
+            <span className="hw3-legend-dot hw3-legend-green" />
+            <span className="hw3-legend-label">INPUT</span>
+            <span className="hw3-legend-desc">{language === 'PT' ? 'Entrada' : 'Input'}</span>
+          </div>
+          <div className="hw3-legend-item">
+            <span className="hw3-legend-dot hw3-legend-orange" />
+            <span className="hw3-legend-label">OUTPUT</span>
+            <span className="hw3-legend-desc">{language === 'PT' ? 'Saída' : 'Output'}</span>
+          </div>
         </div>
 
-        {/* Editable GPIO Table */}
+        {/* Editable GPIO Table */}        {/* Editable GPIO Table */}
         {editingGpio !== null && (
           <div className="gpio-edit-table-wrap">
             <h4>{language === 'PT' ? 'Editar configuração GPIO' : 'Edit GPIO Configuration'}</h4>
