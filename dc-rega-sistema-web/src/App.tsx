@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   ChevronRight,
   CloudSun,
+  Copy,
   Cpu,
   Delete,
   Droplets,
@@ -203,6 +204,33 @@ function App() {
     showNotice(`Local adicionado: ${newZone.name}`);
   }, [zones.length]);
 
+  const duplicateZoneFromMap = useCallback((zone: Zone) => {
+    const id = makeZoneId();
+    const sensorId = makeSensorId();
+    const num = zones.length + 1;
+    const nextX = Math.max(6, Math.min(94, zone.x + 8));
+    const nextY = Math.max(6, Math.min(76, zone.y + 8));
+    const duplicate: Zone = {
+      ...zone,
+      id,
+      sensorId,
+      name: `Zona ${num}`,
+      on: false,
+      lastWatered: '—',
+      x: nextX,
+      y: nextY,
+    };
+    setZones((cur) => [...cur, duplicate]);
+    logEvent('zone_duplicate', `${zone.name} → ${duplicate.name}`, `Sensor ${sensorId} e válvula ${id} duplicados a partir de ${zone.sensorId}/${zone.id}`, 'info', {
+      source_zone_id: zone.id,
+      zone_id: id,
+      sensor_id: sensorId,
+      x: nextX,
+      y: nextY,
+    });
+    showNotice(`Sensor ${sensorId} duplicado com sucesso`);
+  }, [zones.length]);
+
   const updateZonePosition = useCallback((id: string, x: number, y: number) => {
     setZones((cur) => cur.map((z) => (z.id === id ? { ...z, x, y } : z)));
   }, []);
@@ -332,7 +360,7 @@ function App() {
     }
     if (activePage === 'Estado') return <StateView zones={zones} pumpOn={pumpOn} autoMode={autoMode} onToggleMode={toggleAutoMode} />;
     if (activePage === 'Setpoints') return <SetpointsView zones={zones} pumpDelay={pumpDelay} setPumpDelay={setPumpDelay} onChange={(id, target) => setZones((cur) => cur.map((z) => (z.id === id ? { ...z, target } : z)))} onUpdateZone={(id, patch) => setZones((cur) => cur.map((z) => (z.id === id ? { ...z, ...patch } : z)))} onAddZone={addZone} onRemoveZone={(z) => setZoneToDelete(z)} />;
-    if (activePage === 'Mapa') return <MapView zones={zones} pumpOn={pumpOn} onAddZone={addZoneFromMap} onDragZone={updateZonePosition} onRenameZone={renameZone} onRemoveZone={(z) => setZoneToDelete(z)} onClearAll={clearAllZones} />;
+    if (activePage === 'Mapa') return <MapView zones={zones} pumpOn={pumpOn} onAddZone={addZoneFromMap} onDuplicateZone={duplicateZoneFromMap} onDragZone={updateZonePosition} onRenameZone={renameZone} onRemoveZone={(z) => setZoneToDelete(z)} onClearAll={clearAllZones} />;
     if (activePage === 'Histórico') return <HistoryView errors={errors} eventLog={eventLog} eventLogLoading={eventLogLoading} onRefresh={loadEvents} />;
     if (activePage === 'Comandos') return <CommandsView zones={zones} pumpOn={pumpOn} systemRunning={systemRunning} starting={starting} startStep={startStep} autoMode={autoMode} onToggleZone={toggleZone} onTogglePump={togglePump} onToggleMode={toggleAutoMode} onEmergencyStop={handleEmergencyStop} onTestCycle={handleTestCycle} onStart={handleStart} onStop={handleStop} onReset={handleReset} />;
     return <AlarmsView errors={errors} onResolve={(id) => setErrors((cur) => cur.map((e) => (e.id === id ? { ...e, resolved: true } : e)))} />;
@@ -367,10 +395,8 @@ function App() {
         <header className="topbar">
           <div className="topbar-inner">
             <button className="mobile-menu" onClick={() => setMobileOpen(true)} aria-label="Abrir menu"><Menu size={22} /></button>
-            <div className="topbar-title">
-              <div className="eyebrow">CENTRO DE OPERAÇÕES <span>•</span> 10 AGO 2026</div>
+            <div className="topbar-title compact">
               <h1>GTC <span>—</span> Sistema de Rega Automatizada</h1>
-              <p>Monitorização e controlo do sistema de rega · ESP32-S3</p>
             </div>
             <div className="topbar-right">
               <div className="weather"><CloudSun size={28} /><div><strong>24°C</strong><span>Leiria, Portugal · Parcialmente nublado</span></div></div>
@@ -517,8 +543,8 @@ function StateRow({ icon, title, detail, status, active }: { icon: React.ReactNo
   return <div className="state-row"><span className="state-icon">{icon}</span><div><strong>{title}</strong><span>{detail}</span></div><StatusBadge tone={tone}>{status}</StatusBadge></div>;
 }
 
-function PanelHeader({ eyebrow, title }: { eyebrow: string; title: string }) {
-  return <div className="panel-heading"><div><span className="section-kicker">{eyebrow}</span><h3>{title}</h3></div><Settings2 size={19} /></div>;
+function PanelHeader({ eyebrow, title, showIcon = true }: { eyebrow: string; title: string; showIcon?: boolean }) {
+  return <div className="panel-heading"><div><span className="section-kicker">{eyebrow}</span><h3>{title}</h3></div>{showIcon && <Settings2 size={19} />}</div>;
 }
 
 /* ---------- Setpoints com teclado alfanumérico ---------- */
@@ -574,7 +600,7 @@ function SetpointsView({ zones, onChange, onUpdateZone, pumpDelay, setPumpDelay,
       <div className="setpoint-grid">
         {zones.map((zone) => (
           <Panel key={zone.id} className="setpoint-card">
-            <PanelHeader eyebrow={`CONFIGURAÇÃO · SENSOR ${zone.sensorId}`} title={zone.name} />
+            <PanelHeader eyebrow={`CONFIGURAÇÃO · SENSOR ${zone.sensorId}`} title={zone.name} showIcon={false} />
             <div className="setpoint-ids"><span><Droplets size={13} /> Válvula {zone.id}</span><span><Radio size={13} /> Sensor {zone.sensorId}</span></div>
             <button className="remove-sensor-btn" onClick={() => onRemoveZone(zone)} aria-label={`Remover ${zone.name}`}><Trash2 size={16} /></button>
             <div className="setpoint-value"><strong>{zone.target}<small>%</small></strong><span>Humidade mínima desejada</span></div>
@@ -632,11 +658,13 @@ function pipePath(x1: number, y1: number, x2: number, y2: number, curved: boolea
 const MIN_ZONE_SCALE = 0.7;
 const MAX_ZONE_SCALE = 1.7;
 const ZONE_SCALE_STEP = 0.15;
+type EditorTool = 'select' | 'add' | 'duplicate';
 
-function MapView({ zones, pumpOn, onAddZone, onDragZone, onRenameZone, onRemoveZone, onClearAll }: {
+function MapView({ zones, pumpOn, onAddZone, onDuplicateZone, onDragZone, onRenameZone, onRemoveZone, onClearAll }: {
   zones: Zone[];
   pumpOn: boolean;
   onAddZone: (x: number, y: number) => void;
+  onDuplicateZone: (zone: Zone) => void;
   onDragZone: (id: string, x: number, y: number) => void;
   onRenameZone: (id: string, name: string) => void;
   onRemoveZone: (zone: Zone) => void;
@@ -649,6 +677,7 @@ function MapView({ zones, pumpOn, onAddZone, onDragZone, onRenameZone, onRemoveZ
   const [dragging, setDragging] = useState<string | null>(null);
   const [resizing, setResizing] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
+  const [editorTool, setEditorTool] = useState<EditorTool>('select');
   const [selected, setSelected] = useState<string | null>(null);
   const [editingName, setEditingName] = useState<string | null>(null);
   const [editNameValue, setEditNameValue] = useState('');
@@ -687,11 +716,11 @@ function MapView({ zones, pumpOn, onAddZone, onDragZone, onRenameZone, onRemoveZ
 
   const handleCanvasClick = (e: React.MouseEvent) => {
     if (dragging || resizing) return;
-    // clicar em zona vazia limpa a seleção
-    if (e.target === canvasRef.current || (e.target as HTMLElement).classList.contains('map-grid-bg')) {
+    const clickedCanvas = e.target === canvasRef.current || (e.target as HTMLElement).classList.contains('map-grid-bg');
+    if (clickedCanvas) {
       setSelected(null);
     }
-    if (!editMode) return;
+    if (!editMode || editorTool !== 'add' || !clickedCanvas) return;
     const pos = getXY(e);
     if (!pos) return;
     if (pos.y > 80) return;
@@ -806,11 +835,30 @@ function MapView({ zones, pumpOn, onAddZone, onDragZone, onRenameZone, onRemoveZ
       </div>
 
       <div className="map-toolbar">
-        <button className={`map-tool-btn ${editMode ? 'active' : ''}`} onClick={() => { setEditMode((v) => !v); setSelected(null); }}>
+        <button
+          className={`map-tool-btn ${editMode ? 'active' : ''}`}
+          onClick={() => {
+            setEditMode((v) => {
+              const next = !v;
+              setSelected(null);
+              setEditorTool('select');
+              return next;
+            });
+          }}
+        >
           <PencilLine size={15} />{editMode ? 'Modo edição ativo' : 'Editar mapa'}
         </button>
         {editMode && (
           <>
+            <button className={`map-tool-btn ${editorTool === 'select' ? 'active' : ''}`} onClick={() => setEditorTool('select')}>
+              <MapPin size={15} />Selecionar e arrastar
+            </button>
+            <button className={`map-tool-btn ${editorTool === 'add' ? 'active' : ''}`} onClick={() => setEditorTool('add')}>
+              <Plus size={15} />Adicionar sensor
+            </button>
+            <button className={`map-tool-btn ${editorTool === 'duplicate' ? 'active' : ''}`} onClick={() => setEditorTool('duplicate')}>
+              <Copy size={15} />Duplicar sensor
+            </button>
             <button className="map-tool-btn" onClick={addField}><Plus size={15} />Adicionar terreno</button>
             <button className={`map-tool-btn ${curvedPipes ? 'active' : ''}`} onClick={() => setCurvedPipes((v) => !v)}>
               <Spline size={15} />{curvedPipes ? 'Linhas curvas' : 'Linhas retas'}
@@ -831,7 +879,11 @@ function MapView({ zones, pumpOn, onAddZone, onDragZone, onRenameZone, onRemoveZ
       <div className="map-hint">
         <MapPin size={14} />
         {editMode
-          ? 'Clique numa área livre para adicionar um sensor · Arraste para mover · Selecione um sensor para renomear, redimensionar ou apagar · Arraste o canto do terreno para redimensionar'
+          ? editorTool === 'add'
+            ? 'Modo adicionar: clique numa área livre do mapa para criar um novo sensor'
+            : editorTool === 'duplicate'
+              ? 'Modo duplicar: clique num sensor existente para criar uma cópia perto dele'
+              : 'Modo seleção: arraste sensores, bomba e terrenos com precisão · Selecione um sensor para renomear, ajustar tamanho ou apagar · Arraste o canto do terreno para redimensionar'
           : 'Ative "Editar mapa" para adicionar, mover, redimensionar ou apagar elementos'}
       </div>
 
@@ -844,7 +896,7 @@ function MapView({ zones, pumpOn, onAddZone, onDragZone, onRenameZone, onRemoveZ
               key={f.id}
               className={`map-field-draggable ${dragging === `field-${f.id}` ? 'dragging' : ''} ${isSel ? 'selected' : ''} ${editMode ? 'editable' : ''}`}
               style={{ left: `${f.x}%`, top: `${f.y}%`, width: `${f.w}%`, height: `${f.h}%` }}
-              onMouseDown={(e) => editMode && handleMouseDown(e, `field-${f.id}`)}
+              onMouseDown={(e) => editMode && editorTool === 'select' && handleMouseDown(e, `field-${f.id}`)}
               onClick={(e) => { e.stopPropagation(); if (editMode) setSelected(`field-${f.id}`); }}
             >
               <span className="map-field-label">{f.name}</span>
@@ -877,7 +929,7 @@ function MapView({ zones, pumpOn, onAddZone, onDragZone, onRenameZone, onRemoveZ
         <div
           className={`map-marker marker-pump ${dragging === 'pump' ? 'dragging' : ''} ${selected === 'pump' ? 'selected' : ''} ${editMode ? 'editable' : ''}`}
           style={{ left: `${pumpPos.x}%`, top: `${pumpPos.y}%` }}
-          onMouseDown={(e) => editMode && handleMouseDown(e, 'pump')}
+          onMouseDown={(e) => editMode && editorTool === 'select' && handleMouseDown(e, 'pump')}
         >
           <span className="marker-pin marker-pin-pump"><Waves size={16} /></span>
           <div className="marker-label">
@@ -888,7 +940,7 @@ function MapView({ zones, pumpOn, onAddZone, onDragZone, onRenameZone, onRemoveZ
         <div
           className={`map-marker marker-mcu ${dragging === 'mcu' ? 'dragging' : ''} ${selected === 'mcu' ? 'selected' : ''} ${editMode ? 'editable' : ''}`}
           style={{ left: `${mcuPos.x}%`, top: `${mcuPos.y}%` }}
-          onMouseDown={(e) => editMode && handleMouseDown(e, 'mcu')}
+          onMouseDown={(e) => editMode && editorTool === 'select' && handleMouseDown(e, 'mcu')}
         >
           <span className="marker-pin marker-pin-mcu"><Cpu size={14} /></span>
           <div className="marker-label">
@@ -908,7 +960,14 @@ function MapView({ zones, pumpOn, onAddZone, onDragZone, onRenameZone, onRemoveZ
               <div
                 className={`map-marker marker-valve ${zone.on ? 'valve-open' : ''} ${dragging === zone.id ? 'dragging' : ''} ${isSel ? 'selected' : ''} ${editMode ? 'editable' : ''}`}
                 style={{ left: `${vx}%`, top: `${vy}%`, '--pin-scale': getZoneScale(zone.id) } as React.CSSProperties}
-                onMouseDown={(e) => editMode && handleMouseDown(e, zone.id)}
+                onMouseDown={(e) => editMode && editorTool === 'select' && handleMouseDown(e, zone.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelected(zone.id);
+                  if (editMode && editorTool === 'duplicate') {
+                    onDuplicateZone(zone);
+                  }
+                }}
               >
                 <span className="marker-pin marker-pin-valve">{zone.id}</span>
                 <div className="marker-label">
@@ -919,7 +978,14 @@ function MapView({ zones, pumpOn, onAddZone, onDragZone, onRenameZone, onRemoveZ
               <div
                 className={`map-marker marker-sensor marker-${status} ${dragging === zone.id ? 'dragging' : ''} ${isSel ? 'selected' : ''} ${editMode ? 'editable' : ''}`}
                 style={{ left: `${sx}%`, top: `${sy}%`, '--pin-scale': getZoneScale(zone.id) } as React.CSSProperties}
-                onMouseDown={(e) => editMode && handleMouseDown(e, zone.id)}
+                onMouseDown={(e) => editMode && editorTool === 'select' && handleMouseDown(e, zone.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelected(zone.id);
+                  if (editMode && editorTool === 'duplicate') {
+                    onDuplicateZone(zone);
+                  }
+                }}
               >
                 <span className="marker-pin">{zone.sensorId}</span>
                 <div className="marker-label">

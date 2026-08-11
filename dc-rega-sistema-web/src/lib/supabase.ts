@@ -30,6 +30,7 @@ export type EventType =
   | 'zone_rename'
   | 'zone_drag'
   | 'zone_add_map'
+  | 'zone_duplicate'
   | 'zone_clear_all';
 
 export type EventSeverity = 'info' | 'warning' | 'critical';
