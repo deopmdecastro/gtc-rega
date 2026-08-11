@@ -1184,3 +1184,69 @@ input:focus-visible { border-radius: inherit; }
   .sched2-grid { grid-template-columns: repeat(3, 1fr); }
   .sp2-current strong { font-size: 42px; }
 }
+
+/* ══════════════════════════════════════════════════════════
+   SAVE-ALL BANNER — Topo da página Setpoints
+   ══════════════════════════════════════════════════════════ */
+.setpoint-save-all-banner {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 16px 22px; margin-bottom: 20px;
+  border-radius: 14px; border: 1px solid;
+  transition: all .35s ease;
+}
+.setpoint-save-all-banner.has-pending {
+  background: linear-gradient(135deg, rgba(249,178,71,.1), rgba(249,178,71,.03));
+  border-color: rgba(249,178,71,.25);
+  box-shadow: 0 4px 20px rgba(249,178,71,.06);
+}
+.setpoint-save-all-banner.all-ok {
+  background: linear-gradient(135deg, rgba(94,229,138,.06), rgba(94,229,138,.02));
+  border-color: rgba(94,229,138,.15);
+}
+.setpoint-save-all-banner.just-saved {
+  background: linear-gradient(135deg, rgba(94,229,138,.12), rgba(94,229,138,.04));
+  border-color: rgba(94,229,138,.35);
+  box-shadow: 0 4px 20px rgba(94,229,138,.1);
+}
+
+.save-all-banner-left { display: flex; align-items: center; gap: 14px; flex: 1; min-width: 0; }
+.save-all-banner-icon { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 11px; flex-shrink: 0; }
+.icon-pending { color: #f9b247; background: rgba(249,178,71,.12); }
+.icon-ok { color: #5ee58a; background: rgba(94,229,138,.1); }
+
+.save-all-banner-left strong { display: block; font-size: 14px; color: #dce5e8; margin-bottom: 3px; }
+.save-all-banner-left span { font-size: 11px; color: #718792; line-height: 1.4; }
+
+.save-all-banner-btn {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 24px; border: 0; border-radius: 10px;
+  font-size: 14px; font-weight: 700; cursor: pointer;
+  white-space: nowrap; transition: .25s ease;
+}
+.save-all-banner-btn.btn-pending {
+  color: #0a141a; background: linear-gradient(135deg, #f9b247, #e8a030);
+  box-shadow: 0 3px 14px rgba(249,178,71,.25);
+}
+.save-all-banner-btn.btn-pending:hover {
+  background: linear-gradient(135deg, #ffbc5a, #f5ab3a);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(249,178,71,.35);
+}
+.save-all-banner-btn.btn-ok {
+  color: #5ee58a; background: rgba(94,229,138,.08);
+  border: 1px solid rgba(94,229,138,.2);
+}
+.save-all-banner-btn.btn-ok:hover {
+  background: rgba(94,229,138,.14);
+  border-color: rgba(94,229,138,.35);
+}
+.save-all-banner-btn.btn-saved {
+  color: #0a141a; background: linear-gradient(135deg, #40d877, #34be66);
+  box-shadow: 0 3px 14px rgba(64,216,119,.25);
+}
+.save-all-banner-btn:disabled { cursor: default; opacity: .8; }
+
+@media (max-width: 700px) {
+  .setpoint-save-all-banner { flex-wrap: wrap; }
+  .save-all-banner-btn { width: 100%; justify-content: center; }
+}

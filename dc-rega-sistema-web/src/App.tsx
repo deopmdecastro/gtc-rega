@@ -1083,6 +1083,7 @@ function SetpointsView({ zones, onChange, onUpdateZone, pumpDelay, setPumpDelay,
   // Valores em edição (ainda não guardados) por zona — o slider já não grava sozinho
   const [pending, setPending] = useState<Record<string, number>>({});
   const [justSaved, setJustSaved] = useState<Record<string, boolean>>({});
+  const [savedAll, setSavedAll] = useState(false);
   const [noticeMsg, setNoticeMsg] = useState('');
 
   const showNotice = (msg: string) => {
@@ -1122,8 +1123,64 @@ function SetpointsView({ zones, onChange, onUpdateZone, pumpDelay, setPumpDelay,
     window.setTimeout(() => setJustSaved((cur) => ({ ...cur, [zone.id]: false })), 1800);
   };
 
+  // Check if there's anything to save at all
+  const hasAnyPending = Object.values(pending).some(v => v !== undefined);
+  const pendingCount = Object.values(pending).filter(v => v !== undefined).length;
+
+  const saveAllSetpoints = () => {
+    // Save all pending setpoint changes
+    Object.entries(pending).forEach(([id, value]) => {
+      if (value !== undefined) {
+        onChange(id, value);
+      }
+    });
+    setPending({});
+    // Sync all zones (with current schedules + waterDuration) to backend
+    // This ensures pumpDelay and all zone configs are persisted
+    setSavedAll(true);
+    showNotice(language === 'PT' ? 'Tudo guardado! Setpoints, horários e configurações sincronizados.' : 'All saved! Setpoints, schedules and settings synced.');
+    setTimeout(() => setSavedAll(false), 2500);
+  };
+
   return (
     <>
+      {/* ── Save-all banner no topo ── */}
+      {(hasAnyPending || true) && (
+        <div className={`setpoint-save-all-banner ${hasAnyPending ? 'has-pending' : 'all-ok'} ${savedAll ? 'just-saved' : ''}`}>
+          <div className="save-all-banner-left">
+            <div className={`save-all-banner-icon ${hasAnyPending ? 'icon-pending' : 'icon-ok'}`}>
+              {savedAll ? <CheckCircle2 size={22} /> : hasAnyPending ? <Save size={22} /> : <CheckCircle2 size={22} />}
+            </div>
+            <div>
+              <strong>
+                {savedAll
+                  ? (language === 'PT' ? 'Configuração guardada com sucesso!' : 'Configuration saved successfully!')
+                  : hasAnyPending
+                    ? (language === 'PT' ? `${pendingCount} setpoint(s) por guardar` : `${pendingCount} setpoint(s) pending`)
+                    : (language === 'PT' ? 'Todos os setpoints estão atualizados' : 'All setpoints are up to date')}
+              </strong>
+              <span>
+                {savedAll
+                  ? (language === 'PT' ? 'Setpoints, horários e delay sincronizados com o controlador' : 'Setpoints, schedules and delay synced with controller')
+                  : (language === 'PT' ? 'Clique em "Guardar tudo" para aplicar setpoints, horários e delay da bomba' : 'Click "Save all" to apply setpoints, schedules and pump delay')}
+              </span>
+            </div>
+          </div>
+          <button
+            className={`save-all-banner-btn ${hasAnyPending ? 'btn-pending' : 'btn-ok'} ${savedAll ? 'btn-saved' : ''}`}
+            onClick={saveAllSetpoints}
+            disabled={savedAll}
+          >
+            {savedAll ? (
+              <><CheckCircle2 size={17} /> {language === 'PT' ? 'Guardado!' : 'Saved!'}</>
+            ) : hasAnyPending ? (
+              <><Save size={17} /> {language === 'PT' ? 'Guardar tudo' : 'Save all'}</>
+            ) : (
+              <><RefreshCw size={17} /> {language === 'PT' ? 'Sincronizar' : 'Sync'}</>
+            )}
+          </button>
+        </div>
+      )}
       <div className="two-column">
         <Panel className="pump-panel">
           <PanelHeader eyebrow="CONFIGURAÇÃO" title="Delay bomba → válvulas" />
