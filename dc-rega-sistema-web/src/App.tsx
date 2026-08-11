@@ -36,6 +36,9 @@ import {
   X,
   MapPin,
   PencilLine,
+  Spline,
+  Minus,
+  Eraser,
 } from 'lucide-react';
 import { fetchEvents, logEvent, type EventLogEntry } from '@/lib/supabase';
 
@@ -299,6 +302,16 @@ function App() {
     showNotice('Ciclo de teste iniciado');
   };
 
+  const clearAllZones = useCallback(() => {
+    setZones((cur) => {
+      if (cur.length > 0) {
+        logEvent('zone_clear_all', 'Mapa', `Todos os sensores removidos (${cur.length})`, 'warning', { count: cur.length });
+      }
+      return [];
+    });
+    showNotice('Todos os sensores foram removidos do mapa');
+  }, []);
+
   const confirmDeleteZone = () => {
     if (!zoneToDelete) return;
     setZones((cur) => cur.filter((z) => z.id !== zoneToDelete.id));
@@ -319,7 +332,7 @@ function App() {
     }
     if (activePage === 'Estado') return <StateView zones={zones} pumpOn={pumpOn} autoMode={autoMode} onToggleMode={toggleAutoMode} />;
     if (activePage === 'Setpoints') return <SetpointsView zones={zones} pumpDelay={pumpDelay} setPumpDelay={setPumpDelay} onChange={(id, target) => setZones((cur) => cur.map((z) => (z.id === id ? { ...z, target } : z)))} onUpdateZone={(id, patch) => setZones((cur) => cur.map((z) => (z.id === id ? { ...z, ...patch } : z)))} onAddZone={addZone} onRemoveZone={(z) => setZoneToDelete(z)} />;
-    if (activePage === 'Mapa') return <MapView zones={zones} pumpOn={pumpOn} onAddZone={addZoneFromMap} onDragZone={updateZonePosition} onRenameZone={renameZone} onRemoveZone={(z) => setZoneToDelete(z)} />;
+    if (activePage === 'Mapa') return <MapView zones={zones} pumpOn={pumpOn} onAddZone={addZoneFromMap} onDragZone={updateZonePosition} onRenameZone={renameZone} onRemoveZone={(z) => setZoneToDelete(z)} onClearAll={clearAllZones} />;
     if (activePage === 'Histórico') return <HistoryView errors={errors} eventLog={eventLog} eventLogLoading={eventLogLoading} onRefresh={loadEvents} />;
     if (activePage === 'Comandos') return <CommandsView zones={zones} pumpOn={pumpOn} systemRunning={systemRunning} starting={starting} startStep={startStep} autoMode={autoMode} onToggleZone={toggleZone} onTogglePump={togglePump} onToggleMode={toggleAutoMode} onEmergencyStop={handleEmergencyStop} onTestCycle={handleTestCycle} onStart={handleStart} onStop={handleStop} onReset={handleReset} />;
     return <AlarmsView errors={errors} onResolve={(id) => setErrors((cur) => cur.map((e) => (e.id === id ? { ...e, resolved: true } : e)))} />;
@@ -351,28 +364,30 @@ function App() {
       </aside>
       {mobileOpen && <button className="scrim" onClick={() => setMobileOpen(false)} aria-label="Fechar menu" />}
       <main className="main-content">
-        <header className="topbar">
-          <button className="mobile-menu" onClick={() => setMobileOpen(true)} aria-label="Abrir menu"><Menu size={22} /></button>
-          <div className="topbar-title">
-            <div className="eyebrow">CENTRO DE OPERAÇÕES <span>•</span> 10 AGO 2026</div>
-            <h1>GTC <span>—</span> Sistema de Rega Automatizada</h1>
-            <p>Monitorização e controlo do sistema de rega · ESP32-S3</p>
+        <div className="content-wrap">
+          <header className="topbar">
+            <button className="mobile-menu" onClick={() => setMobileOpen(true)} aria-label="Abrir menu"><Menu size={22} /></button>
+            <div className="topbar-title">
+              <div className="eyebrow">CENTRO DE OPERAÇÕES <span>•</span> 10 AGO 2026</div>
+              <h1>GTC <span>—</span> Sistema de Rega Automatizada</h1>
+              <p>Monitorização e controlo do sistema de rega · ESP32-S3</p>
+            </div>
+            <div className="topbar-right">
+              <div className="weather"><CloudSun size={28} /><div><strong>24°C</strong><span>Leiria, Portugal · Parcialmente nublado</span></div></div>
+              <button className="settings-btn" onClick={() => setSettingsOpen(true)} aria-label="Abrir definições"><Settings2 size={20} /></button>
+            </div>
+          </header>
+          <div className="page-heading">
+            <div><span className="section-kicker">VISÃO GERAL</span><h2>{activePage}</h2></div>
+            <div className="connection"><Radio size={15} /> Ligação estável <span className="pulse" /></div>
           </div>
-          <div className="topbar-right">
-            <div className="weather"><CloudSun size={28} /><div><strong>24°C</strong><span>Leiria, Portugal · Parcialmente nublado</span></div></div>
-            <button className="settings-btn" onClick={() => setSettingsOpen(true)} aria-label="Abrir definições"><Settings2 size={20} /></button>
-          </div>
-        </header>
-        <div className="page-heading">
-          <div><span className="section-kicker">VISÃO GERAL</span><h2>{activePage}</h2></div>
-          <div className="connection"><Radio size={15} /> Ligação estável <span className="pulse" /></div>
+          {renderPage()}
+          <footer className="app-footer">
+            <span>Desenvolvido por <strong>Deogracia de Castro</strong></span>
+            <span className="footer-divider">·</span>
+            <span>GTC Rega v2.6 · ESP32-S3 · Build 2026-08-10</span>
+          </footer>
         </div>
-        {renderPage()}
-        <footer className="app-footer">
-          <span>Desenvolvido por <strong>Deogracia de Castro</strong></span>
-          <span className="footer-divider">·</span>
-          <span>GTC Rega v2.6 · ESP32-S3 · Build 2026-08-10</span>
-        </footer>
       </main>
       {notice && <div className="toast"><CheckCircle2 size={18} />{notice}</div>}
       {zoneToDelete && <ConfirmDeleteModal zone={zoneToDelete} onCancel={() => setZoneToDelete(null)} onConfirm={confirmDeleteZone} />}
@@ -597,13 +612,33 @@ function makeFieldId() {
   return `F${nextFieldId++}`;
 }
 
-function MapView({ zones, pumpOn, onAddZone, onDragZone, onRenameZone, onRemoveZone }: {
+function pipePath(x1: number, y1: number, x2: number, y2: number, curved: boolean): string {
+  if (!curved) return `M ${x1} ${y1} L ${x2} ${y2}`;
+  const mx = (x1 + x2) / 2;
+  const my = (y1 + y2) / 2;
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const len = Math.hypot(dx, dy) || 1;
+  const offset = Math.min(7, len * 0.25);
+  const px = -dy / len;
+  const py = dx / len;
+  const cx = mx + px * offset;
+  const cy = my + py * offset;
+  return `M ${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}`;
+}
+
+const MIN_ZONE_SCALE = 0.7;
+const MAX_ZONE_SCALE = 1.7;
+const ZONE_SCALE_STEP = 0.15;
+
+function MapView({ zones, pumpOn, onAddZone, onDragZone, onRenameZone, onRemoveZone, onClearAll }: {
   zones: Zone[];
   pumpOn: boolean;
   onAddZone: (x: number, y: number) => void;
   onDragZone: (id: string, x: number, y: number) => void;
   onRenameZone: (id: string, name: string) => void;
   onRemoveZone: (zone: Zone) => void;
+  onClearAll: () => void;
 }) {
   const [pumpPos, setPumpPos] = useState<MapElement>(DEFAULT_PUMP_POS);
   const [mcuPos, setMcuPos] = useState<MapElement>(DEFAULT_MCU_POS);
@@ -617,6 +652,26 @@ function MapView({ zones, pumpOn, onAddZone, onDragZone, onRenameZone, onRemoveZ
   const [editNameValue, setEditNameValue] = useState('');
   const [fieldNameEdit, setFieldNameEdit] = useState<string | null>(null);
   const [fieldNameValue, setFieldNameValue] = useState('');
+  const [zoneScale, setZoneScale] = useState<Record<string, number>>({});
+  const [curvedPipes, setCurvedPipes] = useState(false);
+  const [confirmClearAll, setConfirmClearAll] = useState(false);
+
+  const getZoneScale = (id: string) => zoneScale[id] ?? 1;
+
+  const adjustZoneScale = (id: string, delta: number) => {
+    setZoneScale((cur) => {
+      const next = Math.round(Math.min(MAX_ZONE_SCALE, Math.max(MIN_ZONE_SCALE, (cur[id] ?? 1) + delta)) * 100) / 100;
+      return { ...cur, [id]: next };
+    });
+  };
+
+  const handleClearAll = () => {
+    onClearAll();
+    setFields([]);
+    setZoneScale({});
+    setSelected(null);
+    setConfirmClearAll(false);
+  };
 
   const getXY = (e: MouseEvent | React.MouseEvent): { x: number; y: number } | null => {
     const canvas = canvasRef.current;
@@ -728,6 +783,8 @@ function MapView({ zones, pumpOn, onAddZone, onDragZone, onRenameZone, onRemoveZ
     setPumpPos(DEFAULT_PUMP_POS);
     setMcuPos(DEFAULT_MCU_POS);
     setFields(DEFAULT_FIELDS.map((f) => ({ ...f })));
+    setZoneScale({});
+    setCurvedPipes(false);
     setSelected(null);
   };
 
@@ -753,7 +810,17 @@ function MapView({ zones, pumpOn, onAddZone, onDragZone, onRenameZone, onRemoveZ
         {editMode && (
           <>
             <button className="map-tool-btn" onClick={addField}><Plus size={15} />Adicionar terreno</button>
+            <button className={`map-tool-btn ${curvedPipes ? 'active' : ''}`} onClick={() => setCurvedPipes((v) => !v)}>
+              <Spline size={15} />{curvedPipes ? 'Linhas curvas' : 'Linhas retas'}
+            </button>
             <button className="map-tool-btn map-tool-reset" onClick={resetLayout}><RotateCcw size={15} />Repor layout</button>
+            <button
+              className="map-tool-btn map-tool-clear"
+              onClick={() => setConfirmClearAll(true)}
+              disabled={zones.length === 0 && fields.length === 0}
+            >
+              <Eraser size={15} />Apagar tudo
+            </button>
           </>
         )}
         <span className="map-tool-status">{zones.length} sensores · {fields.length} terrenos</span>
@@ -762,7 +829,7 @@ function MapView({ zones, pumpOn, onAddZone, onDragZone, onRenameZone, onRemoveZ
       <div className="map-hint">
         <MapPin size={14} />
         {editMode
-          ? 'Clique numa área livre para adicionar um sensor · Arraste elementos · Selecione para editar/apagar'
+          ? 'Clique numa área livre para adicionar um sensor · Arraste para mover · Selecione um sensor para renomear, redimensionar ou apagar · Arraste o canto do terreno para redimensionar'
           : 'Ative "Editar mapa" para adicionar, mover, redimensionar ou apagar elementos'}
       </div>
 
@@ -797,13 +864,13 @@ function MapView({ zones, pumpOn, onAddZone, onDragZone, onRenameZone, onRemoveZ
             const sy = zone.y;
             return (
               <g key={zone.id}>
-                <line x1={mcuPos.x} y1={mcuPos.y} x2={sx} y2={sy} className={`pipe pipe-mcu ${zone.on ? 'pipe-active' : ''}`} />
-                <line x1={sx} y1={sy} x2={vx} y2={vy} className={`pipe pipe-sensor ${zone.on ? 'pipe-active' : ''}`} />
-                <line x1={vx} y1={vy} x2={pumpPos.x} y2={pumpPos.y} className={`pipe pipe-main ${zone.on ? 'pipe-active' : ''}`} />
+                <path d={pipePath(mcuPos.x, mcuPos.y, sx, sy, curvedPipes)} className={`pipe pipe-mcu ${zone.on ? 'pipe-active' : ''}`} />
+                <path d={pipePath(sx, sy, vx, vy, curvedPipes)} className={`pipe pipe-sensor ${zone.on ? 'pipe-active' : ''}`} />
+                <path d={pipePath(vx, vy, pumpPos.x, pumpPos.y, curvedPipes)} className={`pipe pipe-main ${zone.on ? 'pipe-active' : ''}`} />
               </g>
             );
           })}
-          <line x1={mcuPos.x} y1={mcuPos.y} x2={pumpPos.x} y2={pumpPos.y} className={`pipe pipe-mcu ${pumpOn ? 'pipe-active' : ''}`} />
+          <path d={pipePath(mcuPos.x, mcuPos.y, pumpPos.x, pumpPos.y, curvedPipes)} className={`pipe pipe-mcu ${pumpOn ? 'pipe-active' : ''}`} />
         </svg>
         <div
           className={`map-marker marker-pump ${dragging === 'pump' ? 'dragging' : ''} ${selected === 'pump' ? 'selected' : ''} ${editMode ? 'editable' : ''}`}
@@ -838,7 +905,7 @@ function MapView({ zones, pumpOn, onAddZone, onDragZone, onRenameZone, onRemoveZ
             <div key={zone.id} className="map-zone-group">
               <div
                 className={`map-marker marker-valve ${zone.on ? 'valve-open' : ''} ${dragging === zone.id ? 'dragging' : ''} ${isSel ? 'selected' : ''} ${editMode ? 'editable' : ''}`}
-                style={{ left: `${vx}%`, top: `${vy}%` }}
+                style={{ left: `${vx}%`, top: `${vy}%`, '--pin-scale': getZoneScale(zone.id) } as React.CSSProperties}
                 onMouseDown={(e) => editMode && handleMouseDown(e, zone.id)}
               >
                 <span className="marker-pin marker-pin-valve">{zone.id}</span>
@@ -849,7 +916,7 @@ function MapView({ zones, pumpOn, onAddZone, onDragZone, onRenameZone, onRemoveZ
               </div>
               <div
                 className={`map-marker marker-sensor marker-${status} ${dragging === zone.id ? 'dragging' : ''} ${isSel ? 'selected' : ''} ${editMode ? 'editable' : ''}`}
-                style={{ left: `${sx}%`, top: `${sy}%` }}
+                style={{ left: `${sx}%`, top: `${sy}%`, '--pin-scale': getZoneScale(zone.id) } as React.CSSProperties}
                 onMouseDown={(e) => editMode && handleMouseDown(e, zone.id)}
               >
                 <span className="marker-pin">{zone.sensorId}</span>
@@ -889,6 +956,12 @@ function MapView({ zones, pumpOn, onAddZone, onDragZone, onRenameZone, onRemoveZ
               <span>Válvula {selectedZone.id} · Sensor {selectedZone.sensorId} · Humidade {selectedZone.moisture}%</span>
             </div>
           </div>
+          <div className="map-sel-size">
+            <span>Tamanho</span>
+            <button className="map-sel-size-btn" onClick={() => adjustZoneScale(selectedZone.id, -ZONE_SCALE_STEP)} disabled={getZoneScale(selectedZone.id) <= MIN_ZONE_SCALE} aria-label="Diminuir tamanho"><Minus size={13} /></button>
+            <span className="map-sel-size-value">{Math.round(getZoneScale(selectedZone.id) * 100)}%</span>
+            <button className="map-sel-size-btn" onClick={() => adjustZoneScale(selectedZone.id, ZONE_SCALE_STEP)} disabled={getZoneScale(selectedZone.id) >= MAX_ZONE_SCALE} aria-label="Aumentar tamanho"><Plus size={13} /></button>
+          </div>
           <div className="map-sel-actions">
             <button className="map-sel-btn" onClick={() => { setEditingName(selectedZone.id); setEditNameValue(selectedZone.name); }}><PencilLine size={14} />Renomear</button>
             <button className="map-sel-btn map-sel-delete" onClick={() => { onRemoveZone(selectedZone); setSelected(null); }}><Trash2 size={14} />Apagar sensor</button>
@@ -911,6 +984,19 @@ function MapView({ zones, pumpOn, onAddZone, onDragZone, onRenameZone, onRemoveZ
           onSubmit={submitFieldName}
           onClose={() => { setFieldNameEdit(null); setFieldNameValue(''); }}
         />
+      )}
+      {confirmClearAll && (
+        <div className="modal-overlay" onClick={() => setConfirmClearAll(false)}>
+          <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="confirm-modal-icon"><Eraser size={32} /></div>
+            <h3>Apagar todos os elementos?</h3>
+            <p>Esta ação remove <strong>todos os sensores e terrenos</strong> do mapa. Não pode ser desfeita.</p>
+            <div className="confirm-modal-actions">
+              <button className="kb-clear" onClick={() => setConfirmClearAll(false)}>Cancelar</button>
+              <button className="confirm-delete-btn" onClick={handleClearAll}><Trash2 size={15} />Apagar tudo</button>
+            </div>
+          </div>
+        </div>
       )}
     </Panel>
   );

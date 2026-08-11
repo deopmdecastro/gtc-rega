@@ -29,7 +29,8 @@ export type EventType =
   | 'test_cycle'
   | 'zone_rename'
   | 'zone_drag'
-  | 'zone_add_map';
+  | 'zone_add_map'
+  | 'zone_clear_all';
 
 export type EventSeverity = 'info' | 'warning' | 'critical';
 
