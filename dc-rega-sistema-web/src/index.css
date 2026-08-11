@@ -402,8 +402,8 @@ input:focus-visible { border-radius: inherit; }
 /* ---------- Weekly Schedule Editor ---------- */
 .setpoint-schedule { margin-top: 24px; padding-top: 20px; border-top: 1px solid #1b2a32; }
 .setpoint-schedule > label { display: block; margin-bottom: 12px; color: #78909a; font-size: 11px; letter-spacing: .08em; font-weight: 600; }
-.schedule-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
-.schedule-day { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 4px; border: 1px solid #1a2a32; border-radius: 10px; background: #0a131a; transition: .2s; }
+.schedule-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+.schedule-day { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 4px; border: 1px solid #1a2a32; border-radius: 10px; background: #0a131a; transition: .2s; min-width: 0; }
 .schedule-day.schedule-enabled { border-color: rgba(94,229,138,.25); background: rgba(94,229,138,.04); }
 .schedule-day-toggle { display: flex; flex-direction: column; align-items: center; gap: 4px; border: 0; background: none; cursor: pointer; padding: 2px; color: #7e909c; transition: .2s; }
 .schedule-day-toggle:hover { color: #dce5e8; }
@@ -411,10 +411,10 @@ input:focus-visible { border-radius: inherit; }
 .schedule-day-status { width: 8px; height: 8px; border-radius: 50%; transition: .2s; }
 .schedule-day-status.on { background: #5ee58a; box-shadow: 0 0 6px rgba(94,229,138,.5); }
 .schedule-day-status.off { background: #3a4a52; }
-.schedule-time-controls { display: flex; align-items: center; gap: 2px; }
-.schedule-time-btn { display: grid; place-items: center; width: 20px; height: 20px; border: 1px solid #263943; border-radius: 5px; color: #8499a2; background: #0d171e; font-size: 12px; font-weight: 700; cursor: pointer; transition: .2s; }
+.schedule-time-controls { display: flex; align-items: center; justify-content: center; gap: 3px; }
+.schedule-time-btn { display: grid; place-items: center; width: 22px; height: 22px; flex: 0 0 auto; border: 1px solid #263943; border-radius: 5px; color: #8499a2; background: #0d171e; font-size: 12px; font-weight: 700; cursor: pointer; transition: .2s; }
 .schedule-time-btn:hover { border-color: #12bcb6; color: #1ad5d0; }
-.schedule-time-display { padding: 2px 5px; border: 1px solid #263943; border-radius: 5px; color: #1ad5d0; background: #0a141a; font: 600 10px 'DM Mono', monospace; cursor: pointer; transition: .2s; }
+.schedule-time-display { padding: 3px 6px; border: 1px solid #263943; border-radius: 5px; color: #1ad5d0; background: #0a141a; font: 600 11px 'DM Mono', monospace; cursor: pointer; transition: .2s; white-space: nowrap; }
 .schedule-time-display:hover { border-color: #12bcb6; }
 
 
@@ -609,6 +609,10 @@ input:focus-visible { border-radius: inherit; }
     min-height: 40px;
   }
   .nav-item, .action-button, .state-row, .command-row { min-height: 48px; }
+  .schedule-grid { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); }
+  .schedule-time-btn { width: 30px; height: 30px; min-width: 30px; min-height: 30px; }
+  .schedule-day-toggle { padding: 6px 2px; }
+  .schedule-time-display { padding: 6px 8px; font-size: 12px; }
   .switch { width: 42px; height: 24px; }
   .switch span { width: 18px; height: 18px; }
   .switch-on span { transform: translateX(18px); }

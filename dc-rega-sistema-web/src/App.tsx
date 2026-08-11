@@ -2086,23 +2086,18 @@ function ScheduleEditor({ zone, onChange, language }: { zone: Zone; onChange: (s
                 <button className="schedule-time-btn" onClick={() => {
                   const newH = s.hour - 1 < 0 ? 23 : s.hour - 1;
                   setTime(day, newH, s.minute);
-                }}>−</button>
+                }} aria-label={language === 'PT' ? 'Hora anterior' : 'Previous hour'}>−</button>
                 <button className="schedule-time-display" onClick={() => {
-                  // Open numeric keyboard for hour input
-                  const h = prompt(language === 'PT' ? 'Hora (0-23):' : 'Hour (0-23):', String(s.hour));
-                  if (h !== null) {
-                    const m = prompt(language === 'PT' ? 'Minuto (0-59):' : 'Minute (0-59):', String(s.minute));
-                    if (m !== null) {
-                      setTime(day, Math.max(0, Math.min(23, parseInt(h) || 0)), Math.max(0, Math.min(59, parseInt(m) || 0)));
-                    }
-                  }
+                  setTimeEditing({ day, hour: s.hour, minute: s.minute });
+                  setTimeStr('');
+                  setKeyboardForTime(true);
                 }}>
                   {formatTime(s.hour, s.minute)}
                 </button>
                 <button className="schedule-time-btn" onClick={() => {
                   const newH = s.hour + 1 > 23 ? 0 : s.hour + 1;
                   setTime(day, newH, s.minute);
-                }}>+</button>
+                }} aria-label={language === 'PT' ? 'Hora seguinte' : 'Next hour'}>+</button>
               </div>
             )}
           </div>
