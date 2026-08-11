@@ -496,7 +496,7 @@ button { cursor: pointer; }
 .map-field-draggable { position: absolute; border: 1px solid rgba(94,229,138,.18); border-radius: 10px; background: rgba(94,229,138,.05); cursor: grab; z-index: 2; transition: border-color .2s; }
 .map-field-draggable:hover { border-color: rgba(94,229,138,.35); }
 .map-field-draggable.dragging { cursor: grabbing; border-color: rgba(94,229,138,.5); z-index: 10; }
-.field-label { position: absolute; top: 8px; left: 10px; font-size: 10px; color: rgba(94,229,138,.5); letter-spacing: .08em; font-weight: 600; pointer-events: none; }
+.map-field-label { position: absolute; top: 8px; left: 10px; font-size: 10px; color: rgba(94,229,138,.5); letter-spacing: .08em; font-weight: 600; pointer-events: none; }
 .map-marker { position: absolute; transform: translate(-50%, -50%); z-index: 3; }
 .marker-pin { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; border: 3px solid #060b10; color: #06121a; font-size: 9px; font-weight: 700; box-shadow: 0 0 0 3px currentColor, 0 4px 12px rgba(0,0,0,.4); transform: scale(var(--pin-scale, 1)); transition: transform .15s ease; }
 .marker-pin-pump { background: #c77dff; color: #c77dff; width: 36px; height: 36px; }

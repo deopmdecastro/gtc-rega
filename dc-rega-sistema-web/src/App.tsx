@@ -847,7 +847,7 @@ function MapView({ zones, pumpOn, onAddZone, onDragZone, onRenameZone, onRemoveZ
               onMouseDown={(e) => editMode && handleMouseDown(e, `field-${f.id}`)}
               onClick={(e) => { e.stopPropagation(); if (editMode) setSelected(`field-${f.id}`); }}
             >
-              <span className="field-label">{f.name}</span>
+              <span className="map-field-label">{f.name}</span>
               {editMode && isSel && (
                 <>
                   <button className="field-action field-edit" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => startFieldNameEdit(e, f)} aria-label="Renomear terreno"><PencilLine size={12} /></button>
