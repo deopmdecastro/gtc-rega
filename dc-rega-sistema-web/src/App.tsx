@@ -48,6 +48,13 @@ import { t } from '@/lang';
 import { getControllerClient } from '@/lib/controller';
 
 type Page = 'Resumo' | 'Estado' | 'Setpoints' | 'Mapa' | 'Histórico' | 'Comandos' | 'Alarmes';
+type WeekDay = 'sun' | 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat';
+type WaterSchedule = {
+  enabled: boolean;
+  hour: number;   // 0-23
+  minute: number; // 0-59
+};
+
 type Zone = {
   id: string;
   sensorId: string;
@@ -59,6 +66,7 @@ type Zone = {
   waterDuration: number;
   x: number;
   y: number;
+  schedules: Record<WeekDay, WaterSchedule>;
 };
 
 type ErrorEvent = {
@@ -82,9 +90,20 @@ const pages: { label: Page; icon: typeof Home }[] = [
   { label: 'Alarmes', icon: Bell },
 ];
 
+const defaultSchedule = (enabled: boolean, hour: number, minute: number): WaterSchedule => ({ enabled, hour, minute });
+const defaultSchedules = (enabled: boolean): Record<WeekDay, WaterSchedule> => ({
+  sun: defaultSchedule(enabled, 6, 0),
+  mon: defaultSchedule(enabled, 6, 0),
+  tue: defaultSchedule(enabled, 6, 0),
+  wed: defaultSchedule(enabled, 6, 0),
+  thu: defaultSchedule(enabled, 6, 0),
+  fri: defaultSchedule(enabled, 6, 0),
+  sat: defaultSchedule(enabled, 6, 0),
+});
+
 const initialZones: Zone[] = [
-  { id: 'Y1', sensorId: 'B1', name: 'Zona 1', moisture: 64, target: 55, lastWatered: 'Hoje, 18:12', on: false, waterDuration: 60, x: 28, y: 36 },
-  { id: 'Y2', sensorId: 'B2', name: 'Zona 2', moisture: 57, target: 52, lastWatered: 'Hoje, 17:48', on: false, waterDuration: 45, x: 56, y: 62 },
+  { id: 'Y1', sensorId: 'B1', name: 'Zona 1', moisture: 64, target: 55, lastWatered: 'Hoje, 18:12', on: false, waterDuration: 60, x: 28, y: 36, schedules: defaultSchedules(true) },
+  { id: 'Y2', sensorId: 'B2', name: 'Zona 2', moisture: 57, target: 52, lastWatered: 'Hoje, 17:48', on: false, waterDuration: 45, x: 56, y: 62, schedules: defaultSchedules(true) },
 ];
 
 const initialErrors: ErrorEvent[] = [
@@ -357,7 +376,7 @@ function App() {
     const id = makeZoneId();
     const sensorId = makeSensorId();
     const num = zones.length + 1;
-    const newZone: Zone = { id, sensorId, name: `Zona ${num}`, moisture: 50, target: 50, lastWatered: '—', on: false, waterDuration: 30, x: 30 + Math.random() * 40, y: 30 + Math.random() * 40 };
+    const newZone: Zone = { id, sensorId, name: `Zona ${num}`, moisture: 50, target: 50, lastWatered: '—', on: false, waterDuration: 30, x: 30 + Math.random() * 40, y: 30 + Math.random() * 40, schedules: defaultSchedules(true) };
     setZones((cur) => [...cur, newZone]);
     logEvent('zone_add', `${newZone.name} · Sensor ${sensorId}`, `Sensor ${sensorId} e válvula ${id} adicionados`, 'info', { zone_id: id, sensor_id: sensorId });
     showNotice(`Sensor ${sensorId} adicionado`);
@@ -372,7 +391,7 @@ function App() {
     const id = makeZoneId();
     const sensorId = makeSensorId();
     const num = zones.length + 1;
-    const newZone: Zone = { id, sensorId, name: `Zona ${num}`, moisture: 50, target: 50, lastWatered: '—', on: false, waterDuration: 30, x, y };
+    const newZone: Zone = { id, sensorId, name: `Zona ${num}`, moisture: 50, target: 50, lastWatered: '—', on: false, waterDuration: 30, x, y, schedules: defaultSchedules(true) };
     setZones((cur) => [...cur, newZone]);
     logEvent('zone_add_map', `${newZone.name} · Sensor ${sensorId}`, `Local adicionado no mapa: válvula ${id}, sensor ${sensorId}`, 'info', { zone_id: id, sensor_id: sensorId, x, y });
     showNotice(`Local adicionado: ${newZone.name}`);
@@ -397,6 +416,7 @@ function App() {
       lastWatered: '—',
       x: nextX,
       y: nextY,
+      schedules: { ...zone.schedules },
     };
     setZones((cur) => [...cur, duplicate]);
     logEvent('zone_duplicate', `${zone.name} → ${duplicate.name}`, `Sensor ${sensorId} e válvula ${id} duplicados a partir de ${zone.sensorId}/${zone.id}`, 'info', {
@@ -603,7 +623,6 @@ function App() {
 
 /* ---------- Overview ---------- */
 function Overview({ zones, pumpOn, autoMode, activeZones, onToggleZone, onTogglePump, onToggleMode, onOpenMap, weather, language }: { zones: Zone[]; pumpOn: boolean; autoMode: boolean; activeZones: number; onToggleZone: (id: string) => void; onTogglePump: () => void; onToggleMode: () => void; onOpenMap: () => void; weather: { temp: number; desc: string; city: string; country: string; icon: string }; language: Language }) {
-  language: Language;
   return (
     <div className="content-stack">
       <Panel className="hero-panel">
@@ -866,6 +885,10 @@ function SetpointsView({ zones, onChange, onUpdateZone, pumpDelay, setPumpDelay,
                 <button className="btn-step" onClick={() => onUpdateZone(zone.id, { waterDuration: zone.waterDuration + 5 })}>+</button>
               </div>
               <small>Toque no valor para abrir o teclado numérico</small>
+            </div>
+            <div className="setpoint-schedule">
+              <label>{language === 'PT' ? 'Programação semanal' : 'Weekly schedule'}</label>
+              <ScheduleEditor zone={zone} onChange={(schedules) => onUpdateZone(zone.id, { schedules } as Partial<Zone>)} language={language} />
             </div>
           </Panel>
         ))}
@@ -1813,6 +1836,74 @@ function LoginModal({ language, reason, onSubmit, onClose }: { language: Languag
           onClose={() => setShowKeyboard(false)}
         />
       )}
+    </div>
+  );
+}
+
+/* ---------- Weekly Schedule Editor ---------- */
+const WEEKDAYS: WeekDay[] = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+const WEEKDAY_LABELS_PT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+const WEEKDAY_LABELS_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+function ScheduleEditor({ zone, onChange, language }: { zone: Zone; onChange: (schedules: Record<WeekDay, WaterSchedule>) => void; language: Language }) {
+  const labels = language === 'EN' ? WEEKDAY_LABELS_EN : WEEKDAY_LABELS_PT;
+
+  const toggleDay = (day: WeekDay) => {
+    const next = { ...zone.schedules };
+    next[day] = { ...next[day], enabled: !next[day].enabled };
+    onChange(next);
+  };
+
+  const setTime = (day: WeekDay, hour: number, minute: number) => {
+    const next = { ...zone.schedules };
+    next[day] = { ...next[day], hour, minute };
+    onChange(next);
+  };
+
+  const formatTime = (h: number, m: number) => 
+    `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+
+  return (
+    <div className="schedule-grid">
+      {WEEKDAYS.map((day, i) => {
+        const s = zone.schedules[day];
+        return (
+          <div key={day} className={`schedule-day ${s.enabled ? 'schedule-enabled' : ''}`}>
+            <button
+              className="schedule-day-toggle"
+              onClick={() => toggleDay(day)}
+              title={s.enabled ? (language === 'PT' ? 'Desativar' : 'Disable') : (language === 'PT' ? 'Ativar' : 'Enable')}
+            >
+              <span className="schedule-day-label">{labels[i]}</span>
+              <span className={`schedule-day-status ${s.enabled ? 'on' : 'off'}`} />
+            </button>
+            {s.enabled && (
+              <div className="schedule-time-controls">
+                <button className="schedule-time-btn" onClick={() => {
+                  const newH = s.hour - 1 < 0 ? 23 : s.hour - 1;
+                  setTime(day, newH, s.minute);
+                }}>−</button>
+                <button className="schedule-time-display" onClick={() => {
+                  // Open numeric keyboard for hour input
+                  const h = prompt(language === 'PT' ? 'Hora (0-23):' : 'Hour (0-23):', String(s.hour));
+                  if (h !== null) {
+                    const m = prompt(language === 'PT' ? 'Minuto (0-59):' : 'Minute (0-59):', String(s.minute));
+                    if (m !== null) {
+                      setTime(day, Math.max(0, Math.min(23, parseInt(h) || 0)), Math.max(0, Math.min(59, parseInt(m) || 0)));
+                    }
+                  }
+                }}>
+                  {formatTime(s.hour, s.minute)}
+                </button>
+                <button className="schedule-time-btn" onClick={() => {
+                  const newH = s.hour + 1 > 23 ? 0 : s.hour + 1;
+                  setTime(day, newH, s.minute);
+                }}>+</button>
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
