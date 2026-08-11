@@ -911,9 +911,10 @@ function StateView({ zones, pumpOn, autoMode, onToggleMode, language, gpioConfig
       {/* ESP32-S3 Hardware Diagram — Design da imagem */}
       <Panel className="estado-pinout-panel" style={{ gridColumn: '1 / -1' }}>
         <div className="hw3-header">
-          <div>
+          <div className="hw3-header-titles">
             <span className="section-kicker">HARDWARE</span>
-            <h3>ESP32-S3 · Mapa de Ligações GPIO</h3>
+            <h3>ESP32-S3</h3>
+            <span className="hw3-subtitle">{language === 'PT' ? 'Mapa de Ligações GPIO' : 'GPIO Connection Map'}</span>
           </div>
           <button className="gpio-edit-btn" onClick={() => setEditingGpio(editingGpio === null ? -1 : null)}>
             <Settings2 size={15} /> {editingGpio === null ? (language === 'PT' ? 'Editar GPIO' : 'Edit GPIO') : (language === 'PT' ? 'Concluído' : 'Done')}
@@ -923,18 +924,15 @@ function StateView({ zones, pumpOn, autoMode, onToggleMode, language, gpioConfig
         <div className="hw3-diagram">
           {/* ── Coluna 1: Sensores (INPUT) ── */}
           <div className="hw3-col hw3-col-left">
-            <div className="hw3-col-title hw3-title-input">
-              <span className="hw3-title-dot hw3-dot-green" />
-              INPUT
-            </div>
             {zones.map((z) => (
               <div key={z.sensorId} className="hw3-sensor-block">
                 <div className="hw3-block hw3-block-input">
                   <span className="hw3-block-label">{z.sensorId}</span>
                   <div className="hw3-block-info">
-                    <strong>Sensor {z.sensorId}</strong>
+                    <strong>{language === 'PT' ? 'Sensor' : 'Sensor'} {z.sensorId}</strong>
                     <span>{z.name} · {z.moisture}%</span>
                   </div>
+                  <span className="hw3-pin-badge hw3-badge-input hw3-block-badge">INPUT</span>
                 </div>
                 <div className="hw3-arrow-line hw3-arrow-right" />
               </div>
@@ -946,7 +944,6 @@ function StateView({ zones, pumpOn, autoMode, onToggleMode, language, gpioConfig
             <div className="hw3-chip-frame">
               <div className="hw3-chip-header">
                 <Cpu size={20} />
-                <span>ESP32-S3</span>
               </div>
               <div className="hw3-chip-body">
                 {/* INPUT pins */}
@@ -975,18 +972,13 @@ function StateView({ zones, pumpOn, autoMode, onToggleMode, language, gpioConfig
 
           {/* ── Coluna 3: Relés (OUTPUT) ── */}
           <div className="hw3-col hw3-col-right">
-            <div className="hw3-col-title hw3-title-output">
-              <span className="hw3-title-dot hw3-dot-orange" />
-              OUTPUT
-            </div>
             {gpioConfig.filter(g => g.direction === 'OUTPUT').map((g) => (
               <div key={g.gpio} className="hw3-relay-row">
                 <div className="hw3-arrow-line hw3-arrow-left" />
                 <div className="hw3-block hw3-block-output">
                   <span className="hw3-block-label">{g.label}</span>
                   <div className="hw3-block-info">
-                    <strong>{g.func}</strong>
-                    {g.inChannel && <span>{g.inChannel}</span>}
+                    <strong>{g.func}{g.inChannel ? ` - ${g.inChannel}` : ''}</strong>
                   </div>
                 </div>
               </div>
@@ -1243,8 +1235,14 @@ function SetpointsView({ zones, onChange, onUpdateZone, pumpDelay, setPumpDelay,
               <div className="sp2-slider-section">
                 <span className="sp2-slider-label">{language === 'PT' ? 'Humidade mínima desejada' : 'Minimum desired moisture'}</span>
                 <div className="sp2-slider-row">
-                  <input type="range" min="20" max="90" value={displayTarget} onChange={(e) => handleSlide(zone.id, Number(e.target.value))} className="sp2-range" />
-                  <span className={`sp2-slider-value ${dirty ? 'sp2-slider-dirty' : ''}`}>{displayTarget}%</span>
+                  <input
+                    type="range" min="20" max="90" value={displayTarget}
+                    onChange={(e) => handleSlide(zone.id, Number(e.target.value))}
+                    className={`sp2-range ${dirty ? 'sp2-range-dirty' : ''}`}
+                    title={`${displayTarget}%`}
+                    aria-label={language === 'PT' ? 'Humidade mínima desejada' : 'Minimum desired moisture'}
+                    aria-valuetext={`${displayTarget}%`}
+                  />
                 </div>
                 <div className="sp2-range-labels"><span>20%</span><span>90%</span></div>
               </div>

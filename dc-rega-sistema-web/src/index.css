@@ -484,28 +484,30 @@ input:focus-visible { border-radius: inherit; }
 
 
 /* ── ESP32-S3 Hardware Diagram v3 (design da imagem) ── */
-.hw3-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid #1a2a33; }
-.hw3-header h3 { margin: 4px 0 0; font-size: 18px; color: #dce5e8; }
+.hw3-header { position: relative; display: flex; justify-content: center; align-items: flex-start; gap: 16px; margin-bottom: 28px; padding-bottom: 16px; border-bottom: 1px solid #1a2a33; }
+.hw3-header-titles { display: flex; flex-direction: column; align-items: center; text-align: center; }
+.hw3-header-titles .section-kicker { color: #4e6d78; }
+.hw3-header h3 { margin: 6px 0 2px; font-size: 26px; font-weight: 800; letter-spacing: .02em; color: #1ad5d0; }
+.hw3-subtitle { font-size: 12px; color: #7c929c; }
+.hw3-header .gpio-edit-btn { position: absolute; right: 0; top: 0; }
 
 /* 3-column diagram layout */
-.hw3-diagram { display: grid; grid-template-columns: 1fr auto 1fr; gap: 0; align-items: start; }
-.hw3-col { }
-.hw3-col-title { display: flex; align-items: center; gap: 7px; margin-bottom: 12px; font-size: 11px; font-weight: 700; letter-spacing: .1em; }
-.hw3-title-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
-.hw3-dot-green { background: #5ee58a; box-shadow: 0 0 5px rgba(94,229,138,.5); }
-.hw3-dot-orange { background: #f0a145; box-shadow: 0 0 5px rgba(240,161,69,.5); }
-.hw3-title-input { color: #5ee58a; }
-.hw3-title-output { color: #f0a145; }
+.hw3-diagram { display: grid; grid-template-columns: 1fr auto 1fr; gap: 0; align-items: center; }
+.hw3-col { display: flex; flex-direction: column; justify-content: center; height: 100%; }
+.hw3-col-left { justify-content: flex-start; padding-top: 4px; }
+.hw3-col-right { justify-content: space-evenly; }
 
 /* Sensor/Relay blocks */
 .hw3-block { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 10px; min-width: 170px; }
 .hw3-block-input { background: #0b151b; border: 1px solid rgba(94,229,138,.2); }
 .hw3-block-output { background: #0b151b; border: 1px solid rgba(240,161,69,.2); }
-.hw3-block-label { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 8px; font: 700 14px 'DM Mono', monospace; flex-shrink: 0; }
+.hw3-block-label { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 8px; font: 700 13px 'DM Mono', monospace; flex-shrink: 0; }
 .hw3-block-input .hw3-block-label { background: rgba(94,229,138,.12); border: 1px solid rgba(94,229,138,.25); color: #5ee58a; }
 .hw3-block-output .hw3-block-label { background: rgba(240,161,69,.12); border: 1px solid rgba(240,161,69,.25); color: #f0a145; }
+.hw3-block-info { flex: 1; min-width: 0; }
 .hw3-block-info strong { display: block; font-size: 13px; color: #dce5e8; }
 .hw3-block-info span { font-size: 11px; color: #5a6f7a; }
+.hw3-block-badge { flex-shrink: 0; }
 
 /* Arrow lines between columns */
 .hw3-arrow-line { flex-shrink: 0; width: 20px; height: 20px; position: relative; margin: 0 6px; }
@@ -514,13 +516,15 @@ input:focus-visible { border-radius: inherit; }
 .hw3-arrow-left::after { content: ''; position: absolute; right: 0; top: 50%; width: 14px; height: 2px; background: #f0a145; transform: translateY(-1px); }
 .hw3-arrow-left::before { content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%); border-right: 6px solid #f0a145; border-top: 5px solid transparent; border-bottom: 5px solid transparent; }
 
-.hw3-sensor-block { display: flex; align-items: center; margin-bottom: 12px; }
+.hw3-sensor-block { display: flex; align-items: center; margin-bottom: 16px; }
+.hw3-sensor-block:last-child { margin-bottom: 0; }
 .hw3-relay-row { display: flex; align-items: center; margin-bottom: 12px; justify-content: flex-end; }
+.hw3-relay-row:last-child { margin-bottom: 0; }
 
 /* Center chip */
 .hw3-col-center { display: flex; justify-content: center; padding: 0 8px; }
 .hw3-chip-frame { border: 1px solid #1a2a33; border-radius: 14px; background: linear-gradient(160deg, #0e1921, #091218); overflow: hidden; min-width: 220px; }
-.hw3-chip-header { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid #1a2a33; color: #1ad5d0; font: 600 14px 'DM Mono', monospace; letter-spacing: .04em; }
+.hw3-chip-header { display: flex; align-items: center; justify-content: center; padding: 12px 16px; border-bottom: 1px solid #1a2a33; color: #1ad5d0; }
 .hw3-chip-body { }
 .hw3-pin-group { display: flex; flex-direction: column; gap: 2px; padding: 6px 8px; }
 .hw3-chip-divider { height: 1px; background: #1a2a33; margin: 0 8px; }
@@ -919,6 +923,8 @@ input:focus-visible { border-radius: inherit; }
 @media (max-width: 720px) {
   .topbar-right { gap: 10px; }
   .settings-btn { width: 38px; height: 38px; }
+  .hw3-header { flex-direction: column; align-items: center; }
+  .hw3-header .gpio-edit-btn { position: static; margin-top: 4px; }
   .map-canvas { height: 320px; }
   .map-editing .map-canvas { cursor: crosshair; }
   .marker-label { display: none; }
@@ -1115,7 +1121,7 @@ input:focus-visible { border-radius: inherit; }
 .sp2-current { flex: 0 0 auto; text-align: left; padding: 0; }
 .sp2-current strong { display: flex; align-items: baseline; font-size: 46px; font-weight: 800; color: #5ee58a; line-height: 1; letter-spacing: -.02em; }
 .sp2-current strong small { font-size: 22px; font-weight: 600; color: #40c870; margin-left: 1px; }
-.sp2-current span { display: block; margin-top: 6px; font-size: 11px; color: #718792; text-transform: uppercase; letter-spacing: .08em; white-space: nowrap; }
+.sp2-current span { display: block; margin-top: 6px; font-size: 12px; color: #7c929c; }
 
 /* Slider */
 .sp2-slider-section { flex: 1 1 auto; min-width: 0; padding: 0; }
@@ -1124,7 +1130,8 @@ input:focus-visible { border-radius: inherit; }
 .sp2-range { flex: 1; -webkit-appearance: none; appearance: none; height: 6px; border-radius: 3px; background: linear-gradient(90deg, #f2b35d 0%, #14ddd6 50%, #5ee58a 100%); outline: none; }
 .sp2-range::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #fff; border: 2px solid #14ddd6; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.3); }
 .sp2-range::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: #fff; border: 2px solid #14ddd6; cursor: pointer; }
-.sp2-slider-value { min-width: 42px; text-align: right; font-size: 16px; font-weight: 700; color: #e0e9eb; }
+.sp2-range-dirty::-webkit-slider-thumb { border-color: #f9b247; }
+.sp2-range-dirty::-moz-range-thumb { border-color: #f9b247; }
 .sp2-slider-dirty { color: #f9b247; }
 .sp2-range-labels { display: flex; justify-content: space-between; margin-top: 4px; }
 .sp2-range-labels span { font-size: 10px; color: #4e6d78; }
