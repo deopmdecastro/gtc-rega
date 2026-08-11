@@ -1012,6 +1012,7 @@ function StateView({ zones, pumpOn, autoMode, onToggleMode, language, gpioConfig
         {editingGpio !== null && (
           <div className="gpio-edit-table-wrap">
             <h4>{language === 'PT' ? 'Editar configuração GPIO' : 'Edit GPIO Configuration'}</h4>
+            <div className="gpio-edit-table-scroll">
             <table className="gpio-edit-table">
               <thead>
                 <tr>
@@ -1039,6 +1040,7 @@ function StateView({ zones, pumpOn, autoMode, onToggleMode, language, gpioConfig
                 ))}
               </tbody>
             </table>
+            </div>
             <button className="save-btn" onClick={saveGpioConfig}>
               <Save size={15} /> {language === 'PT' ? 'Guardar configuração GPIO' : 'Save GPIO configuration'}
             </button>
@@ -1231,20 +1233,21 @@ function SetpointsView({ zones, onChange, onUpdateZone, pumpDelay, setPumpDelay,
               <span className="sp2-tag sp2-tag-sensor"><Radio size={12} /> {language === 'PT' ? 'Sensor' : 'Sensor'} {zone.sensorId}</span>
             </div>
 
-            {/* Current moisture — BIG number */}
-            <div className="sp2-current">
-              <strong>{zone.moisture}<small>%</small></strong>
-              <span>{language === 'PT' ? 'Humidade atual' : 'Current moisture'}</span>
-            </div>
-
-            {/* Slider */}
-            <div className="sp2-slider-section">
-              <span className="sp2-slider-label">{language === 'PT' ? 'Humidade mínima desejada' : 'Minimum desired moisture'}</span>
-              <div className="sp2-slider-row">
-                <input type="range" min="20" max="90" value={displayTarget} onChange={(e) => handleSlide(zone.id, Number(e.target.value))} className="sp2-range" />
-                <span className={`sp2-slider-value ${dirty ? 'sp2-slider-dirty' : ''}`}>{displayTarget}%</span>
+            {/* Humidade atual + slider de setpoint, lado a lado */}
+            <div className="sp2-metrics-row">
+              <div className="sp2-current">
+                <strong>{zone.moisture}<small>%</small></strong>
+                <span>{language === 'PT' ? 'Humidade atual' : 'Current moisture'}</span>
               </div>
-              <div className="sp2-range-labels"><span>20%</span><span>90%</span></div>
+
+              <div className="sp2-slider-section">
+                <span className="sp2-slider-label">{language === 'PT' ? 'Humidade mínima desejada' : 'Minimum desired moisture'}</span>
+                <div className="sp2-slider-row">
+                  <input type="range" min="20" max="90" value={displayTarget} onChange={(e) => handleSlide(zone.id, Number(e.target.value))} className="sp2-range" />
+                  <span className={`sp2-slider-value ${dirty ? 'sp2-slider-dirty' : ''}`}>{displayTarget}%</span>
+                </div>
+                <div className="sp2-range-labels"><span>20%</span><span>90%</span></div>
+              </div>
             </div>
 
             {/* Status note + save */}
