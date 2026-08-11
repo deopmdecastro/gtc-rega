@@ -3,11 +3,23 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { font-family: 'Manrope', sans-serif; color: #d7e1e7; background: #060b10; font-synthesis: none; }
-* { box-sizing: border-box; }
-body { margin: 0; min-width: 320px; background: #060b10; }
-button, input { font: inherit; }
+:root { font-family: 'Manrope', sans-serif; color: #d7e1e7; background: #060b10; font-synthesis: none; -webkit-text-size-adjust: 100%; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html { overflow-x: hidden; }
+body { margin: 0; min-width: 320px; background: #060b10; overflow-x: hidden; }
+button, input { font: inherit; touch-action: manipulation; }
 button { cursor: pointer; }
+
+/* ---------- Accessibility: visible focus ring for keyboard users ---------- */
+button:focus-visible,
+input:focus-visible,
+a:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid #1adbd4;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+input:focus-visible { border-radius: inherit; }
 
 .app-shell { min-height: 100vh; display: flex; background: radial-gradient(circle at 72% -10%, rgba(0, 190, 190, .08), transparent 34%), #060b10; }
 
@@ -20,7 +32,7 @@ button { cursor: pointer; }
 * { scrollbar-width: thin; scrollbar-color: #13bcb6 #0a141a; }
 
 /* ---------- Sidebar (fixed, no collapse) ---------- */
-.sidebar { width: 236px; min-height: 100vh; border-right: 1px solid #17232c; padding: 30px 18px 22px; display: flex; flex-direction: column; background: rgba(6, 12, 17, .95); z-index: 5; position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; }
+.sidebar { width: 236px; min-height: 100vh; border-right: 1px solid #17232c; padding: 30px 18px 22px; padding-left: max(18px, env(safe-area-inset-left)); display: flex; flex-direction: column; background: rgba(6, 12, 17, .95); z-index: 5; position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; }
 .brand { display: flex; align-items: center; gap: 11px; padding: 2px 8px 38px; color: #14ddd6; }
 .brand-mark { width: 32px; height: 32px; display: grid; place-items: center; border: 1px solid rgba(20, 221, 214, .42); border-radius: 9px; background: rgba(20, 221, 214, .1); }
 .brand strong { display: block; letter-spacing: .08em; font-size: 18px; line-height: 1; }
@@ -528,15 +540,23 @@ button { cursor: pointer; }
   .metric strong { font-size: 11px; }
   .alarm-summary-grid { grid-template-columns: 1fr; }
 }
-@media (max-width: 720px) {
+
+/* ---------- Tablet: sidebar becomes an off-canvas drawer ---------- */
+/* Portrait tablets (e.g. iPad 768–820px) get the same nav pattern as
+   phones so content isn't squeezed by the fixed 236px sidebar. */
+@media (max-width: 900px) {
   .sidebar { position: fixed; left: -250px; top: 0; bottom: 0; width: 236px; transition: left .25s ease; }
   .sidebar-open { left: 0; }
   .close-menu { display: block; }
   .scrim { display: block; position: fixed; inset: 0; z-index: 4; border: 0; background: #0009; }
   .main-content { width: 100%; margin-left: 0; }
+  .mobile-menu { display: grid; place-items: center; width: 40px; height: 40px; margin-top: 2px; border: 1px solid #263943; border-radius: 8px; color: #18d6d0; background: #0b171d; }
+  .topbar-inner { align-items: center; }
+}
+
+@media (max-width: 720px) {
   .content-wrap { padding: 0 14px 32px; }
-  .mobile-menu { display: grid; place-items: center; width: 37px; height: 37px; margin-top: 2px; border: 1px solid #263943; border-radius: 8px; color: #18d6d0; background: #0b171d; }
-  .topbar-inner { align-items: center; padding: 16px 14px 14px; }
+  .topbar-inner { padding: 16px 14px 14px; }
   .topbar h1 { font-size: 19px; }
   .topbar p { font-size: 11px; }
   .eyebrow { font-size: 8px; }
@@ -558,6 +578,40 @@ button { cursor: pointer; }
   .two-column > .panel, .commands-layout > .panel { padding: 18px; }
   .command-actions { grid-template-columns: 1fr; }
   .alarm-summary-grid { grid-template-columns: 1fr; }
+}
+
+/* ---------- Phones: extra breathing room + larger tap targets ---------- */
+@media (max-width: 600px) {
+  .setpoint-grid { grid-template-columns: 1fr; gap: 16px; }
+  .setpoint-card { padding: 22px 20px 20px; }
+  .alarm-summary-card { padding: 20px 18px; gap: 12px; }
+  .alarm-summary-card strong { font-size: 26px; }
+  .cmd-btn { padding: 20px 14px; }
+  .pinout-grid { grid-template-columns: 1fr; }
+  .pinout-row { grid-template-columns: 60px 1fr; }
+  .pinout-full-grid { grid-template-columns: 1fr; }
+  .map-toolbar { gap: 8px; }
+  .map-tool-btn { padding: 10px 12px; font-size: 11px; }
+  .map-sel-actions { width: 100%; }
+  .map-sel-btn { flex: 1; justify-content: center; }
+  .history-item, .error-item, .alarm-item { gap: 12px; }
+  .toast { left: 14px; right: 14px; bottom: max(14px, env(safe-area-inset-bottom)); }
+  .confirm-modal, .login-screen-card { padding-left: 22px; padding-right: 22px; }
+}
+
+/* ---------- Touch devices: enlarge small hit targets to ~40px+ ---------- */
+@media (hover: none) and (pointer: coarse) {
+  .field-action, .marker-edit-btn, .map-sel-size-btn, .pinout-close,
+  .gpio-edit-btn, .refresh-btn, .close-menu, .keyboard-header button {
+    min-width: 36px; min-height: 36px;
+  }
+  .resolve-btn, .map-tool-btn, .map-sel-btn, .lang-toggle-btn, .gpio-edit-btn {
+    min-height: 40px;
+  }
+  .nav-item, .action-button, .state-row, .command-row { min-height: 48px; }
+  .switch { width: 42px; height: 24px; }
+  .switch span { width: 18px; height: 18px; }
+  .switch-on span { transform: translateX(18px); }
 }
 /* ---------- Text keyboard ---------- */
 .text-keyboard { width: 520px; max-width: calc(100vw - 24px); }
@@ -748,15 +802,6 @@ button { cursor: pointer; }
 .estado-pinout-panel { padding: 20px; margin-top: 20px; }
 .estado-pinout-panel .panel-heading { padding: 0 0 12px; }
 .pinout-full-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
-  .hardware-diagram { grid-template-columns: 1fr; gap: 12px; }
-  .hw-controller { order: -1; padding: 0; }
-  .hw-sensor-node, .hw-relay-node { flex-wrap: wrap; gap: 6px; }
-  .hw-arrow { display: none; }
-  .gpio-edit-table-wrap { overflow-x: auto; }
-
-  
-  .login-screen-card { padding: 36px 24px 28px; }
-  .login-modal { width: calc(100vw - 32px); }
 .pinout-visual { display: flex; flex-direction: column; }
 .pinout-chip { border: 1px solid #1f3a42; border-radius: 12px; background: linear-gradient(160deg, #0d1b22, #0a131a); overflow: hidden; }
 .pinout-chip-header { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid #1a2a32; color: #ff9f43; font-weight: 700; font-size: 13px; letter-spacing: .02em; background: rgba(255,159,67,.06); }
@@ -840,4 +885,11 @@ button { cursor: pointer; }
   .pinout-grid { grid-template-columns: 1fr; }
   .pinout-row { grid-template-columns: 60px 1fr; }
   .pinout-full-grid { grid-template-columns: 1fr; }
+  .hardware-diagram { grid-template-columns: 1fr; gap: 12px; }
+  .hw-controller { order: -1; padding: 0; }
+  .hw-sensor-node, .hw-relay-node { flex-wrap: wrap; gap: 6px; }
+  .hw-arrow { display: none; }
+  .gpio-edit-table-wrap { overflow-x: auto; }
+  .login-screen-card { padding: 36px 24px 28px; }
+  .login-modal { width: calc(100vw - 32px); }
 }

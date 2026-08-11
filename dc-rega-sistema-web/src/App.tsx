@@ -24,6 +24,7 @@ import {
   Plus,
   Power,
   Radio,
+  RefreshCw,
   RotateCcw,
   Save,
   Settings2,
@@ -132,8 +133,8 @@ function StatusBadge({ children, tone = 'neutral' }: { children: React.ReactNode
   return <span className={`status-badge status-${tone}`}><span className="status-dot" />{children}</span>;
 }
 
-function Panel({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <section className={`panel ${className}`}>{children}</section>;
+function Panel({ children, className = '', style }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
+  return <section className={`panel ${className}`} style={style}>{children}</section>;
 }
 
 let nextZoneId = 3;
@@ -463,14 +464,12 @@ function App() {
 
   const handleStart = () => {
     const ctrl = getControllerClient();
-    const ok = ctrl.start(pumpDelay);
-    if (ok) {
-      setSystemRunning(true);
-      setStarting(true);
-      setPumpOn(true);
-      setStartStep('A ligar bomba…');
-      showNotice('Start enviado ao controlador');
-    }
+    ctrl.start(pumpDelay);
+    setSystemRunning(true);
+    setStarting(true);
+    setPumpOn(true);
+    setStartStep('A ligar bomba…');
+    showNotice('Start enviado ao controlador');
   };
   const handleStop = () => {
     const ctrl = getControllerClient();
@@ -698,7 +697,7 @@ function Overview({ zones, pumpOn, autoMode, activeZones, onToggleZone, onToggle
           {zones.map((z) => <ActuatorRow key={z.id} icon={<Droplets />} label={`${z.name} · Válvula ${z.id}`} on={z.on} onToggle={() => onToggleZone(z.id)} />)}
         </div>
       </Panel>
-      <div className="sensor-grid">{zones.map((z) => <SensorCard key={z.id} zone={z} />)}</div>
+      <div className="sensor-grid">{zones.map((z) => <SensorCard key={z.id} zone={z} language={language} />)}</div>
       <Panel className="metrics-panel">
         <Metric icon={<CalendarDays />} label="Data" value="10/08/2026" />
         <Metric icon={<TimerReset />} label="Hora" value="21:16:43" />
@@ -1071,6 +1070,7 @@ function MapView({ zones, pumpOn, onAddZone, onDuplicateZone, onDragZone, onRena
   onClearAll: () => void;
   onToggleZone: (id: string) => void;
   weather: { temp: number; desc: string; city: string; country: string; icon: string };
+  language: Language;
 }) {
   const [pumpPos, setPumpPos] = useState<MapElement>(DEFAULT_PUMP_POS);
   const [mcuPos, setMcuPos] = useState<MapElement>(DEFAULT_MCU_POS);
@@ -1723,7 +1723,7 @@ function SettingsPanel({ language, setLanguage, username, setUsername, password,
 }
 
 /* ---------- Histórico de Erros + Eventos Reais ---------- */
-function HistoryView({ errors, eventLog, eventLogLoading, onRefresh, language }: { errors: ErrorEvent[]; eventLog: EventLogEntry[]; eventLogLoading: boolean; onRefresh: () => void }) {
+function HistoryView({ errors, eventLog, eventLogLoading, onRefresh, language }: { errors: ErrorEvent[]; eventLog: EventLogEntry[]; eventLogLoading: boolean; onRefresh: () => void; language: Language }) {
   const irrigationEvents = eventLog.filter((e) =>
     ['zone_toggle', 'system_start', 'system_stop', 'system_reset', 'emergency_stop', 'test_cycle', 'mode_change'].includes(e.event_type)
   );
@@ -1802,6 +1802,7 @@ function CommandsView({ zones, pumpOn, systemRunning, starting, startStep, autoM
   onStart: () => void;
   onStop: () => void;
   onReset: () => void;
+  language: Language;
 }) {
   return (
     <div className="commands-layout">
@@ -2000,58 +2001,6 @@ function LoginScreen({ language, onSubmit }: { language: Language; onSubmit: (us
       {keyboardTarget && (
         <FullKeyboard value={keyboardValue} onChange={handleKeyboardChange} onSubmit={() => setKeyboardTarget(null)} onClose={() => setKeyboardTarget(null)}
           title={keyboardTarget === 'user' ? (language === 'PT' ? 'Utilizador' : 'Username') : (language === 'PT' ? 'Palavra-passe' : 'Password')} language={language} />
-      )}
-    </div>
-  );
-}
-
-/* ---------- Login Modal ---------- */
-function LoginModal({ language, reason, onSubmit, onClose }: { language: Language; reason: 'startup' | 'setpoints' | 'map'; onSubmit: (user: string, pass: string) => void; onClose: () => void }) {
-  const [pass, setPass] = useState('');
-  const [error, setError] = useState(false);
-  const [showKeyboard, setShowKeyboard] = useState(false);
-
-  const handleSubmit = () => {
-    if (pass === '1234') {
-      onSubmit(pass);
-      setError(false);
-    } else {
-      setError(true);
-      setTimeout(() => setError(false), 2000);
-    }
-  };
-
-  return (
-    <div className="modal-overlay" onClick={reason === 'startup' ? undefined : onClose}>
-      <div className="confirm-modal login-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="confirm-modal-icon"><LockKeyhole size={32} /></div>
-        <h3>{t('login.title', language)}</h3>
-        <p>{t('login.subtitle', language)}</p>
-        <div className="login-field" onClick={() => setShowKeyboard(true)}>
-          <LockKeyhole size={16} />
-          <input
-            type="password"
-            placeholder={t('login.password', language)}
-            value={pass}
-            onChange={(e) => { setPass(e.target.value); setError(false); }}
-            onFocus={() => setShowKeyboard(true)}
-            onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); }}
-            autoFocus
-          />
-        </div>
-        {error && <div className="login-error">{t('login.error', language)}</div>}
-        <div className="confirm-modal-actions">
-          {reason !== 'startup' && <button className="kb-clear" onClick={onClose}>{t('general.cancel', language)}</button>}
-          <button className="kb-confirm" onClick={handleSubmit}>{t('login.submit', language)}</button>
-        </div>
-      </div>
-      {showKeyboard && (
-        <TextKeyboard
-          value={pass}
-          onChange={setPass}
-          onSubmit={() => { handleSubmit(); setShowKeyboard(false); }}
-          onClose={() => setShowKeyboard(false)}
-        />
       )}
     </div>
   );
