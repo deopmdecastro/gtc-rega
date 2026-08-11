@@ -326,8 +326,8 @@ button { cursor: pointer; }
 .alarm-banner-ok p { color: #6a8a72; }
 .alarm-banner-icon.ok { color: #5ee58a; background: rgba(69,207,111,.12); }
 
-.alarm-list { display: grid; }
-.alarm-item { display: flex; align-items: flex-start; gap: 18px; padding: 28px 10px; margin: 0 -10px; border-bottom: 1px solid #1b2a32; border-radius: 10px; transition: background .15s ease; }
+.alarm-list { display: grid; padding: 4px 6px 2px; }
+.alarm-item { display: flex; align-items: flex-start; gap: 18px; padding: 24px 18px; border-bottom: 1px solid #1b2a32; border-radius: 10px; transition: background .15s ease; }
 .alarm-item:hover { background: rgba(20,221,214,.03); }
 .alarm-item:last-child { border: 0; padding-bottom: 4px; }
 .alarm-item:first-child { padding-top: 4px; }
@@ -561,6 +561,28 @@ button { cursor: pointer; }
 .map-sel-btn:hover { border-color: #12bcb6; color: #dce5e8; }
 .map-sel-delete { color: #ff7a7a; }
 .map-sel-delete:hover { border-color: #ff7a7a; background: rgba(255,122,122,.1); color: #ff7a7a; }
+.map-sel-pin.pin-valve { background: #4dd0e1; color: #06121a; }
+.map-sel-pin.pin-sensor { background: #5ee58a; color: #06121a; }
+.map-sel-gpio { display: flex; align-items: center; }
+.gpio-chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid rgba(20,221,214,.3); border-radius: 8px; background: rgba(20,221,214,.08); color: #1ad5d0; font: 600 11px 'DM Mono', monospace; white-space: nowrap; }
+.gpio-chip.gpio-unassigned { border-color: rgba(255,122,122,.25); background: rgba(255,122,122,.06); color: #ff9a9a; }
+.valve-open-btn { border-color: rgba(77,208,225,.4) !important; color: #4dd0e1 !important; background: rgba(77,208,225,.1) !important; }
+.valve-open-btn:hover { background: rgba(77,208,225,.18) !important; }
+.valve-closed-btn { border-color: rgba(94,229,138,.4) !important; color: #5ee58a !important; background: rgba(94,229,138,.08) !important; }
+.valve-closed-btn:hover { background: rgba(94,229,138,.16) !important; }
+.pinout-panel { margin-top: 16px; padding: 18px; border: 1px solid #1a2a34; border-radius: 13px; background: #0b171d; }
+.pinout-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.pinout-header h3 { color: #dce5e8; font-size: 14px; font-weight: 700; margin-top: 2px; }
+.pinout-close { display: grid; place-items: center; width: 30px; height: 30px; border: 1px solid #263943; border-radius: 8px; color: #8499a2; background: #0d171e; cursor: pointer; transition: .2s; }
+.pinout-close:hover { border-color: #ff7a7a; color: #ff7a7a; }
+.pinout-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.pinout-section { padding: 12px; border: 1px solid #16242c; border-radius: 10px; background: #0d171e; }
+.pinout-section-title { display: flex; align-items: center; gap: 7px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #16242c; color: #1ad5d0; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.pinout-row { display: grid; grid-template-columns: 70px 1fr; gap: 4px 10px; padding: 7px 0; border-bottom: 1px solid rgba(22,36,44,.5); }
+.pinout-row:last-child { border-bottom: 0; }
+.pinout-pin { grid-row: span 2; display: grid; place-items: center; padding: 4px 8px; border: 1px solid rgba(255,159,67,.3); border-radius: 7px; background: rgba(255,159,67,.08); color: #ff9f43; font: 600 10px 'DM Mono', monospace; white-space: nowrap; }
+.pinout-label { color: #dce5e8; font-size: 11px; font-weight: 600; }
+.pinout-desc { color: #7f949e; font-size: 10px; line-height: 1.3; }
 
 /* ---------- Painel de definições ---------- */
 .settings-drawer { position: fixed; right: 0; top: 0; bottom: 0; width: min(420px, 100%); z-index: 101; background: #0a131a; border-left: 1px solid #1f3a42; padding: 28px; box-shadow: -16px 0 40px rgba(0,0,0,.4); animation: drawer-in .25s ease; overflow-y: auto; }
@@ -610,4 +632,6 @@ button { cursor: pointer; }
   .map-sel-size { width: 100%; justify-content: center; }
   .map-sel-actions { margin-left: 0; width: 100%; justify-content: stretch; }
   .map-sel-btn { flex: 1; justify-content: center; min-width: 0; }
+  .pinout-grid { grid-template-columns: 1fr; }
+  .pinout-row { grid-template-columns: 60px 1fr; }
 }
