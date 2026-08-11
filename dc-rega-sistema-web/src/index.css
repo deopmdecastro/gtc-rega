@@ -439,6 +439,10 @@ input:focus-visible { border-radius: inherit; }
 .login-input-group input::placeholder { color: #3a4a52; letter-spacing: 0; }
 .login-input-active { border-color: #12bcb6 !important; box-shadow: 0 0 0 3px rgba(18,188,182,.08) !important; }
 .login-input-error { border-color: #f06565 !important; box-shadow: 0 0 0 3px rgba(240,101,101,.08) !important; }
+.login-kb-toggle { display: grid; place-items: center; flex: 0 0 auto; width: 34px; height: 34px; border: 1px solid #263943; border-radius: 9px; background: #0d1b22; color: #5a6f7a; transition: .2s; cursor: pointer; }
+.login-kb-toggle:hover { border-color: #12bcb6; color: #1adbd4; background: rgba(18,188,182,.08); }
+.login-kb-toggle.active { border-color: #12bcb6; color: #1adbd4; background: rgba(18,188,182,.14); box-shadow: 0 0 0 3px rgba(18,188,182,.08); }
+.login-kb-toggle svg { color: inherit; }
 .login-caps-warning { font-size: 11px; color: #f0a045; padding: 2px 0; }
 .login-message { font-size: 12px; font-weight: 600; padding: 8px 12px; border-radius: 8px; }
 .login-message.error { color: #f06565; background: rgba(240,101,101,.08); border: 1px solid rgba(240,101,101,.15); animation: shake .3s ease; }
@@ -530,6 +534,7 @@ input:focus-visible { border-radius: inherit; }
 .kb-accent:hover { background: rgba(240,161,69,.15); border-color: rgba(240,161,69,.3); }
 
 .time-hint { text-align: center; font-size: 11px; color: #5a6f7a; padding: 4px 0 8px; }
+.keyboard-hint { text-align: center; font-size: 11px; color: #5a6f7a; padding: 4px 16px 0; }
 
 @media (max-width: 1000px) {
   .content-wrap { padding: 0 22px 40px; }

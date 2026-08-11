@@ -15,6 +15,7 @@ import {
   Globe2,
   History,
   Home,
+  Keyboard,
   Leaf,
   LockKeyhole,
   Map as MapIcon,
@@ -1617,7 +1618,22 @@ function ConfirmDeleteModal({ zone, onCancel, onConfirm }: { zone: Zone; onCance
   );
 }
 
+/* Fecha qualquer teclado virtual com a tecla Escape (funciona em conjunto com o teclado físico) */
+function useCloseOnEscape(onClose: () => void) {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose]);
+}
+
+/* Evita que clicar numa tecla virtual roube o foco a um input real, para que o teclado físico continue disponível */
+const preventFocusSteal = (e: React.MouseEvent) => e.preventDefault();
+
 function NumericKeyboard({ value, onChange, onSubmit, onClose }: { value: string; onChange: (v: string) => void; onSubmit: () => void; onClose: () => void }) {
+  useCloseOnEscape(onClose);
   const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '00'];
   return (
     <div className="keyboard-overlay" onClick={onClose}>
@@ -1629,9 +1645,9 @@ function NumericKeyboard({ value, onChange, onSubmit, onClose }: { value: string
         <div className="keyboard-display">{value || '0'}<span>s</span></div>
         <div className="keyboard-keys">
           {keys.map((k) => (
-            <button key={k} className="kb-key" onClick={() => onChange(value + k)}>{k}</button>
+            <button key={k} className="kb-key" onMouseDown={preventFocusSteal} onClick={() => onChange(value + k)}>{k}</button>
           ))}
-          <button className="kb-key kb-backspace" onClick={() => onChange(value.slice(0, -1))} aria-label="Apagar"><Delete size={18} /></button>
+          <button className="kb-key kb-backspace" onMouseDown={preventFocusSteal} onClick={() => onChange(value.slice(0, -1))} aria-label="Apagar"><Delete size={18} /></button>
         </div>
         <div className="keyboard-actions">
           <button className="kb-clear" onClick={() => onChange('')}>Limpar</button>
@@ -1651,8 +1667,9 @@ const KB_ROWS = [
 ];
 const KB_ACCENTS = ['á','à','ã','â','é','ê','í','ó','õ','ô','ú','ü'];
 
-function FullKeyboard({ value, onChange, onSubmit, onClose, title, language }: { value: string; onChange: (v: string) => void; onSubmit: () => void; onClose: () => void; title?: string; language?: Language }) {
+function FullKeyboard({ value, onChange, onSubmit, onClose, title, language, hint }: { value: string; onChange: (v: string) => void; onSubmit: () => void; onClose: () => void; title?: string; language?: Language; hint?: string }) {
   const [showAccents, setShowAccents] = useState(false);
+  useCloseOnEscape(onClose);
   return (
     <div className="keyboard-overlay" onClick={onClose}>
       <div className="keyboard full-keyboard" onClick={(e) => e.stopPropagation()}>
@@ -1661,14 +1678,15 @@ function FullKeyboard({ value, onChange, onSubmit, onClose, title, language }: {
           <button onClick={onClose} aria-label="Fechar"><X size={18} /></button>
         </div>
         <div className="keyboard-display text-display">{value || ' '}</div>
-        <div className="text-kb-nums">{KB_NUMS.map(n => <button key={n} className="kb-key kb-key-sm" onClick={() => onChange(value + n)}>{n}</button>)}</div>
-        <div className="text-kb-rows">{KB_ROWS.map((row, i) => <div key={i} className="text-kb-row">{row.map(k => <button key={k} className="kb-key kb-key-sm" onClick={() => onChange(value + k)}>{k}</button>)}</div>)}</div>
+        {hint && <div className="keyboard-hint">{hint}</div>}
+        <div className="text-kb-nums">{KB_NUMS.map(n => <button key={n} className="kb-key kb-key-sm" onMouseDown={preventFocusSteal} onClick={() => onChange(value + n)}>{n}</button>)}</div>
+        <div className="text-kb-rows">{KB_ROWS.map((row, i) => <div key={i} className="text-kb-row">{row.map(k => <button key={k} className="kb-key kb-key-sm" onMouseDown={preventFocusSteal} onClick={() => onChange(value + k)}>{k}</button>)}</div>)}</div>
         <div className="text-kb-actions">
-          <button className="kb-key kb-key-sm kb-accent-toggle" onClick={() => setShowAccents(!showAccents)}>{showAccents ? 'ABC' : 'áéí'}</button>
-          <button className="kb-key kb-key-sm kb-space" onClick={() => onChange(value + ' ')}>{language === 'PT' ? 'Espaço' : 'Space'}</button>
-          <button className="kb-key kb-key-sm kb-backspace" onClick={() => onChange(value.slice(0, -1))}><Delete size={16} /></button>
+          <button className="kb-key kb-key-sm kb-accent-toggle" onMouseDown={preventFocusSteal} onClick={() => setShowAccents(!showAccents)}>{showAccents ? 'ABC' : 'áéí'}</button>
+          <button className="kb-key kb-key-sm kb-space" onMouseDown={preventFocusSteal} onClick={() => onChange(value + ' ')}>{language === 'PT' ? 'Espaço' : 'Space'}</button>
+          <button className="kb-key kb-key-sm kb-backspace" onMouseDown={preventFocusSteal} onClick={() => onChange(value.slice(0, -1))}><Delete size={16} /></button>
         </div>
-        {showAccents && <div className="text-kb-nums text-kb-accents">{KB_ACCENTS.map(a => <button key={a} className="kb-key kb-key-sm kb-accent" onClick={() => { onChange(value + a); setShowAccents(false); }}>{a}</button>)}</div>}
+        {showAccents && <div className="text-kb-nums text-kb-accents">{KB_ACCENTS.map(a => <button key={a} className="kb-key kb-key-sm kb-accent" onMouseDown={preventFocusSteal} onClick={() => { onChange(value + a); setShowAccents(false); }}>{a}</button>)}</div>}
         <div className="keyboard-actions">
           <button className="kb-clear" onClick={onClose}>{language === 'PT' ? 'Cancelar' : 'Cancel'}</button>
           <button className="kb-confirm" onClick={onSubmit}>{language === 'PT' ? 'Confirmar' : 'Confirm'}</button>
@@ -1952,17 +1970,21 @@ function LoginScreen({ language, onSubmit }: { language: Language; onSubmit: (us
   const [error, setError] = useState(false);
   const [capsLock, setCapsLock] = useState(false);
   const [keyboardTarget, setKeyboardTarget] = useState<'user' | 'pass' | null>(null);
-  const [keyboardValue, setKeyboardValue] = useState('');
+  const userInputRef = useRef<HTMLInputElement>(null);
+  const passInputRef = useRef<HTMLInputElement>(null);
 
   const openKeyboardFor = (t: 'user' | 'pass') => {
-    setKeyboardTarget(t);
-    setKeyboardValue(t === 'user' ? user : pass);
+    setKeyboardTarget((prev) => (prev === t ? null : t));
+    // Mantém o foco no campo real para que o teclado físico continue a funcionar em simultâneo
+    requestAnimationFrame(() => (t === 'user' ? userInputRef : passInputRef).current?.focus());
   };
 
+  // O teclado virtual escreve diretamente no mesmo estado do campo (user/pass),
+  // por isso fica sempre sincronizado com o que for digitado no teclado físico.
+  const keyboardValue = keyboardTarget === 'user' ? user : keyboardTarget === 'pass' ? pass : '';
   const handleKeyboardChange = (v: string) => {
-    setKeyboardValue(v);
     if (keyboardTarget === 'user') setUser(v);
-    else setPass(v);
+    else if (keyboardTarget === 'pass') setPass(v);
   };
 
   const handleSubmit = () => {
@@ -1987,13 +2009,46 @@ function LoginScreen({ language, onSubmit }: { language: Language; onSubmit: (us
         <h2>{t('login.welcome', language)}</h2>
         <p className="login-desc">{t('login.description', language)}</p>
         <div className="login-form">
-          <div className={`login-input-group ${keyboardTarget === 'user' ? 'login-input-active' : ''}`} onClick={() => openKeyboardFor('user')}>
+          <div className={`login-input-group ${keyboardTarget === 'user' ? 'login-input-active' : ''}`}>
             <UserRound size={18} />
-            <input type="text" placeholder={t('login.user', language)} value={user} onChange={(e) => { setUser(e.target.value); setError(false); }} onFocus={() => openKeyboardFor('user')} autoComplete="username" />
+            <input
+              ref={userInputRef}
+              type="text"
+              placeholder={t('login.user', language)}
+              value={user}
+              onChange={(e) => { setUser(e.target.value); setError(false); }}
+              autoComplete="username"
+            />
+            <button
+              type="button"
+              className={`login-kb-toggle ${keyboardTarget === 'user' ? 'active' : ''}`}
+              onClick={() => openKeyboardFor('user')}
+              aria-label={language === 'PT' ? 'Abrir teclado virtual' : 'Open virtual keyboard'}
+              aria-pressed={keyboardTarget === 'user'}
+            >
+              <Keyboard size={17} />
+            </button>
           </div>
-          <div className={`login-input-group ${error ? 'login-input-error' : ''} ${keyboardTarget === 'pass' ? 'login-input-active' : ''}`} onClick={() => openKeyboardFor('pass')}>
+          <div className={`login-input-group ${error ? 'login-input-error' : ''} ${keyboardTarget === 'pass' ? 'login-input-active' : ''}`}>
             <LockKeyhole size={18} />
-            <input type="password" placeholder={t('login.password', language)} value={pass} onChange={(e) => { setPass(e.target.value); setError(false); }} onFocus={() => openKeyboardFor('pass')} onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); setCapsLock(e.getModifierState('CapsLock')); }} onKeyUp={(e) => setCapsLock(e.getModifierState('CapsLock'))} />
+            <input
+              ref={passInputRef}
+              type="password"
+              placeholder={t('login.password', language)}
+              value={pass}
+              onChange={(e) => { setPass(e.target.value); setError(false); }}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); setCapsLock(e.getModifierState('CapsLock')); }}
+              onKeyUp={(e) => setCapsLock(e.getModifierState('CapsLock'))}
+            />
+            <button
+              type="button"
+              className={`login-kb-toggle ${keyboardTarget === 'pass' ? 'active' : ''}`}
+              onClick={() => openKeyboardFor('pass')}
+              aria-label={language === 'PT' ? 'Abrir teclado virtual' : 'Open virtual keyboard'}
+              aria-pressed={keyboardTarget === 'pass'}
+            >
+              <Keyboard size={17} />
+            </button>
           </div>
           {capsLock && <div className="login-caps-warning">⚠ {t('login.capsLock', language)}</div>}
           {error && <div className="login-message error">{t('login.error', language)}</div>}
@@ -2008,7 +2063,9 @@ function LoginScreen({ language, onSubmit }: { language: Language; onSubmit: (us
       </div>
       {keyboardTarget && (
         <FullKeyboard value={keyboardValue} onChange={handleKeyboardChange} onSubmit={() => setKeyboardTarget(null)} onClose={() => setKeyboardTarget(null)}
-          title={keyboardTarget === 'user' ? (language === 'PT' ? 'Utilizador' : 'Username') : (language === 'PT' ? 'Palavra-passe' : 'Password')} language={language} />
+          title={keyboardTarget === 'user' ? (language === 'PT' ? 'Utilizador' : 'Username') : (language === 'PT' ? 'Palavra-passe' : 'Password')}
+          hint={language === 'PT' ? 'Também pode escrever com o teclado físico' : 'You can also type using your physical keyboard'}
+          language={language} />
       )}
     </div>
   );
@@ -2017,6 +2074,7 @@ function LoginScreen({ language, onSubmit }: { language: Language; onSubmit: (us
 /* ---------- Time keyboard for schedules ---------- */
 function TimeKeyboard({ value, onChange, onSubmit, onClose, preview, language }: { value: string; onChange: (v: string) => void; onSubmit: () => void; onClose: () => void; preview: string; language?: Language }) {
   const keys = ['1','2','3','4','5','6','7','8','9','0'];
+  useCloseOnEscape(onClose);
   return (
     <div className="keyboard-overlay" onClick={onClose}>
       <div className="keyboard full-keyboard" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 320 }}>
@@ -2028,10 +2086,10 @@ function TimeKeyboard({ value, onChange, onSubmit, onClose, preview, language }:
         {value.length >= 2 && !value.includes(':') && (
           <div className="time-hint">{language === 'PT' ? 'Toque ":" para separar horas e minutos' : 'Tap ":" to separate hours and minutes'}</div>
         )}
-        <div className="text-kb-nums">{keys.map(n => <button key={n} className="kb-key" onClick={() => onChange(value + n)}>{n}</button>)}</div>
+        <div className="text-kb-nums">{keys.map(n => <button key={n} className="kb-key" onMouseDown={preventFocusSteal} onClick={() => onChange(value + n)}>{n}</button>)}</div>
         <div className="text-kb-actions" style={{ padding: '4px 12px' }}>
-          <button className="kb-key" onClick={() => { if (!value.includes(':')) onChange(value + ':'); }}>:</button>
-          <button className="kb-key kb-backspace" onClick={() => onChange(value.slice(0, -1))}><Delete size={16} /></button>
+          <button className="kb-key" onMouseDown={preventFocusSteal} onClick={() => { if (!value.includes(':')) onChange(value + ':'); }}>:</button>
+          <button className="kb-key kb-backspace" onMouseDown={preventFocusSteal} onClick={() => onChange(value.slice(0, -1))}><Delete size={16} /></button>
         </div>
         <div className="keyboard-actions">
           <button className="kb-clear" onClick={onClose}>{language === 'PT' ? 'Cancelar' : 'Cancel'}</button>
