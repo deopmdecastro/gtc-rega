@@ -930,3 +930,72 @@ input:focus-visible { border-radius: inherit; }
   .login-screen-card { padding: 36px 24px 28px; }
   .login-modal { width: calc(100vw - 32px); }
 }
+
+/* ── Device status enhanced ── */
+.device-status-info { flex: 1; min-width: 0; }
+.device-status-sensors-label { font-size: 10px; color: #718792; margin-right: 4px; font-weight: 600; letter-spacing: .04em; }
+.sensor-health-value { margin-left: auto; opacity: .7; font-weight: 500; }
+
+/* ── Setpoint floating save bar ── */
+.setpoint-floating-bar {
+  position: sticky; bottom: 16px; z-index: 10;
+  display: flex; align-items: center; gap: 16px;
+  padding: 14px 22px; margin-top: 8px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(255,185,60,.12), rgba(249,178,71,.06));
+  border: 1px solid rgba(249,178,71,.3);
+  box-shadow: 0 4px 24px rgba(249,178,71,.08);
+}
+.setpoint-floating-bar span { flex: 1; font-size: 12px; font-weight: 600; color: #ffca72; display: flex; align-items: center; gap: 8px; }
+.setpoint-save-all-btn {
+  display: flex; align-items: center; gap: 7px;
+  padding: 10px 20px;
+  border: 0; border-radius: 10px;
+  font-size: 13px; font-weight: 700;
+  color: #0a141a; background: linear-gradient(135deg, #f9b247, #e8a030);
+  cursor: pointer; transition: .2s ease;
+}
+.setpoint-save-all-btn:hover { background: linear-gradient(135deg, #ffbc5a, #f5ab3a); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(249,178,71,.3); }
+
+/* ── Schedule improved ── */
+.schedule-wrapper { display: flex; flex-direction: column; gap: 12px; }
+.schedule-actions { display: flex; gap: 10px; justify-content: flex-end; padding-top: 4px; }
+.schedule-save-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 16px; border: 0; border-radius: 8px;
+  font-size: 12px; font-weight: 600;
+  color: #0a141a; background: linear-gradient(135deg, #13bcb6, #0e9e98);
+  cursor: pointer; transition: .2s ease;
+}
+.schedule-save-btn:hover { background: linear-gradient(135deg, #16d8d1, #12b0aa); transform: translateY(-1px); }
+.schedule-save-btn.is-saved { background: linear-gradient(135deg, #40d877, #34be66); }
+.schedule-discard-btn {
+  display: flex; align-items: center; gap: 5px;
+  padding: 8px 14px; border: 1px solid #2a3a44; border-radius: 8px;
+  font-size: 12px; font-weight: 600;
+  color: #8a9aa5; background: transparent;
+  cursor: pointer; transition: .2s ease;
+}
+.schedule-discard-btn:hover { color: #cbd5db; border-color: #4a5a64; }
+
+/* ── Setpoint save btn improved ── */
+.setpoint-save-btn {
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  width: 100%; padding: 10px 16px; margin-top: 6px;
+  border: 1px solid #1c2b33; border-radius: 10px;
+  font-size: 12px; font-weight: 600;
+  color: #7c929c; background: rgba(20,221,214,.03);
+  cursor: pointer; transition: .2s ease;
+}
+.setpoint-save-btn.is-dirty {
+  color: #ffca72; border-color: rgba(249,178,71,.35); background: rgba(249,178,71,.08);
+  animation: pulse-save 1.8s infinite;
+}
+.setpoint-save-btn.is-dirty:hover { background: rgba(249,178,71,.14); }
+.setpoint-save-btn.is-saved { color: #5ee58a; border-color: rgba(94,229,138,.3); background: rgba(94,229,138,.08); }
+.setpoint-save-btn:disabled { opacity: .45; cursor: default; }
+@keyframes pulse-save { 0%, 100% { box-shadow: 0 0 0 0 rgba(249,178,71,.2); } 50% { box-shadow: 0 0 0 6px rgba(249,178,71,0); } }
+
+/* ── Estado real-time data ── */
+.state-row .status-badge.status-sim { color: #7c929c; }
+.estado-pinout-panel { padding: 6px 0 0; overflow: visible; }

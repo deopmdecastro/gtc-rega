@@ -691,7 +691,7 @@ function App() {
     if (activePage === 'Resumo') {
       return <Overview zones={zones} pumpOn={pumpOn} autoMode={autoMode} activeZones={activeZones} onToggleZone={toggleZone} onTogglePump={togglePump} onToggleMode={toggleAutoMode} onOpenMap={() => requireAuth('Mapa')} weather={weather} language={language} deviceOnline={deviceOnline} deviceInfo={deviceInfo} sensorHealth={sensorHealth} clock={clock} dateStr={dateStr} latestAlert={errors[0]} />;
     }
-    if (activePage === 'Estado') return <StateView zones={zones} pumpOn={pumpOn} autoMode={autoMode} onToggleMode={toggleAutoMode} language={language} gpioConfig={gpioConfig} editingGpio={editingGpio} setEditingGpio={setEditingGpio} handleGpioUpdate={handleGpioUpdate} saveGpioConfig={saveGpioConfig} />;
+    if (activePage === 'Estado') return <StateView zones={zones} pumpOn={pumpOn} autoMode={autoMode} onToggleMode={toggleAutoMode} language={language} gpioConfig={gpioConfig} editingGpio={editingGpio} setEditingGpio={setEditingGpio} handleGpioUpdate={handleGpioUpdate} saveGpioConfig={saveGpioConfig} deviceOnline={deviceOnline} deviceInfo={deviceInfo} sensorHealth={sensorHealth} engineState={engineState} />;
     if (activePage === 'Setpoints') return <SetpointsView zones={zones} pumpDelay={pumpDelay} setPumpDelay={setPumpDelay} onChange={(id, target) => { setZones((cur) => { const next = cur.map((z) => (z.id === id ? { ...z, target } : z)); setTimeout(() => getControllerClient().updateZones(next), 200); return next; }); }} onUpdateZone={(id, patch) => { setZones((cur) => { const next = cur.map((z) => (z.id === id ? { ...z, ...patch } : z)); setTimeout(() => getControllerClient().updateZones(next), 200); return next; }); }} onAddZone={addZone} onRemoveZone={(z) => setZoneToDelete(z)} language={language} />;
     if (activePage === 'Mapa') return <MapView zones={zones} pumpOn={pumpOn} onAddZone={addZoneFromMap} onDuplicateZone={duplicateZoneFromMap} onDragZone={updateZonePosition} onRenameZone={renameZone} onRemoveZone={(z) => setZoneToDelete(z)} onClearAll={clearAllZones} onToggleZone={toggleZone} weather={weather} language={language} />;
     if (activePage === 'Histórico') return <HistoryView errors={errors} eventLog={eventLog} eventLogLoading={eventLogLoading} onRefresh={loadEvents} language={language} />;
@@ -777,22 +777,26 @@ function Overview({ zones, pumpOn, autoMode, activeZones, onToggleZone, onToggle
       <Panel className={`device-status-panel ${deviceOnline ? 'device-online' : 'device-offline'}`}>
         <div className="device-status-main">
           <span className={`device-status-dot ${deviceOnline ? 'on' : 'off'}`} />
-          <div>
-            <strong>{deviceOnline ? 'Controlador reconhecido' : 'Controlador não detetado — a simular'}</strong>
+          <div className="device-status-info">
+            <strong>{deviceOnline ? (language === 'PT' ? 'Controlador reconhecido' : 'Controller recognized') : (language === 'PT' ? 'Controlador não detetado — a simular' : 'Controller not detected — simulating')}</strong>
             <span>
               {deviceOnline && deviceInfo
                 ? `${deviceInfo.deviceId || 'ESP32-S3'} · fw ${deviceInfo.firmware || '—'} · ${deviceInfo.ip || '—'}${typeof deviceInfo.rssi === 'number' ? ` · ${deviceInfo.rssi} dBm` : ''}${formatUptime(deviceInfo.uptime) ? ` · online há ${formatUptime(deviceInfo.uptime)}` : ''}`
-                : 'Ligue o firmware gtc-esp32s3 à rede para ativar dados reais'}
+                : (language === 'PT' ? 'Ligue o firmware gtc-esp32s3 à rede para ativar dados reais' : 'Connect gtc-esp32s3 firmware to network to activate real data')}
             </span>
           </div>
+          {deviceOnline && <StatusBadge tone="success">{language === 'PT' ? 'Online' : 'Online'}</StatusBadge>}
         </div>
         <div className="device-status-sensors">
+          <span className="device-status-sensors-label">{language === 'PT' ? 'Sensores:' : 'Sensors:'}</span>
+          {zones.length === 0 && <span className="sensor-health-pill sim">{language === 'PT' ? 'Nenhum sensor' : 'No sensors'}</span>}
           {zones.map((z) => {
             const health = sensorHealth[z.sensorId];
             const stale = !!health?.stale;
             return (
-              <span key={z.id} className={`sensor-health-pill ${stale ? 'stale' : deviceOnline ? 'ok' : 'sim'}`} title={stale ? 'Sem resposta do sensor' : deviceOnline ? 'Sensor reconhecido' : 'Simulado (sem dispositivo real)'}>
-                <Radio size={12} /> {z.sensorId} {stale ? '· sem sinal' : deviceOnline ? '· ok' : '· sim.'}
+              <span key={z.id} className={`sensor-health-pill ${stale ? 'stale' : deviceOnline ? 'ok' : 'sim'}`} title={stale ? (language === 'PT' ? 'Sem resposta do sensor' : 'Sensor not responding') : deviceOnline ? (language === 'PT' ? 'Sensor reconhecido' : 'Sensor recognized') : (language === 'PT' ? 'Simulado (sem dispositivo real)' : 'Simulated (no real device)')}>
+                <Radio size={12} /> {z.sensorId} {stale ? `· ${language === 'PT' ? 'sem sinal' : 'no signal'}` : deviceOnline ? '· ok' : `· ${language === 'PT' ? 'sim.' : 'sim.'}`}
+                <span className="sensor-health-value">{z.moisture}%</span>
               </span>
             );
           })}
@@ -874,16 +878,16 @@ function Metric({ icon, label, value, detail, accent }: { icon: React.ReactNode;
 }
 
 /* ---------- Estado ---------- */
-function StateView({ zones, pumpOn, autoMode, onToggleMode, language, gpioConfig, editingGpio, setEditingGpio, handleGpioUpdate, saveGpioConfig }: { zones: Zone[]; pumpOn: boolean; autoMode: boolean; onToggleMode: () => void; language: Language; gpioConfig: { gpio: number; direction: string; label: string; func: string; inChannel: string }[]; editingGpio: number | null; setEditingGpio: (v: number | null) => void; handleGpioUpdate: (gpio: number, key: string, value: string) => void; saveGpioConfig: () => void; }) {
+function StateView({ zones, pumpOn, autoMode, onToggleMode, language, gpioConfig, editingGpio, setEditingGpio, handleGpioUpdate, saveGpioConfig, deviceOnline, deviceInfo, sensorHealth, engineState }: { zones: Zone[]; pumpOn: boolean; autoMode: boolean; onToggleMode: () => void; language: Language; gpioConfig: { gpio: number; direction: string; label: string; func: string; inChannel: string }[]; editingGpio: number | null; setEditingGpio: (v: number | null) => void; handleGpioUpdate: (gpio: number, key: string, value: string) => void; saveGpioConfig: () => void; deviceOnline: boolean; deviceInfo: { deviceId?: string; firmware?: string; ip?: string; rssi?: number; uptime?: number } | null; sensorHealth: Record<string, { stale: boolean; lastSeen: number | null }>; engineState: string; }) {
   return (
     <div className="two-column">
       <Panel>
         <PanelHeader eyebrow="LEITURA EM TEMPO REAL" title="Estado dos equipamentos" />
         <div className="state-list">
-          <StateRow icon={<Cpu />} title="Controlador central" detail="ESP32-S3 · Wi-Fi · RS485" status="Online" />
+          <StateRow icon={<Cpu />} title={language === "PT" ? "Controlador central" : "Central controller"} detail={deviceOnline && deviceInfo ? `${deviceInfo.deviceId || "ESP32-S3"} · fw ${deviceInfo.firmware || "—"} · ${deviceInfo.ip || "Wi-Fi"}` : (language === "PT" ? "ESP32-S3 · Wi-Fi · Simulação" : "ESP32-S3 · Wi-Fi · Simulation")} status={deviceOnline ? "Online" : (language === "PT" ? "Simulação" : "Simulating")} active={deviceOnline} />
           <StateRow icon={<Power />} title="Bomba principal" detail="Relé K1 · Saída digital" status={pumpOn ? 'Ligada' : 'Desligada'} active={pumpOn} />
           {zones.map((z) => <StateRow key={z.id} icon={<Droplets />} title={`${z.name} · Válvula ${z.id}`} detail="Válvula solenóide" status={z.on ? 'Ligada' : 'Desligada'} active={z.on} />)}
-          {zones.map((z) => <StateRow key={`s-${z.sensorId}`} icon={<Radio />} title={`${z.name} · Sensor ${z.sensorId}`} detail={`Humidade do solo · ${z.moisture}%`} status="Online" active />)}
+          {zones.map((z) => { const health = sensorHealth[z.sensorId]; const stale = !!health?.stale; return <StateRow key={`s-${z.sensorId}`} icon={<Radio />} title={`${z.name} · Sensor ${z.sensorId}`} detail={stale ? (language === 'PT' ? 'Sem sinal · Verificar ligação' : 'No signal · Check connection') : `Humidade do solo · ${z.moisture}%`} status={stale ? (language === 'PT' ? 'Sem sinal' : 'No signal') : 'Online'} active={!stale} />; })}
         </div>
       </Panel>
       <Panel>
@@ -897,9 +901,9 @@ function StateView({ zones, pumpOn, autoMode, onToggleMode, language, gpioConfig
           <Settings2 size={15} />{autoMode ? 'Passar para Manual' : 'Passar para Automático'}
         </button>
         <div className="info-list">
-          <div><span>Última sincronização</span><strong>há 12 segundos</strong></div>
-          <div><span>Tempo de atividade</span><strong>14 dias, 08h 32m</strong></div>
-          <div><span>Versão do controlador</span><strong>GTC v2.5 · ESP32-S3</strong></div>
+          <div><span>{language === "PT" ? "Última sincronização" : "Last sync"}</span><strong>{deviceOnline ? (deviceInfo?.uptime ? `há ${Math.floor(deviceInfo.uptime / 60)} minutos` : "Agora") : (language === "PT" ? "Simulação ativa" : "Simulation active")}</strong></div>
+          <div><span>{language === "PT" ? "Tempo de atividade" : "Uptime"}</span><strong>{deviceOnline && deviceInfo?.uptime ? formatUptime(deviceInfo.uptime) || "—" : (language === "PT" ? "Modo simulação" : "Simulation mode")}</strong></div>
+          <div><span>{language === "PT" ? "Versão do controlador" : "Controller version"}</span><strong>{deviceOnline && deviceInfo?.firmware ? `GTC v${deviceInfo.firmware} · ${deviceInfo.deviceId || "ESP32-S3"}` : "GTC v2.15 · ESP32-S3"}</strong></div>
           <div><span>Sensores ativos</span><strong>{zones.length} zonas</strong></div>
         </div>
       </Panel>
@@ -1079,6 +1083,12 @@ function SetpointsView({ zones, onChange, onUpdateZone, pumpDelay, setPumpDelay,
   // Valores em edição (ainda não guardados) por zona — o slider já não grava sozinho
   const [pending, setPending] = useState<Record<string, number>>({});
   const [justSaved, setJustSaved] = useState<Record<string, boolean>>({});
+  const [noticeMsg, setNoticeMsg] = useState('');
+
+  const showNotice = (msg: string) => {
+    setNoticeMsg(msg);
+    setTimeout(() => setNoticeMsg(''), 2800);
+  };
 
   const openKeyboard = (target: 'pump' | string, current: number) => {
     setKeyboard({ target, value: String(current) });
@@ -1175,6 +1185,22 @@ function SetpointsView({ zones, onChange, onUpdateZone, pumpDelay, setPumpDelay,
           );
         })}
       </div>
+      {Object.values(pending).some(v => v !== undefined) && (
+        <div className="setpoint-floating-bar">
+          <span><AlertTriangle size={16} /> {language === 'PT' ? 'Existem alterações por guardar nos setpoints' : 'There are unsaved setpoint changes'}</span>
+          <button className="setpoint-save-all-btn" onClick={() => {
+            Object.entries(pending).forEach(([id, value]) => {
+              if (value !== undefined) {
+                onChange(id, value);
+              }
+            });
+            setPending({});
+            showNotice(language === 'PT' ? 'Todos os setpoints guardados' : 'All setpoints saved');
+          }}>
+            <Save size={16} /> {language === 'PT' ? 'Guardar todos os setpoints' : 'Save all setpoints'}
+          </button>
+        </div>
+      )}
       {keyboard && <NumericKeyboard value={keyboard.value} onChange={(v) => setKeyboard((k) => (k ? { ...k, value: v } : k))} onSubmit={submitKeyboard} onClose={() => setKeyboard(null)} />}
     </>
   );
@@ -2300,64 +2326,104 @@ function ScheduleEditor({ zone, onChange, language }: { zone: Zone; onChange: (s
   const [keyboardForTime, setKeyboardForTime] = useState(false);
   const [timeEditing, setTimeEditing] = useState<{ day: WeekDay; hour: number; minute: number }>({ day: 'mon', hour: 6, minute: 0 });
   const [timeStr, setTimeStr] = useState('');
+  // Buffer local para edição sem disparar onChange a cada toque — só guarda no final
+  const [localSchedules, setLocalSchedules] = useState<Record<WeekDay, WaterSchedule> | null>(null);
+  const [scheduleSaved, setScheduleSaved] = useState(false);
 
-  const toggleDay = (day: WeekDay) => {
-    const next = { ...zone.schedules };
-    next[day] = { ...next[day], enabled: !next[day].enabled };
-    onChange(next);
-  };
-
-  const setTime = (day: WeekDay, hour: number, minute: number) => {
-    const next = { ...zone.schedules };
-    next[day] = { ...next[day], hour, minute };
-    onChange(next);
-  };
-
-  const formatTime = (h: number, m: number) => 
-    `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
-
-  const schedules = zone.schedules || (() => {
+  const schedules = localSchedules || zone.schedules || (() => {
     const defaults: Record<string, WaterSchedule> = {};
     WEEKDAYS.forEach(d => { defaults[d] = { enabled: true, hour: 6, minute: 0 }; });
     return defaults as Record<WeekDay, WaterSchedule>;
   })();
 
+  // Inicializa o buffer local quando o zone muda
+  useEffect(() => {
+    setLocalSchedules(null);
+    setScheduleSaved(false);
+  }, [zone.id]);
+
+  const updateLocal = (day: WeekDay, patch: Partial<WaterSchedule>) => {
+    setLocalSchedules((cur) => {
+      const base = cur || { ...zone.schedules };
+      return { ...base, [day]: { ...base[day], ...patch } };
+    });
+    setScheduleSaved(false);
+  };
+
+  const toggleDayLocal = (day: WeekDay) => {
+    setLocalSchedules((cur) => {
+      const base = cur || { ...zone.schedules };
+      return { ...base, [day]: { ...base[day], enabled: !base[day].enabled } };
+    });
+    setScheduleSaved(false);
+  };
+
+  const hasChanges = localSchedules !== null;
+
+  const saveAllSchedules = () => {
+    if (!localSchedules) return;
+    onChange(localSchedules);
+    setLocalSchedules(null);
+    setScheduleSaved(true);
+    setTimeout(() => setScheduleSaved(false), 2000);
+  };
+
+  const discardChanges = () => {
+    setLocalSchedules(null);
+    setScheduleSaved(false);
+  };
+
+  const formatTime = (h: number, m: number) => 
+    `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+
   return (
-    <div className="schedule-grid">
-      {WEEKDAYS.map((day, i) => {
-        const s = schedules[day] || { enabled: true, hour: 6, minute: 0 };
-        return (
-          <div key={day} className={`schedule-day ${s.enabled ? 'schedule-enabled' : ''}`}>
-            <button
-              className="schedule-day-toggle"
-              onClick={() => toggleDay(day)}
-              title={s.enabled ? (language === 'PT' ? 'Desativar' : 'Disable') : (language === 'PT' ? 'Ativar' : 'Enable')}
-            >
-              <span className="schedule-day-label">{labels[i]}</span>
-              <span className={`schedule-day-status ${s.enabled ? 'on' : 'off'}`} />
-            </button>
-            {s.enabled && (
-              <div className="schedule-time-controls">
-                <button className="schedule-time-btn" onClick={() => {
-                  const newH = s.hour - 1 < 0 ? 23 : s.hour - 1;
-                  setTime(day, newH, s.minute);
-                }} aria-label={language === 'PT' ? 'Hora anterior' : 'Previous hour'}><Minus size={11} /></button>
-                <button className="schedule-time-display" onClick={() => {
-                  setTimeEditing({ day, hour: s.hour, minute: s.minute });
-                  setTimeStr('');
-                  setKeyboardForTime(true);
-                }}>
-                  {formatTime(s.hour, s.minute)}
-                </button>
-                <button className="schedule-time-btn" onClick={() => {
-                  const newH = s.hour + 1 > 23 ? 0 : s.hour + 1;
-                  setTime(day, newH, s.minute);
-                }} aria-label={language === 'PT' ? 'Hora seguinte' : 'Next hour'}><Plus size={11} /></button>
-              </div>
-            )}
-          </div>
-        );
-      })}
+    <div className="schedule-wrapper">
+      <div className="schedule-grid">
+        {WEEKDAYS.map((day, i) => {
+          const s = schedules[day] || { enabled: true, hour: 6, minute: 0 };
+          return (
+            <div key={day} className={`schedule-day ${s.enabled ? 'schedule-enabled' : ''}`}>
+              <button
+                className="schedule-day-toggle"
+                onClick={() => toggleDayLocal(day)}
+                title={s.enabled ? (language === 'PT' ? 'Desativar' : 'Disable') : (language === 'PT' ? 'Ativar' : 'Enable')}
+              >
+                <span className="schedule-day-label">{labels[i]}</span>
+                <span className={`schedule-day-status ${s.enabled ? 'on' : 'off'}`} />
+              </button>
+              {s.enabled && (
+                <div className="schedule-time-controls">
+                  <button className="schedule-time-btn" onClick={() => {
+                    const newH = s.hour - 1 < 0 ? 23 : s.hour - 1;
+                    updateLocal(day, { hour: newH });
+                  }} aria-label={language === 'PT' ? 'Hora anterior' : 'Previous hour'}><Minus size={11} /></button>
+                  <button className="schedule-time-display" onClick={() => {
+                    setTimeEditing({ day, hour: s.hour, minute: s.minute });
+                    setTimeStr('');
+                    setKeyboardForTime(true);
+                  }}>
+                    {formatTime(s.hour, s.minute)}
+                  </button>
+                  <button className="schedule-time-btn" onClick={() => {
+                    const newH = s.hour + 1 > 23 ? 0 : s.hour + 1;
+                    updateLocal(day, { hour: newH });
+                  }} aria-label={language === 'PT' ? 'Hora seguinte' : 'Next hour'}><Plus size={11} /></button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {hasChanges && (
+        <div className="schedule-actions">
+          <button className="schedule-discard-btn" onClick={discardChanges}>
+            <X size={14} /> {language === 'PT' ? 'Descartar' : 'Discard'}
+          </button>
+          <button className={`schedule-save-btn ${scheduleSaved ? 'is-saved' : ''}`} onClick={saveAllSchedules}>
+            {scheduleSaved ? <><CheckCircle2 size={14} /> {language === 'PT' ? 'Guardado!' : 'Saved!'}</> : <><Save size={14} /> {language === 'PT' ? 'Guardar horários' : 'Save schedule'}</>}
+          </button>
+        </div>
+      )}
       {keyboardForTime && (
         <TimeKeyboard
           value={timeStr}
@@ -2368,7 +2434,7 @@ function ScheduleEditor({ zone, onChange, language }: { zone: Zone; onChange: (s
             if (hasHour) {
               const h = Math.max(0, Math.min(23, parseInt(parts[0], 10) || 0));
               const m = parts[1] ? Math.max(0, Math.min(59, parseInt(parts[1], 10) || 0)) : 0;
-              setTime(timeEditing.day, h, m);
+              updateLocal(timeEditing.day, { hour: h, minute: m });
             }
             setKeyboardForTime(false);
             setTimeStr('');
