@@ -1634,47 +1634,44 @@ function NumericKeyboard({ value, onChange, onSubmit, onClose }: { value: string
   );
 }
 
-/* ---------- Text keyboard (themed, for map name editing) ---------- */
-function TextKeyboard({ value, onChange, onSubmit, onClose }: { value: string; onChange: (v: string) => void; onSubmit: () => void; onClose: () => void }) {
-  const rows = [
-    ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
-    ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', 'Ç'],
-    ['Z', 'X', 'C', 'V', 'B', 'N', 'M'],
-  ];
-  const nums = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
+/* ---------- Full Keyboard (numbers, letters, accents) ---------- */
+const KB_NUMS = ['1','2','3','4','5','6','7','8','9','0'];
+const KB_ROWS = [
+  ['Q','W','E','R','T','Y','U','I','O','P'],
+  ['A','S','D','F','G','H','J','K','L','Ç'],
+  ['@','Z','X','C','V','B','N','M','.','-'],
+];
+const KB_ACCENTS = ['á','à','ã','â','é','ê','í','ó','õ','ô','ú','ü'];
+
+function FullKeyboard({ value, onChange, onSubmit, onClose, title, language }: { value: string; onChange: (v: string) => void; onSubmit: () => void; onClose: () => void; title?: string; language?: Language }) {
+  const [showAccents, setShowAccents] = useState(false);
   return (
     <div className="keyboard-overlay" onClick={onClose}>
-      <div className="keyboard text-keyboard" onClick={(e) => e.stopPropagation()}>
+      <div className="keyboard full-keyboard" onClick={(e) => e.stopPropagation()}>
         <div className="keyboard-header">
-          <span>Editar nome do local</span>
-          <button onClick={onClose} aria-label="Fechar teclado"><X size={18} /></button>
+          <span>{title || 'Editar texto'}</span>
+          <button onClick={onClose} aria-label="Fechar"><X size={18} /></button>
         </div>
         <div className="keyboard-display text-display">{value || ' '}</div>
-        <div className="text-kb-nums">
-          {nums.map((n) => (
-            <button key={n} className="kb-key kb-key-sm" onClick={() => onChange(value + n)}>{n}</button>
-          ))}
-        </div>
-        <div className="text-kb-rows">
-          {rows.map((row, i) => (
-            <div key={i} className="text-kb-row">
-              {row.map((k) => (
-                <button key={k} className="kb-key kb-key-sm" onClick={() => onChange(value + k)}>{k}</button>
-              ))}
-            </div>
-          ))}
-        </div>
+        <div className="text-kb-nums">{KB_NUMS.map(n => <button key={n} className="kb-key kb-key-sm" onClick={() => onChange(value + n)}>{n}</button>)}</div>
+        <div className="text-kb-rows">{KB_ROWS.map((row, i) => <div key={i} className="text-kb-row">{row.map(k => <button key={k} className="kb-key kb-key-sm" onClick={() => onChange(value + k)}>{k}</button>)}</div>)}</div>
         <div className="text-kb-actions">
-          <button className="kb-key kb-key-sm kb-space" onClick={() => onChange(value + ' ')}>Espaço</button>
-          <button className="kb-key kb-key-sm kb-backspace" onClick={() => onChange(value.slice(0, -1))} aria-label="Apagar"><Delete size={16} /></button>
+          <button className="kb-key kb-key-sm kb-accent-toggle" onClick={() => setShowAccents(!showAccents)}>{showAccents ? 'ABC' : 'áéí'}</button>
+          <button className="kb-key kb-key-sm kb-space" onClick={() => onChange(value + ' ')}>{language === 'PT' ? 'Espaço' : 'Space'}</button>
+          <button className="kb-key kb-key-sm kb-backspace" onClick={() => onChange(value.slice(0, -1))}><Delete size={16} /></button>
         </div>
+        {showAccents && <div className="text-kb-nums text-kb-accents">{KB_ACCENTS.map(a => <button key={a} className="kb-key kb-key-sm kb-accent" onClick={() => { onChange(value + a); setShowAccents(false); }}>{a}</button>)}</div>}
         <div className="keyboard-actions">
-          <button className="kb-clear" onClick={onClose}>Cancelar</button>
-          <button className="kb-confirm" onClick={onSubmit}>Confirmar</button>
+          <button className="kb-clear" onClick={onClose}>{language === 'PT' ? 'Cancelar' : 'Cancel'}</button>
+          <button className="kb-confirm" onClick={onSubmit}>{language === 'PT' ? 'Confirmar' : 'Confirm'}</button>
         </div>
       </div>
     </div>
   );
+}
+
+function TextKeyboard({ value, onChange, onSubmit, onClose }: { value: string; onChange: (v: string) => void; onSubmit: () => void; onClose: () => void }) {
+  return <FullKeyboard value={value} onChange={onChange} onSubmit={onSubmit} onClose={onClose} title="Editar nome do local" language="PT" />;
 }
 
 /* ---------- Settings panel ---------- */
@@ -1939,16 +1936,29 @@ function AlarmItem({ event, onResolve }: { event: ErrorEvent; onResolve?: () => 
   );
 }
 
-/* ---------- Login Screen (full-screen) ---------- */
-function LoginScreen({ language, onSubmit }: { language: Language; onSubmit: (pass: string) => void }) {
+/* ---------- Login Screen (full-screen, user + password) ---------- */
+function LoginScreen({ language, onSubmit }: { language: Language; onSubmit: (user: string, pass: string) => void }) {
+  const [user, setUser] = useState('');
   const [pass, setPass] = useState('');
   const [error, setError] = useState(false);
   const [capsLock, setCapsLock] = useState(false);
-  const [showKeyboard, setShowKeyboard] = useState(false);
+  const [keyboardTarget, setKeyboardTarget] = useState<'user' | 'pass' | null>(null);
+  const [keyboardValue, setKeyboardValue] = useState('');
+
+  const openKeyboardFor = (t: 'user' | 'pass') => {
+    setKeyboardTarget(t);
+    setKeyboardValue(t === 'user' ? user : pass);
+  };
+
+  const handleKeyboardChange = (v: string) => {
+    setKeyboardValue(v);
+    if (keyboardTarget === 'user') setUser(v);
+    else setPass(v);
+  };
 
   const handleSubmit = () => {
-    if (pass === '1234') {
-      onSubmit(pass);
+    if (user && pass === '1234') {
+      onSubmit(user, pass);
       setError(false);
     } else {
       setError(true);
@@ -1963,46 +1973,40 @@ function LoginScreen({ language, onSubmit }: { language: Language; onSubmit: (pa
       <div className="login-screen-card">
         <div className="login-brand">
           <div className="login-brand-mark"><Leaf size={36} /></div>
-          <div className="login-brand-text">
-            <strong>GTC</strong><span>REGA</span>
-          </div>
+          <div className="login-brand-text"><strong>GTC</strong><span>REGA</span></div>
         </div>
         <h2>{t('login.welcome', language)}</h2>
         <p className="login-desc">{t('login.description', language)}</p>
         <div className="login-form">
-          <div className={`login-input-group ${error ? 'login-input-error' : ''}`} onClick={() => setShowKeyboard(true)}>
+          <div className={`login-input-group ${keyboardTarget === 'user' ? 'login-input-active' : ''}`} onClick={() => openKeyboardFor('user')}>
+            <UserRound size={18} />
+            <input type="text" placeholder={t('login.user', language)} value={user} onChange={(e) => { setUser(e.target.value); setError(false); }} onFocus={() => openKeyboardFor('user')} autoComplete="username" />
+          </div>
+          <div className={`login-input-group ${error ? 'login-input-error' : ''} ${keyboardTarget === 'pass' ? 'login-input-active' : ''}`} onClick={() => openKeyboardFor('pass')}>
             <LockKeyhole size={18} />
-            <input
-              type="password"
-              placeholder={t('login.password', language)}
-              value={pass}
-              onChange={(e) => { setPass(e.target.value); setError(false); }}
-              onFocus={() => setShowKeyboard(true)}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); setCapsLock(e.getModifierState('CapsLock')); }}
-              onKeyUp={(e) => setCapsLock(e.getModifierState('CapsLock'))}
-              autoFocus
-            />
+            <input type="password" placeholder={t('login.password', language)} value={pass} onChange={(e) => { setPass(e.target.value); setError(false); }} onFocus={() => openKeyboardFor('pass')} onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); setCapsLock(e.getModifierState('CapsLock')); }} onKeyUp={(e) => setCapsLock(e.getModifierState('CapsLock'))} />
           </div>
           {capsLock && <div className="login-caps-warning">⚠ {t('login.capsLock', language)}</div>}
           {error && <div className="login-message error">{t('login.error', language)}</div>}
-          <button className="login-submit-btn" onClick={handleSubmit} disabled={!pass}>
+          <button className="login-submit-btn" onClick={handleSubmit} disabled={!user || !pass}>
             {t('login.submit', language)}
           </button>
         </div>
         <div className="login-footer">
-          <span>ESP32-S3 · v2.11</span>
+          <span>ESP32-S3 · v2.15</span>
           <span>© Deogracia de Castro</span>
         </div>
       </div>
-      {showKeyboard && (
-        <TextKeyboard value={pass} onChange={setPass} onSubmit={() => { handleSubmit(); setShowKeyboard(false); }} onClose={() => setShowKeyboard(false)} />
+      {keyboardTarget && (
+        <FullKeyboard value={keyboardValue} onChange={handleKeyboardChange} onSubmit={() => setKeyboardTarget(null)} onClose={() => setKeyboardTarget(null)}
+          title={keyboardTarget === 'user' ? (language === 'PT' ? 'Utilizador' : 'Username') : (language === 'PT' ? 'Palavra-passe' : 'Password')} language={language} />
       )}
     </div>
   );
 }
 
 /* ---------- Login Modal ---------- */
-function LoginModal({ language, reason, onSubmit, onClose }: { language: Language; reason: 'startup' | 'setpoints' | 'map'; onSubmit: (pass: string) => void; onClose: () => void }) {
+function LoginModal({ language, reason, onSubmit, onClose }: { language: Language; reason: 'startup' | 'setpoints' | 'map'; onSubmit: (user: string, pass: string) => void; onClose: () => void }) {
   const [pass, setPass] = useState('');
   const [error, setError] = useState(false);
   const [showKeyboard, setShowKeyboard] = useState(false);
@@ -2053,6 +2057,34 @@ function LoginModal({ language, reason, onSubmit, onClose }: { language: Languag
   );
 }
 
+/* ---------- Time keyboard for schedules ---------- */
+function TimeKeyboard({ value, onChange, onSubmit, onClose, preview, language }: { value: string; onChange: (v: string) => void; onSubmit: () => void; onClose: () => void; preview: string; language?: Language }) {
+  const keys = ['1','2','3','4','5','6','7','8','9','0'];
+  return (
+    <div className="keyboard-overlay" onClick={onClose}>
+      <div className="keyboard full-keyboard" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 320 }}>
+        <div className="keyboard-header">
+          <span>{language === 'PT' ? 'Inserir hora (HH:MM)' : 'Enter time (HH:MM)'}</span>
+          <button onClick={onClose} aria-label="Fechar"><X size={18} /></button>
+        </div>
+        <div className="keyboard-display">{value || preview || '00:00'}</div>
+        {value.length >= 2 && !value.includes(':') && (
+          <div className="time-hint">{language === 'PT' ? 'Toque ":" para separar horas e minutos' : 'Tap ":" to separate hours and minutes'}</div>
+        )}
+        <div className="text-kb-nums">{keys.map(n => <button key={n} className="kb-key" onClick={() => onChange(value + n)}>{n}</button>)}</div>
+        <div className="text-kb-actions" style={{ padding: '4px 12px' }}>
+          <button className="kb-key" onClick={() => { if (!value.includes(':')) onChange(value + ':'); }}>:</button>
+          <button className="kb-key kb-backspace" onClick={() => onChange(value.slice(0, -1))}><Delete size={16} /></button>
+        </div>
+        <div className="keyboard-actions">
+          <button className="kb-clear" onClick={onClose}>{language === 'PT' ? 'Cancelar' : 'Cancel'}</button>
+          <button className="kb-confirm" onClick={onSubmit}>{language === 'PT' ? 'Confirmar' : 'Confirm'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ---------- Weekly Schedule Editor ---------- */
 const WEEKDAYS: WeekDay[] = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 const WEEKDAY_LABELS_PT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
@@ -2060,6 +2092,9 @@ const WEEKDAY_LABELS_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 function ScheduleEditor({ zone, onChange, language }: { zone: Zone; onChange: (schedules: Record<WeekDay, WaterSchedule>) => void; language: Language }) {
   const labels = language === 'EN' ? WEEKDAY_LABELS_EN : WEEKDAY_LABELS_PT;
+  const [keyboardForTime, setKeyboardForTime] = useState(false);
+  const [timeEditing, setTimeEditing] = useState<{ day: WeekDay; hour: number; minute: number }>({ day: 'mon', hour: 6, minute: 0 });
+  const [timeStr, setTimeStr] = useState('');
 
   const toggleDay = (day: WeekDay) => {
     const next = { ...zone.schedules };
@@ -2124,6 +2159,25 @@ function ScheduleEditor({ zone, onChange, language }: { zone: Zone; onChange: (s
           </div>
         );
       })}
+      {keyboardForTime && (
+        <TimeKeyboard
+          value={timeStr}
+          onChange={setTimeStr}
+          onSubmit={() => {
+            const parts = timeStr.split(':');
+            if (parts.length === 2) {
+              const h = Math.max(0, Math.min(23, parseInt(parts[0]) || 0));
+              const m = Math.max(0, Math.min(59, parseInt(parts[1]) || 0));
+              setTime(timeEditing.day, h, m);
+            }
+            setKeyboardForTime(false);
+            setTimeStr('');
+          }}
+          onClose={() => { setKeyboardForTime(false); setTimeStr(''); }}
+          preview={`${String(timeEditing.hour).padStart(2,'0')}:${String(timeEditing.minute).padStart(2,'0')}`}
+          language={language}
+        />
+      )}
     </div>
   );
 }
