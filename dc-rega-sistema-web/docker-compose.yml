@@ -6,6 +6,11 @@ services:
     ports:
       - "3000:3000"
     restart: unless-stopped
+    volumes:
+      - gtc_data:/data
+    environment:
+      - DATA_DIR=/data
+      - PORT=3000
 
   frontend:
     build: .
@@ -14,3 +19,8 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+    environment:
+      - VITE_API_URL=http://backend:3000
+
+volumes:
+  gtc_data:

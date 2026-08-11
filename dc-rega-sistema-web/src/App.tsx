@@ -43,7 +43,7 @@ import {
   CircuitBoard,
   Zap,
 } from 'lucide-react';
-import { fetchEvents, logEvent, type EventLogEntry } from '@/lib/supabase';
+import { fetchEvents, logEvent, type EventLogEntry, saveState, loadState, saveLayout, loadLayout } from '@/lib/supabase';
 
 type Page = 'Resumo' | 'Estado' | 'Setpoints' | 'Mapa' | 'Histórico' | 'Comandos' | 'Alarmes';
 type Zone = {
@@ -92,16 +92,18 @@ const initialErrors: ErrorEvent[] = [
 ];
 
 const SENSOR_GPIO_MAP: Record<string, number> = { B1: 4, B2: 5 };
-const VALVE_RELAY_MAP: Record<string, { relay: string; gpio: number; inChannel: string }> = {
-  Y1: { relay: 'K3', gpio: 6, inChannel: 'IN1' },
-  Y2: { relay: 'K4', gpio: 7, inChannel: 'IN2' },
-};
+// Novo esquema: sensores B1/B2 não têm relés dedicados.
+// Os 8 relés (K3–K10) são todos funções do sistema:
+// GPIO 6→K3(Timer1), 7→K4(Timer2), 8→K5(START), 9→K6(STOP), 10→K7(AUTO), 11→K8(Reserva), 12→K9, 13→K10
+const VALVE_RELAY_MAP: Record<string, { relay: string; gpio: number; inChannel: string }> = {};
 const SYSTEM_RELAYS = [
-  { relay: 'K5', gpio: 8, inChannel: 'IN3', func: 'Temporizador 1' },
-  { relay: 'K6', gpio: 9, inChannel: 'IN4', func: 'Temporizador 2' },
-  { relay: 'K7', gpio: 10, inChannel: 'IN5', func: 'START GTC' },
-  { relay: 'K8', gpio: 11, inChannel: 'IN6', func: 'STOP / Emergência' },
-  { relay: 'K9', gpio: 12, inChannel: 'IN7', func: 'AUTOMÁTICO' },
+  { relay: 'K3', gpio: 6, inChannel: 'IN1', func: 'Temporizador 1' },
+  { relay: 'K4', gpio: 7, inChannel: 'IN2', func: 'Temporizador 2' },
+  { relay: 'K5', gpio: 8, inChannel: 'IN3', func: 'START GTC' },
+  { relay: 'K6', gpio: 9, inChannel: 'IN4', func: 'STOP / Emergência' },
+  { relay: 'K7', gpio: 10, inChannel: 'IN5', func: 'AUTOMÁTICO' },
+  { relay: 'K8', gpio: 11, inChannel: 'IN6', func: 'Reserva' },
+  { relay: 'K9', gpio: 12, inChannel: 'IN7', func: 'Reserva' },
   { relay: 'K10', gpio: 13, inChannel: 'IN8', func: 'Reserva' },
 ];
 
@@ -229,6 +231,33 @@ function App() {
   useEffect(() => {
     loadEvents();
   }, [loadEvents]);
+
+  // Auto-save state to backend when zones/errors change
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      saveState({ zones, errors, pump: pumpOn, mode: autoMode ? 'automatic' : 'manual' });
+    }, 2000); // debounce 2s
+    return () => clearTimeout(timer);
+  }, [zones, errors, pumpOn, autoMode]);
+
+  // Load state from backend on initial mount
+  useEffect(() => {
+    const init = async () => {
+      const saved = await loadState();
+      if (saved && typeof saved === 'object') {
+        const s = saved as Record<string, unknown>;
+        if (s.zones && Array.isArray(s.zones) && (s.zones as Array<unknown>).length > 0) {
+          setZones(s.zones as Zone[]);
+        }
+        if (s.errors && Array.isArray(s.errors)) {
+          setErrors(s.errors as ErrorEvent[]);
+        }
+        if (typeof s.pump === 'boolean') setPumpOn(s.pump);
+        if (s.mode === 'automatic' || s.mode === 'manual') setAutoMode(s.mode === 'automatic');
+      }
+    };
+    init();
+  }, []);
 
   const activeZones = useMemo(() => zones.filter((z) => z.on).length, [zones]);
   const alarmCount = useMemo(() => errors.filter((e) => !e.resolved).length, [errors]);
@@ -625,10 +654,7 @@ function StateView({ zones, pumpOn, autoMode, onToggleMode }: { zones: Zone[]; p
                 <div className="pinout-side pinout-right">
                   <div className="pinout-side-label">OUTPUT → Módulo 8 Relés</div>
                   {SYSTEM_RELAYS.map((r) => {
-                    const zone = zones.find(z => VALVE_RELAY_MAP[z.id]?.gpio === r.gpio);
-                    const label = zone ? `V.${zone.id}` : r.relay;
-                    const func = zone ? `Comando ${zone.sensorId}` : r.func;
-                    return <PinSlot key={r.relay} gpio={r.gpio} label={label} func={func} direction="OUTPUT" inChannel={r.inChannel} connected={true} />;
+                    return <PinSlot key={r.relay} gpio={r.gpio} label={r.relay} func={r.func} direction="OUTPUT" inChannel={r.inChannel} connected={true} />;
                   })}
                 </div>
               </div>
@@ -651,14 +677,13 @@ function StateView({ zones, pumpOn, autoMode, onToggleMode }: { zones: Zone[]; p
                 <tr><td><span className="gpio-badge">5</span></td><td><span className="dir-badge dir-in">INPUT</span></td><td>B2</td><td>Sensor B2</td><td>{zones.some(z => z.sensorId === 'B2') ? <StatusBadge tone="success">Ativo</StatusBadge> : <StatusBadge tone="neutral">—</StatusBadge>}</td></tr>
                 <tr className="pinout-sep"><td colSpan={5}><span className="pinout-sep-label">— Módulo de 8 Relés (IN1–IN8) —</span></td></tr>
                 {SYSTEM_RELAYS.map((r) => {
-                  const zone = zones.find(z => VALVE_RELAY_MAP[z.id]?.gpio === r.gpio);
                   return (
                     <tr key={r.relay}>
                       <td><span className="gpio-badge">{r.gpio}</span></td>
                       <td><span className="dir-badge dir-out">OUTPUT</span></td>
                       <td>{r.inChannel} / {r.relay}</td>
-                      <td>{zone ? `Comando ${zone.sensorId} (Válvula ${zone.id})` : r.func}</td>
-                      <td><StatusBadge tone={zone?.on ? 'cyan' : 'neutral'}>{zone?.on ? 'Ligado' : 'Pronto'}</StatusBadge></td>
+                      <td>{r.func}</td>
+                      <td><StatusBadge tone="neutral">Pronto</StatusBadge></td>
                     </tr>
                   );
                 })}
@@ -840,6 +865,22 @@ function MapView({ zones, pumpOn, onAddZone, onDuplicateZone, onDragZone, onRena
   const [showPinout, setShowPinout] = useState(false);
   const [layoutSaved, setLayoutSaved] = useState(false);
 
+  // Load saved layout from backend on mount
+  useEffect(() => {
+    const init = async () => {
+      const saved = await loadLayout();
+      if (saved && typeof saved === 'object') {
+        const s = saved as Record<string, unknown>;
+        if (s.pumpPos) setPumpPos(s.pumpPos as MapElement);
+        if (s.mcuPos) setMcuPos(s.mcuPos as MapElement);
+        if (s.fields && Array.isArray(s.fields)) setFields(s.fields as MapField[]);
+        if (s.curvedPipes !== undefined) setCurvedPipes(s.curvedPipes as boolean);
+        if (s.zoneScale) setZoneScale(s.zoneScale as Record<string, number>);
+      }
+    };
+    init();
+  }, []);
+
   const getZoneScale = (id: string) => zoneScale[id] ?? 1;
 
   const adjustZoneScale = (id: string, delta: number) => {
@@ -973,9 +1014,10 @@ function MapView({ zones, pumpOn, onAddZone, onDuplicateZone, onDragZone, onRena
     setSelected(null);
   };
 
-  const handleSaveLayout = () => {
+  const handleSaveLayout = async () => {
     const layout = { pumpPos, mcuPos, fields, curvedPipes, zoneScale, timestamp: new Date().toISOString() };
-    localStorage.setItem('gtc-rega-map-layout', JSON.stringify(layout));
+    await saveLayout(layout);
+    logEvent('layout_save', 'Mapa', 'Layout do mapa guardado', 'info', { fields: fields.length });
     setLayoutSaved(true);
     setTimeout(() => setLayoutSaved(false), 2000);
   };
@@ -1199,9 +1241,7 @@ function MapView({ zones, pumpOn, onAddZone, onDuplicateZone, onDragZone, onRena
           </div>
           <div className="map-sel-gpio">
             {selectedPart === 'valve'
-              ? (VALVE_RELAY_MAP[selectedZone.id]
-                ? <span className="gpio-chip"><CircuitBoard size={13} /> GPIO {VALVE_RELAY_MAP[selectedZone.id].gpio} · {VALVE_RELAY_MAP[selectedZone.id].relay} · {VALVE_RELAY_MAP[selectedZone.id].inChannel} · OUTPUT</span>
-                : <span className="gpio-chip gpio-unassigned"><CircuitBoard size={13} /> Sem relé atribuído</span>)
+              ? <span className="gpio-chip"><CircuitBoard size={13} /> Comutação por relés do sistema</span>
               : (SENSOR_GPIO_MAP[selectedZone.sensorId]
                 ? <span className="gpio-chip"><CircuitBoard size={13} /> GPIO {SENSOR_GPIO_MAP[selectedZone.sensorId]} · INPUT</span>
                 : <span className="gpio-chip gpio-unassigned"><CircuitBoard size={13} /> Sem GPIO atribuído</span>)}
@@ -1252,20 +1292,17 @@ function MapView({ zones, pumpOn, onAddZone, onDuplicateZone, onDragZone, onRena
               ))}
             </div>
             <div className="pinout-section">
-              <div className="pinout-section-title"><Droplets size={14} /> Válvulas (OUTPUT)</div>
-              {zones.map((z) => {
-                const relay = VALVE_RELAY_MAP[z.id];
-                return (
-                  <div key={z.id} className="pinout-row">
-                    <span className="pinout-pin">{relay ? `GPIO ${relay.gpio}` : '—'}</span>
-                    <span className="pinout-label">{relay ? `${relay.relay} · ${relay.inChannel}` : 'Sem relé'}</span>
-                    <span className="pinout-desc">Válvula {z.id} · {z.name}</span>
-                  </div>
-                );
-              })}
+              <div className="pinout-section-title"><Droplets size={14} /> Sensores (INPUT)</div>
+              {zones.map((z) => (
+                <div key={z.sensorId} className="pinout-row">
+                  <span className="pinout-pin">GPIO {SENSOR_GPIO_MAP[z.sensorId] ?? '—'}</span>
+                  <span className="pinout-label">{z.sensorId}</span>
+                  <span className="pinout-desc">{z.name} · Humidade {z.moisture}%</span>
+                </div>
+              ))}
             </div>
             <div className="pinout-section">
-              <div className="pinout-section-title"><Cpu size={14} /> Funções do sistema (OUTPUT)</div>
+              <div className="pinout-section-title"><Cpu size={14} /> Relés do sistema (OUTPUT)</div>
               {SYSTEM_RELAYS.map((r) => (
                 <div key={r.relay} className="pinout-row">
                   <span className="pinout-pin">GPIO {r.gpio}</span>
