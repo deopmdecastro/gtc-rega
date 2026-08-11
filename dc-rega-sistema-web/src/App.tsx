@@ -45,6 +45,7 @@ import {
 } from 'lucide-react';
 import { fetchEvents, logEvent, type EventLogEntry, saveState, loadState, saveLayout, loadLayout } from '@/lib/supabase';
 import { t } from '@/lang';
+import { getControllerClient } from '@/lib/controller';
 
 type Page = 'Resumo' | 'Estado' | 'Setpoints' | 'Mapa' | 'Histórico' | 'Comandos' | 'Alarmes';
 type Zone = {
@@ -278,6 +279,49 @@ function App() {
     init();
   }, []);
 
+  // Listen for controller state updates via WebSocket
+  useEffect(() => {
+    const ctrl = getControllerClient();
+    ctrl.connect();
+
+    const unsubState = ctrl.on('state', (cs: Record<string, unknown>) => {
+      if (cs.zones && Array.isArray(cs.zones)) {
+        setZones(cs.zones as Zone[]);
+      }
+      if (typeof cs.pump === 'boolean') setPumpOn(cs.pump);
+      if (typeof cs.autoMode === 'boolean') setAutoMode(cs.autoMode);
+      if (typeof cs.state === 'string') {
+        if (cs.state === 'idle') {
+          setSystemRunning(false);
+          setStarting(false);
+          setStartStep('');
+        } else if (cs.state === 'starting') {
+          setSystemRunning(true);
+          setStarting(true);
+          setStartStep('A ligar bomba…');
+        } else if (cs.state === 'watering') {
+          setStarting(false);
+          setStartStep('');
+        } else if (cs.state === 'emergency') {
+          setSystemRunning(false);
+          setStarting(false);
+          setStartStep('');
+        }
+      }
+    });
+
+    const unsubEvent = ctrl.on('event', (ev: Record<string, unknown>) => {
+      if (ev.message) {
+        showNotice(ev.message as string);
+      }
+    });
+
+    return () => {
+      unsubState();
+      unsubEvent();
+      ctrl.disconnect();
+    };
+  }, []);
   const activeZones = useMemo(() => zones.filter((z) => z.on).length, [zones]);
   const alarmCount = useMemo(() => errors.filter((e) => !e.resolved).length, [errors]);
 
@@ -287,21 +331,21 @@ function App() {
   };
 
   const toggleZone = useCallback((id: string) => {
+    const ctrl = getControllerClient();
+    ctrl.toggleZone(id);
+    // Optimistic local update
     setZones((cur) => {
       const zone = cur.find((z) => z.id === id);
       if (!zone) return cur;
       const newState = !zone.on;
-      logEvent('zone_toggle', `${zone.name} · Válvula ${zone.id}`, newState ? `Válvula ${zone.id} aberta` : `Válvula ${zone.id} fechada`, 'info', { zone_id: id, state: newState });
       return cur.map((z) => (z.id === id ? { ...z, on: newState } : z));
     });
   }, []);
 
   const togglePump = useCallback(() => {
-    setPumpOn((prev) => {
-      const next = !prev;
-      logEvent('pump_toggle', 'Bomba K1', next ? 'Bomba ligada' : 'Bomba desligada', 'info', { state: next });
-      return next;
-    });
+    const ctrl = getControllerClient();
+    ctrl.togglePump();
+    setPumpOn((prev) => !prev);
   }, []);
 
   const addZone = () => {
@@ -312,6 +356,11 @@ function App() {
     setZones((cur) => [...cur, newZone]);
     logEvent('zone_add', `${newZone.name} · Sensor ${sensorId}`, `Sensor ${sensorId} e válvula ${id} adicionados`, 'info', { zone_id: id, sensor_id: sensorId });
     showNotice(`Sensor ${sensorId} adicionado`);
+    // Sync with backend
+    setTimeout(() => {
+      const ctrl = getControllerClient();
+      ctrl.updateZones([...zones, newZone]);
+    }, 100);
   };
 
   const addZoneFromMap = useCallback((x: number, y: number) => {
@@ -322,6 +371,10 @@ function App() {
     setZones((cur) => [...cur, newZone]);
     logEvent('zone_add_map', `${newZone.name} · Sensor ${sensorId}`, `Local adicionado no mapa: válvula ${id}, sensor ${sensorId}`, 'info', { zone_id: id, sensor_id: sensorId, x, y });
     showNotice(`Local adicionado: ${newZone.name}`);
+    setTimeout(() => {
+      const ctrl = getControllerClient();
+      ctrl.updateZones([...zones, newZone]);
+    }, 100);
   }, [zones.length]);
 
   const duplicateZoneFromMap = useCallback((zone: Zone) => {
@@ -366,88 +419,59 @@ function App() {
   }, []);
 
   const handleStart = () => {
-    if (starting || systemRunning) return;
-    startTimers.current.forEach((t) => clearTimeout(t));
-    startTimers.current = [];
-    setStarting(true);
-    setSystemRunning(true);
-    setAutoMode(true);
-
-    setPumpOn(true);
-    setStartStep('A ligar bomba…');
-    logEvent('system_start', 'Sistema', 'Sistema iniciado — bomba ligada', 'info', { pump_delay: pumpDelay });
-    showNotice('Bomba ligada');
-
-    const t1 = window.setTimeout(() => {
-      setStartStep('A abrir válvulas…');
-      setZones((cur) => {
-        cur.forEach((z) => {
-          if (!z.on) logEvent('zone_toggle', `${z.name} · Válvula ${z.id}`, `Válvula ${z.id} aberta (sistema)`, 'info', { zone_id: z.id, state: true });
-        });
-        return cur.map((z) => ({ ...z, on: true }));
-      });
-      showNotice('Válvulas abertas');
-      const t2 = window.setTimeout(() => {
-        setStarting(false);
-        setStartStep('');
-        showNotice('Sistema iniciado');
-        startTimers.current.push(t2);
-      }, 600);
-      startTimers.current.push(t2);
-    }, pumpDelay * 1000);
-    startTimers.current.push(t1);
+    const ctrl = getControllerClient();
+    const ok = ctrl.start(pumpDelay);
+    if (ok) {
+      setSystemRunning(true);
+      setStarting(true);
+      setPumpOn(true);
+      setStartStep('A ligar bomba…');
+      showNotice('Start enviado ao controlador');
+    }
   };
   const handleStop = () => {
-    startTimers.current.forEach((t) => clearTimeout(t));
-    startTimers.current = [];
+    const ctrl = getControllerClient();
+    ctrl.stop();
     setSystemRunning(false);
     setStarting(false);
     setStartStep('');
     setPumpOn(false);
-    setZones((cur) => {
-      cur.forEach((z) => {
-        if (z.on) logEvent('zone_toggle', `${z.name} · Válvula ${z.id}`, `Válvula ${z.id} fechada (sistema parado)`, 'info', { zone_id: z.id, state: false });
-      });
-      return cur.map((z) => ({ ...z, on: false }));
-    });
-    logEvent('system_stop', 'Sistema', 'Sistema parado — todos os atuadores desligados', 'warning');
-    showNotice('Sistema parado');
+    setZones((cur) => cur.map((z) => ({ ...z, on: false })));
+    showNotice('Stop enviado ao controlador');
   };
   const handleReset = () => {
-    startTimers.current.forEach((t) => clearTimeout(t));
-    startTimers.current = [];
+    const ctrl = getControllerClient();
+    ctrl.reset();
     setSystemRunning(false);
     setStarting(false);
     setStartStep('');
     setPumpOn(false);
-    setZones((cur) => cur.map((z) => ({ ...z, on: false, moisture: Math.max(20, Math.min(90, Math.round(z.moisture))) })));
+    setZones((cur) => cur.map((z) => ({ ...z, on: false })));
     setErrors((cur) => cur.map((e) => ({ ...e, resolved: true })));
-    logEvent('system_reset', 'Sistema', 'Sistema reiniciado', 'warning');
-    showNotice('Sistema reiniciado');
+    showNotice('Reset enviado ao controlador');
   };
 
   const toggleAutoMode = () => {
     const next = !autoMode;
     setAutoMode(next);
-    logEvent('mode_change', 'Modo de operação', next ? 'Modo automático ativado' : 'Modo manual ativado', 'info', { mode: next ? 'auto' : 'manual' });
+    const ctrl = getControllerClient();
+    ctrl.setMode(next);
     showNotice(next ? 'Modo automático ativado' : 'Modo manual ativado');
   };
 
   const handleEmergencyStop = () => {
-    setZones((cur) => {
-      cur.forEach((z) => {
-        if (z.on) logEvent('zone_toggle', `${z.name} · Válvula ${z.id}`, `Válvula ${z.id} fechada (emergência)`, 'critical', { zone_id: z.id, state: false });
-      });
-      return cur.map((z) => ({ ...z, on: false }));
-    });
+    const ctrl = getControllerClient();
+    ctrl.emergency();
+    setZones((cur) => cur.map((z) => ({ ...z, on: false })));
     setPumpOn(false);
-    logEvent('emergency_stop', 'Paragem de emergência', 'Paragem de emergência executada — todos os atuadores desligados', 'critical');
-    showNotice('Todas as zonas foram desligadas');
+    setSystemRunning(false);
+    showNotice('Paragem de emergência executada');
   };
 
   const handleTestCycle = () => {
-    logEvent('test_cycle', 'Ciclo de teste', 'Ciclo de teste iniciado — verificação de bomba e válvulas', 'info');
-    showNotice('Ciclo de teste iniciado');
+    const ctrl = getControllerClient();
+    ctrl.testCycle();
+    showNotice('Ciclo de teste iniciado no controlador');
   };
 
   const clearAllZones = useCallback(() => {
