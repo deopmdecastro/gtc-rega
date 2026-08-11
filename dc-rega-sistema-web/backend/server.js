@@ -76,11 +76,15 @@ function startSensorSim() {
         broadcastDeviceStatus();
       }
       engine.updateSensors();
-      engine.checkAutoCycle();
     } else {
       // Dispositivo real online — verificar se algum sensor deixou de reportar
       engine.checkSensorHealth(15000);
     }
+    // A verificação da programação semanal tem de correr sempre — com ou
+    // sem dispositivo real ligado — senão os horários configurados nunca
+    // disparam a rega automática quando o ESP32 está online (bug: ciclo
+    // automático só arrancava em modo simulação).
+    engine.checkAutoCycle();
   }, 3000);
 }
 startSensorSim();

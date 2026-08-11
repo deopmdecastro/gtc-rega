@@ -393,10 +393,14 @@ class ControlEngine {
 
   // ── Verificação do ciclo automático (com schedules) ──
   checkAutoCycle() {
-    // Only run in auto mode when a cycle is active
-    if (!this.autoMode || !this.cycleActive) return;
-    
-    // If not watering, check if it's time to start based on schedules
+    // Só corre em modo automático
+    if (!this.autoMode) return;
+
+    // Se não está a regar, verificar se é hora de arrancar segundo os horários.
+    // Nota: esta verificação NÃO depende de cycleActive — cycleActive só passa
+    // a true depois de start() arrancar, por isso exigi-lo aqui impedia que
+    // qualquer horário alguma vez disparasse a rega (bug: ciclo automático
+    // nunca arrancava sozinho a partir de IDLE).
     if (this.state === STATES.IDLE && this.zones.length > 0) {
       if (this._shouldWaterNow()) {
         this.start(5);
@@ -404,7 +408,8 @@ class ControlEngine {
       return;
     }
 
-    if (this.state !== STATES.WATERING) return;
+    // A partir daqui só nos interessa continuar/terminar um ciclo já em curso
+    if (!this.cycleActive || this.state !== STATES.WATERING) return;
     
     // Cycle complete — check if we should continue or stop
     const allDone = this.currentZoneIndex >= this.zones.length;
