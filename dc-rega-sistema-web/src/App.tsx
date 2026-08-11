@@ -1148,38 +1148,73 @@ function SetpointsView({ zones, onChange, onUpdateZone, pumpDelay, setPumpDelay,
           <button className="add-sensor-btn" onClick={onAddZone}><Plus size={18} /><span>Adicionar sensor</span></button>
         </Panel>
       </div>
-      <div className="setpoint-grid">
+      <div className="setpoint-grid-v2">
         {zones.map((zone) => {
           const displayTarget = getDisplayTarget(zone);
           const dirty = isDirty(zone);
           return (
-          <Panel key={zone.id} className={`setpoint-card ${dirty ? 'setpoint-dirty' : ''}`}>
-            <PanelHeader eyebrow={`CONFIGURAÇÃO · SENSOR ${zone.sensorId}`} title={zone.name} showIcon={false} />
-            <div className="setpoint-ids"><span><Droplets size={13} /> Válvula {zone.id}</span><span><Radio size={13} /> Sensor {zone.sensorId}</span></div>
-            <button className="remove-sensor-btn" onClick={() => onRemoveZone(zone)} aria-label={`Remover ${zone.name}`}><Trash2 size={16} /></button>
-            <div className="setpoint-value"><strong>{displayTarget}<small>%</small></strong><span>Humidade mínima desejada</span></div>
-            <input type="range" min="20" max="90" value={displayTarget} onChange={(e) => handleSlide(zone.id, Number(e.target.value))} />
-            <div className="range-labels"><span>20%</span><span>90%</span></div>
-            <div className="setpoint-note"><Gauge size={16} /><span>Atual: <b>{zone.moisture}%</b> · {zone.moisture >= displayTarget ? 'acima do mínimo' : 'abaixo do mínimo'}</span></div>
-            <button
-              className={`setpoint-save-btn ${dirty ? 'is-dirty' : ''} ${justSaved[zone.id] ? 'is-saved' : ''}`}
-              onClick={() => saveSetpoint(zone)}
-              disabled={!dirty}
-            >
-              {justSaved[zone.id] ? <><CheckCircle2 size={15} /> Setpoint guardado</> : <><Save size={15} /> {dirty ? 'Guardar setpoint' : 'Setpoint guardado'}</>}
-            </button>
-            <div className="time-controls">
-              <label>Tempo de rega da válvula</label>
-              <div className="time-input">
-                <button className="btn-step" onClick={() => onUpdateZone(zone.id, { waterDuration: Math.max(5, zone.waterDuration - 5) })}>-</button>
-                <button className="time-display" onClick={() => openKeyboard(zone.id, zone.waterDuration)}>{zone.waterDuration}<span>s</span></button>
-                <button className="btn-step" onClick={() => onUpdateZone(zone.id, { waterDuration: zone.waterDuration + 5 })}>+</button>
+          <Panel key={zone.id} className={`setpoint-card-v2 ${dirty ? 'setpoint-dirty-v2' : ''}`}>
+            {/* Header */}
+            <div className="sp2-header">
+              <div>
+                <span className="section-kicker">{language === 'PT' ? 'CONFIGURAÇÃO' : 'CONFIGURATION'} · SENSOR {zone.sensorId}</span>
+                <h3>{zone.name}</h3>
               </div>
-              <small>Toque no valor para abrir o teclado numérico</small>
+              <button className="sp2-remove-btn" onClick={() => onRemoveZone(zone)} aria-label={`Remover ${zone.name}`}><Trash2 size={17} /></button>
             </div>
-            <div className="setpoint-schedule">
-              <label>{language === 'PT' ? 'Programação semanal' : 'Weekly schedule'}</label>
-              <ScheduleEditor zone={zone} onChange={(schedules) => onUpdateZone(zone.id, { schedules } as Partial<Zone>)} language={language} />
+
+            {/* Tags */}
+            <div className="sp2-tags">
+              <span className="sp2-tag sp2-tag-valve"><Droplets size={12} /> {language === 'PT' ? 'Válvula' : 'Valve'} {zone.id}</span>
+              <span className="sp2-tag sp2-tag-sensor"><Radio size={12} /> {language === 'PT' ? 'Sensor' : 'Sensor'} {zone.sensorId}</span>
+            </div>
+
+            {/* Current moisture — BIG number */}
+            <div className="sp2-current">
+              <strong>{zone.moisture}<small>%</small></strong>
+              <span>{language === 'PT' ? 'Humidade atual' : 'Current moisture'}</span>
+            </div>
+
+            {/* Slider */}
+            <div className="sp2-slider-section">
+              <span className="sp2-slider-label">{language === 'PT' ? 'Humidade mínima desejada' : 'Minimum desired moisture'}</span>
+              <div className="sp2-slider-row">
+                <input type="range" min="20" max="90" value={displayTarget} onChange={(e) => handleSlide(zone.id, Number(e.target.value))} className="sp2-range" />
+                <span className={`sp2-slider-value ${dirty ? 'sp2-slider-dirty' : ''}`}>{displayTarget}%</span>
+              </div>
+              <div className="sp2-range-labels"><span>20%</span><span>90%</span></div>
+            </div>
+
+            {/* Status note + save */}
+            <div className="sp2-status-row">
+              <div className="sp2-status-note">
+                <Gauge size={14} />
+                <span>{language === 'PT' ? 'Atual' : 'Current'}: <b>{zone.moisture}%</b> · {zone.moisture >= displayTarget ? (language === 'PT' ? 'acima do mínimo' : 'above minimum') : (language === 'PT' ? 'abaixo do mínimo' : 'below minimum')}</span>
+              </div>
+              <button
+                className={`sp2-save-btn ${dirty ? 'is-dirty' : ''} ${justSaved[zone.id] ? 'is-saved' : ''}`}
+                onClick={() => saveSetpoint(zone)}
+                disabled={!dirty}
+              >
+                {justSaved[zone.id] ? <><CheckCircle2 size={14} /> {language === 'PT' ? 'Guardado' : 'Saved'}</> : <><Save size={14} /> {dirty ? (language === 'PT' ? 'Guardar' : 'Save') : (language === 'PT' ? 'Guardado' : 'Saved')}</>}
+              </button>
+            </div>
+
+            {/* Water duration */}
+            <div className="sp2-duration-section">
+              <span className="sp2-section-label">{language === 'PT' ? 'Tempo de rega da válvula' : 'Valve watering duration'}</span>
+              <div className="sp2-duration-row">
+                <button className="sp2-dur-btn" onClick={() => onUpdateZone(zone.id, { waterDuration: Math.max(5, zone.waterDuration - 5) })}><Minus size={14} /></button>
+                <button className="sp2-dur-value" onClick={() => openKeyboard(zone.id, zone.waterDuration)}>{zone.waterDuration}<span>s</span></button>
+                <button className="sp2-dur-btn" onClick={() => onUpdateZone(zone.id, { waterDuration: zone.waterDuration + 5 })}><Plus size={14} /></button>
+              </div>
+              <span className="sp2-hint">{language === 'PT' ? 'Toque no valor para abrir o teclado numérico' : 'Tap the value to open the numeric keypad'}</span>
+            </div>
+
+            {/* Weekly schedule */}
+            <div className="sp2-schedule-section">
+              <span className="sp2-section-label">{language === 'PT' ? 'Programação semanal' : 'Weekly schedule'}</span>
+              <ScheduleEditorV2 zone={zone} onChange={(schedules) => onUpdateZone(zone.id, { schedules } as Partial<Zone>)} language={language} />
             </div>
           </Panel>
           );
@@ -2417,19 +2452,19 @@ function TimeKeyboard({ value, onChange, onSubmit, onClose, preview, language }:
   );
 }
 
-/* ---------- Weekly Schedule Editor ---------- */
 const WEEKDAYS: WeekDay[] = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 const WEEKDAY_LABELS_PT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const WEEKDAY_LABELS_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-function ScheduleEditor({ zone, onChange, language }: { zone: Zone; onChange: (schedules: Record<WeekDay, WaterSchedule>) => void; language: Language }) {
+/* ---------- Weekly Schedule Editor V2 (design do card) ---------- */
+function ScheduleEditorV2({ zone, onChange, language }: { zone: Zone; onChange: (schedules: Record<WeekDay, WaterSchedule>) => void; language: Language }) {
   const labels = language === 'EN' ? WEEKDAY_LABELS_EN : WEEKDAY_LABELS_PT;
   const [keyboardForTime, setKeyboardForTime] = useState(false);
   const [timeEditing, setTimeEditing] = useState<{ day: WeekDay; hour: number; minute: number }>({ day: 'mon', hour: 6, minute: 0 });
   const [timeStr, setTimeStr] = useState('');
-  // Buffer local para edição sem disparar onChange a cada toque — só guarda no final
   const [localSchedules, setLocalSchedules] = useState<Record<WeekDay, WaterSchedule> | null>(null);
-  const [scheduleSaved, setScheduleSaved] = useState(false);
+  const [showCopyMenu, setShowCopyMenu] = useState(false);
+  const [copyTargetDay, setCopyTargetDay] = useState<WeekDay | null>(null);
 
   const schedules = localSchedules || zone.schedules || (() => {
     const defaults: Record<string, WaterSchedule> = {};
@@ -2437,18 +2472,10 @@ function ScheduleEditor({ zone, onChange, language }: { zone: Zone; onChange: (s
     return defaults as Record<WeekDay, WaterSchedule>;
   })();
 
-  // Inicializa o buffer local quando o zone muda
-  useEffect(() => {
-    setLocalSchedules(null);
-    setScheduleSaved(false);
-  }, [zone.id]);
+  useEffect(() => { setLocalSchedules(null); }, [zone.id]);
 
   const updateLocal = (day: WeekDay, patch: Partial<WaterSchedule>) => {
-    setLocalSchedules((cur) => {
-      const base = cur || { ...zone.schedules };
-      return { ...base, [day]: { ...base[day], ...patch } };
-    });
-    setScheduleSaved(false);
+    setLocalSchedules((cur) => ({ ...(cur || { ...zone.schedules }), [day]: { ...(cur || { ...zone.schedules })[day], ...patch } }));
   };
 
   const toggleDayLocal = (day: WeekDay) => {
@@ -2456,83 +2483,104 @@ function ScheduleEditor({ zone, onChange, language }: { zone: Zone; onChange: (s
       const base = cur || { ...zone.schedules };
       return { ...base, [day]: { ...base[day], enabled: !base[day].enabled } };
     });
-    setScheduleSaved(false);
+  };
+
+  const copyToAllDays = (sourceDay: WeekDay) => {
+    const source = schedules[sourceDay];
+    if (!source) return;
+    setLocalSchedules((cur) => {
+      const base = { ...(cur || { ...zone.schedules }) };
+      WEEKDAYS.forEach(d => { base[d] = { ...source }; });
+      return base;
+    });
+    setShowCopyMenu(false);
+    setCopyTargetDay(null);
+  };
+
+  const clearAllSchedules = () => {
+    setLocalSchedules((cur) => {
+      const base = { ...(cur || { ...zone.schedules }) };
+      WEEKDAYS.forEach(d => { base[d] = { ...base[d], hour: 6, minute: 0 }; });
+      return base;
+    });
   };
 
   const hasChanges = localSchedules !== null;
 
-  const saveAllSchedules = () => {
-    if (!localSchedules) return;
-    onChange(localSchedules);
-    setLocalSchedules(null);
-    setScheduleSaved(true);
-    setTimeout(() => setScheduleSaved(false), 2000);
-  };
-
-  const discardChanges = () => {
-    setLocalSchedules(null);
-    setScheduleSaved(false);
-  };
-
-  const formatTime = (h: number, m: number) => 
+  const formatTime = (h: number, m: number) =>
     `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 
   return (
-    <div className="schedule-wrapper">
-      <div className="schedule-grid">
+    <div className="schedule-v2">
+      <div className="sched2-grid">
         {WEEKDAYS.map((day, i) => {
           const s = schedules[day] || { enabled: true, hour: 6, minute: 0 };
           return (
-            <div key={day} className={`schedule-day ${s.enabled ? 'schedule-enabled' : ''}`}>
-              <button
-                className="schedule-day-toggle"
-                onClick={() => toggleDayLocal(day)}
-                title={s.enabled ? (language === 'PT' ? 'Desativar' : 'Disable') : (language === 'PT' ? 'Ativar' : 'Enable')}
-              >
-                <span className="schedule-day-label">{labels[i]}</span>
-                <span className={`schedule-day-status ${s.enabled ? 'on' : 'off'}`} />
-              </button>
+            <div key={day} className={`sched2-day ${s.enabled ? 'sched2-day-on' : 'sched2-day-off'}`}>
+              <div className="sched2-day-top">
+                <span className="sched2-day-label">{labels[i]}</span>
+                <button
+                  className={`sched2-toggle ${s.enabled ? 'on' : 'off'}`}
+                  onClick={() => toggleDayLocal(day)}
+                  title={s.enabled ? (language === 'PT' ? 'Desativar' : 'Disable') : (language === 'PT' ? 'Ativar' : 'Enable')}
+                >
+                  <span className="sched2-toggle-dot" />
+                </button>
+              </div>
+              <span className={`sched2-status ${s.enabled ? 'on' : 'off'}`}>
+                {s.enabled ? (language === 'PT' ? 'Ativo' : 'Active') : (language === 'PT' ? 'Inativo' : 'Inactive')}
+              </span>
               {s.enabled && (
-                <div className="schedule-time-controls">
-                  <button className="schedule-time-btn" onClick={() => {
-                    const newH = s.hour - 1 < 0 ? 23 : s.hour - 1;
-                    updateLocal(day, { hour: newH });
-                  }} aria-label={language === 'PT' ? 'Hora anterior' : 'Previous hour'}><Minus size={11} /></button>
-                  <button className="schedule-time-display" onClick={() => {
+                <button
+                  className="sched2-time-btn"
+                  onClick={() => {
                     setTimeEditing({ day, hour: s.hour, minute: s.minute });
                     setTimeStr('');
                     setKeyboardForTime(true);
-                  }}>
-                    {formatTime(s.hour, s.minute)}
-                  </button>
-                  <button className="schedule-time-btn" onClick={() => {
-                    const newH = s.hour + 1 > 23 ? 0 : s.hour + 1;
-                    updateLocal(day, { hour: newH });
-                  }} aria-label={language === 'PT' ? 'Hora seguinte' : 'Next hour'}><Plus size={11} /></button>
-                </div>
+                  }}
+                >
+                  {formatTime(s.hour, s.minute)}
+                </button>
               )}
+              <span className="sched2-hint">{language === 'PT' ? 'Início da rega' : 'Watering start'}</span>
             </div>
           );
         })}
       </div>
-      {hasChanges && (
-        <div className="schedule-actions">
-          <button className="schedule-discard-btn" onClick={discardChanges}>
-            <X size={14} /> {language === 'PT' ? 'Descartar' : 'Discard'}
+
+      {/* Actions row */}
+      <div className="sched2-actions">
+        {hasChanges && (
+          <button className="sched2-action-btn sched2-save" onClick={() => { if (localSchedules) { onChange(localSchedules); setLocalSchedules(null); } }}>
+            <Save size={13} /> {language === 'PT' ? 'Guardar' : 'Save'}
           </button>
-          <button className={`schedule-save-btn ${scheduleSaved ? 'is-saved' : ''}`} onClick={saveAllSchedules}>
-            {scheduleSaved ? <><CheckCircle2 size={14} /> {language === 'PT' ? 'Guardado!' : 'Saved!'}</> : <><Save size={14} /> {language === 'PT' ? 'Guardar horários' : 'Save schedule'}</>}
+        )}
+        <div className="sched2-copy-wrap">
+          <button className="sched2-action-btn" onClick={() => setShowCopyMenu(!showCopyMenu)}>
+            <Copy size={13} /> {language === 'PT' ? 'Copiar programação para outros dias' : 'Copy schedule to other days'}
           </button>
+          {showCopyMenu && (
+            <div className="sched2-copy-menu">
+              {WEEKDAYS.map((day, i) => (
+                <button key={day} className="sched2-copy-item" onClick={() => copyToAllDays(day)}>
+                  {language === 'PT' ? 'Copiar de' : 'Copy from'} {labels[i]}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
-      )}
+        <button className="sched2-action-btn sched2-clear" onClick={clearAllSchedules}>
+          <Eraser size={13} /> {language === 'PT' ? 'Limpar todos' : 'Clear all'}
+        </button>
+      </div>
+
       {keyboardForTime && (
         <TimeKeyboard
           value={timeStr}
           onChange={setTimeStr}
           onSubmit={() => {
             const parts = timeStr.split(':');
-            const hasHour = parts[0] !== undefined && parts[0] !== '';
-            if (hasHour) {
+            if (parts[0] !== undefined && parts[0] !== '') {
               const h = Math.max(0, Math.min(23, parseInt(parts[0], 10) || 0));
               const m = parts[1] ? Math.max(0, Math.min(59, parseInt(parts[1], 10) || 0)) : 0;
               updateLocal(timeEditing.day, { hour: h, minute: m });
@@ -2545,6 +2593,24 @@ function ScheduleEditor({ zone, onChange, language }: { zone: Zone; onChange: (s
           language={language}
         />
       )}
+    </div>
+  );
+}
+
+function ScheduleEditor({ zone, onChange, language }: { zone: Zone; onChange: (schedules: Record<WeekDay, WaterSchedule>) => void; language: Language }) {
+  const labels = language === 'EN' ? WEEKDAY_LABELS_EN : WEEKDAY_LABELS_PT;
+  const schedules = zone.schedules || (() => { const d: Record<string, WaterSchedule> = {}; WEEKDAYS.forEach(day => { d[day] = { enabled: true, hour: 6, minute: 0 }; }); return d as Record<WeekDay, WaterSchedule>; })();
+  const toggleDay = (day: WeekDay) => { const next = { ...zone.schedules }; next[day] = { ...next[day], enabled: !next[day].enabled }; onChange(next); };
+  const setTime = (day: WeekDay, hour: number, minute: number) => { const next = { ...zone.schedules }; next[day] = { ...next[day], hour, minute }; onChange(next); };
+  const formatTime = (h: number, m: number) => `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  return (
+    <div className="schedule-grid">
+      {WEEKDAYS.map((day, i) => { const s = schedules[day] || { enabled: true, hour: 6, minute: 0 };
+        return (<div key={day} className={`schedule-day ${s.enabled ? 'schedule-enabled' : ''}`}>
+          <button className="schedule-day-toggle" onClick={() => toggleDay(day)}><span className="schedule-day-label">{labels[i]}</span><span className={`schedule-day-status ${s.enabled ? 'on' : 'off'}`} /></button>
+          {s.enabled && (<div className="schedule-time-controls"><span className="schedule-time-display">{formatTime(s.hour, s.minute)}</span></div>)}
+        </div>);
+      })}
     </div>
   );
 }

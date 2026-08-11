@@ -1076,3 +1076,111 @@ input:focus-visible { border-radius: inherit; }
   .history-top-row { flex-wrap: wrap; }
   .alarm-item { flex-wrap: wrap; }
 }
+
+/* ══════════════════════════════════════════════════════════
+   SETPOINT CARD V2 — Design da imagem
+   ══════════════════════════════════════════════════════════ */
+.setpoint-grid-v2 { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 20px; }
+.setpoint-card-v2 { padding: 0 !important; overflow: hidden; border: 1px solid #192831; border-radius: 14px; background: #0a131a; }
+.setpoint-dirty-v2 { border-color: rgba(249,178,71,.3); box-shadow: 0 0 0 1px rgba(249,178,71,.15); }
+
+.sp2-header { display: flex; justify-content: space-between; align-items: flex-start; padding: 22px 24px 0; }
+.sp2-header h3 { margin: 4px 0 0; font-size: 18px; color: #e0e9eb; }
+.sp2-remove-btn { border: 0; background: none; color: #4e6d78; padding: 4px; border-radius: 6px; transition: .2s; }
+.sp2-remove-btn:hover { color: #f06565; background: rgba(240,101,101,.1); }
+
+/* Tags */
+.sp2-tags { display: flex; gap: 8px; padding: 14px 24px 0; }
+.sp2-tag { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; }
+.sp2-tag-valve { color: #14ddd6; background: rgba(20,221,214,.08); border: 1px solid rgba(20,221,214,.15); }
+.sp2-tag-sensor { color: #7fb8ff; background: rgba(127,184,255,.08); border: 1px solid rgba(127,184,255,.15); }
+
+/* BIG moisture number */
+.sp2-current { text-align: center; padding: 20px 24px 16px; }
+.sp2-current strong { font-size: 56px; font-weight: 800; color: #5ee58a; line-height: 1; letter-spacing: -.02em; }
+.sp2-current strong small { font-size: 28px; font-weight: 600; color: #40c870; }
+.sp2-current span { display: block; margin-top: 6px; font-size: 12px; color: #718792; text-transform: uppercase; letter-spacing: .08em; }
+
+/* Slider */
+.sp2-slider-section { padding: 0 24px 16px; }
+.sp2-slider-label { display: block; font-size: 11px; color: #7c929c; margin-bottom: 10px; font-weight: 500; }
+.sp2-slider-row { display: flex; align-items: center; gap: 12px; }
+.sp2-range { flex: 1; -webkit-appearance: none; appearance: none; height: 6px; border-radius: 3px; background: linear-gradient(90deg, #f2b35d 0%, #14ddd6 50%, #5ee58a 100%); outline: none; }
+.sp2-range::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #fff; border: 2px solid #14ddd6; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.3); }
+.sp2-range::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: #fff; border: 2px solid #14ddd6; cursor: pointer; }
+.sp2-slider-value { min-width: 42px; text-align: right; font-size: 16px; font-weight: 700; color: #e0e9eb; }
+.sp2-slider-dirty { color: #f9b247; }
+.sp2-range-labels { display: flex; justify-content: space-between; margin-top: 4px; }
+.sp2-range-labels span { font-size: 10px; color: #4e6d78; }
+
+/* Status + Save row */
+.sp2-status-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 24px; border-top: 1px solid #1b2a32; border-bottom: 1px solid #1b2a32; gap: 12px; }
+.sp2-status-note { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #718792; }
+.sp2-status-note b { color: #dce5e8; }
+.sp2-save-btn { display: flex; align-items: center; gap: 5px; padding: 6px 14px; border: 1px solid #263b46; border-radius: 7px; font-size: 12px; font-weight: 600; color: #7c929c; background: transparent; cursor: pointer; white-space: nowrap; transition: .2s; }
+.sp2-save-btn.is-dirty { color: #ffca72; border-color: rgba(249,178,71,.4); background: rgba(249,178,71,.08); animation: pulse-save 1.8s infinite; }
+.sp2-save-btn.is-dirty:hover { background: rgba(249,178,71,.15); }
+.sp2-save-btn.is-saved { color: #5ee58a; border-color: rgba(94,229,138,.3); background: rgba(94,229,138,.08); }
+.sp2-save-btn:disabled { opacity: .4; cursor: default; }
+
+/* Water duration */
+.sp2-duration-section { padding: 16px 24px; border-bottom: 1px solid #1b2a32; }
+.sp2-section-label { display: block; font-size: 11px; color: #7c929c; margin-bottom: 10px; font-weight: 500; }
+.sp2-duration-row { display: flex; align-items: center; gap: 10px; }
+.sp2-dur-btn { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid #263b46; border-radius: 8px; background: #0d171e; color: #14ddd6; cursor: pointer; transition: .2s; }
+.sp2-dur-btn:hover { background: rgba(20,221,214,.1); border-color: rgba(20,221,214,.3); }
+.sp2-dur-value { flex: 1; display: flex; align-items: baseline; justify-content: center; gap: 3px; padding: 8px; border: 1px solid #263b46; border-radius: 8px; background: #0d171e; color: #e0e9eb; font-size: 20px; font-weight: 700; cursor: pointer; transition: .2s; }
+.sp2-dur-value:hover { border-color: rgba(20,221,214,.3); background: rgba(20,221,214,.04); }
+.sp2-dur-value span { font-size: 13px; font-weight: 500; color: #718792; margin-left: 2px; }
+.sp2-hint { display: block; margin-top: 8px; font-size: 10px; color: #4e6d78; }
+
+/* Weekly schedule section */
+.sp2-schedule-section { padding: 18px 24px 20px; }
+
+/* ══════════════════════════════════════════════════════════
+   SCHEDULE V2 — Grid de 7 dias (DOM-SÁB)
+   ══════════════════════════════════════════════════════════ */
+.schedule-v2 { }
+.sched2-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.sched2-day { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 6px 12px; border-radius: 10px; border: 1px solid #1c2b33; background: #0d171e; transition: .2s; }
+.sched2-day-on { border-color: rgba(94,229,138,.25); background: rgba(94,229,138,.03); }
+.sched2-day-off { opacity: .45; }
+.sched2-day-top { display: flex; align-items: center; justify-content: space-between; width: 100%; }
+.sched2-day-label { font-size: 11px; font-weight: 700; color: #8a9aa5; text-transform: uppercase; letter-spacing: .04em; }
+.sched2-toggle { position: relative; width: 28px; height: 15px; border-radius: 99px; border: 0; cursor: pointer; transition: .2s; }
+.sched2-toggle.on { background: #40d877; }
+.sched2-toggle.off { background: #263b46; }
+.sched2-toggle-dot { position: absolute; top: 2px; width: 11px; height: 11px; border-radius: 50%; background: #fff; transition: .2s; }
+.sched2-toggle.on .sched2-toggle-dot { left: 15px; }
+.sched2-toggle.off .sched2-toggle-dot { left: 2px; }
+.sched2-status { font-size: 9px; font-weight: 600; }
+.sched2-status.on { color: #5ee58a; }
+.sched2-status.off { color: #526875; }
+.sched2-time-btn { border: 1px solid rgba(20,221,214,.2); border-radius: 6px; background: rgba(20,221,214,.04); color: #14ddd6; font-size: 15px; font-weight: 700; padding: 4px 8px; cursor: pointer; transition: .2s; font-family: 'DM Mono', monospace; }
+.sched2-time-btn:hover { background: rgba(20,221,214,.1); border-color: rgba(20,221,214,.35); }
+.sched2-hint { font-size: 8px; color: #4e6d78; text-transform: uppercase; letter-spacing: .04em; }
+
+/* Schedule actions */
+.sched2-actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.sched2-action-btn { display: flex; align-items: center; gap: 5px; padding: 7px 12px; border: 1px solid #263b46; border-radius: 7px; font-size: 11px; font-weight: 600; color: #7c929c; background: transparent; cursor: pointer; transition: .2s; white-space: nowrap; }
+.sched2-action-btn:hover { color: #cbd5db; border-color: #3a4d57; }
+.sched2-save { color: #5ee58a; border-color: rgba(94,229,138,.3); background: rgba(94,229,138,.06); }
+.sched2-save:hover { background: rgba(94,229,138,.12); }
+.sched2-clear { color: #f06565; border-color: rgba(240,101,101,.2); }
+.sched2-clear:hover { background: rgba(240,101,101,.08); border-color: rgba(240,101,101,.35); }
+
+/* Copy menu */
+.sched2-copy-wrap { position: relative; }
+.sched2-copy-menu { position: absolute; bottom: calc(100% + 6px); left: 0; display: grid; gap: 2px; padding: 6px; border-radius: 8px; border: 1px solid #263b46; background: #111d25; box-shadow: 0 8px 24px rgba(0,0,0,.4); z-index: 20; min-width: 140px; }
+.sched2-copy-item { display: block; width: 100%; padding: 7px 12px; border: 0; border-radius: 5px; font-size: 12px; font-weight: 500; color: #cbd5db; background: transparent; cursor: pointer; text-align: left; transition: .15s; }
+.sched2-copy-item:hover { background: rgba(20,221,214,.08); color: #14ddd6; }
+
+/* Responsive */
+@media (max-width: 900px) {
+  .setpoint-grid-v2 { grid-template-columns: 1fr; }
+  .sched2-grid { grid-template-columns: repeat(4, 1fr); }
+}
+@media (max-width: 480px) {
+  .sched2-grid { grid-template-columns: repeat(3, 1fr); }
+  .sp2-current strong { font-size: 42px; }
+}
