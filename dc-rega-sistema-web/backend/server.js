@@ -47,10 +47,18 @@ engine.onSensorUpdate = (sensorId, moisture) => {
   io.emit('controller:sensor', { sensorId, moisture });
 };
 
+engine.onSensorHealthChange = (health) => {
+  io.emit('controller:sensor-health', health);
+};
+
 // ── Device tracking ──
 let deviceOnline = false;
 let lastDeviceContact = 0;
 let deviceInfo = null; // info from /api/device/hello
+
+function broadcastDeviceStatus() {
+  io.emit('controller:device', { online: deviceOnline, info: deviceInfo });
+}
 
 // Sensor simulation loop (every 3 seconds) — only runs when device is offline
 let sensorInterval = null;
@@ -62,9 +70,16 @@ function startSensorSim() {
       if (deviceOnline) {
         console.log('[DEVICE] ESP32 offline — switching to simulation');
         deviceOnline = false;
+        engine._log('device_offline', 'ESP32-S3',
+          `Dispositivo ${deviceInfo?.deviceId || 'desconhecido'} perdeu contacto — a simular sensores até reconectar`,
+          'critical', { deviceId: deviceInfo?.deviceId || null });
+        broadcastDeviceStatus();
       }
       engine.updateSensors();
       engine.checkAutoCycle();
+    } else {
+      // Dispositivo real online — verificar se algum sensor deixou de reportar
+      engine.checkSensorHealth(15000);
     }
   }, 3000);
 }
@@ -212,6 +227,7 @@ app.post('/api/control/zones', (req, res) => {
 app.post('/api/device/hello', checkDeviceToken, (req, res) => {
   const { deviceId, firmware, ip, rssi } = req.body || {};
   
+  const wasOnline = deviceOnline;
   deviceOnline = true;
   lastDeviceContact = Date.now();
   deviceInfo = { deviceId, firmware, ip, rssi, connectedAt: new Date().toISOString() };
@@ -219,8 +235,9 @@ app.post('/api/device/hello', checkDeviceToken, (req, res) => {
   console.log(`[DEVICE] Hello from ${deviceId || 'unknown'} — fw ${firmware || '?'} @ ${ip || '?'}`);
   
   engine._log('device_connected', 'ESP32-S3',
-    `Dispositivo ${deviceId || 'desconhecido'} conectado (fw ${firmware || '?'})`, 'info',
+    `Dispositivo ${deviceId || 'desconhecido'} reconhecido — controlador ligado (fw ${firmware || '?'})`, 'info',
     { deviceId, firmware, ip, rssi });
+  broadcastDeviceStatus();
   
   res.json({
     ok: true,
@@ -233,9 +250,16 @@ app.post('/api/device/hello', checkDeviceToken, (req, res) => {
 app.post('/api/device/telemetry', checkDeviceToken, (req, res) => {
   const { deviceId, firmware, ip, rssi, uptime, emergency, sensors } = req.body || {};
   
+  const wasOnline = deviceOnline;
   deviceOnline = true;
   lastDeviceContact = Date.now();
   deviceInfo = { ...deviceInfo, deviceId, firmware, ip, rssi, uptime, lastTelemetry: new Date().toISOString() };
+
+  if (!wasOnline) {
+    engine._log('device_reconnected', 'ESP32-S3',
+      `Dispositivo ${deviceId || 'desconhecido'} voltou a comunicar`, 'info', { deviceId, firmware, ip, rssi });
+    broadcastDeviceStatus();
+  }
   
   // Update sensor readings from real device
   if (sensors && Array.isArray(sensors)) {
@@ -272,8 +296,10 @@ app.post('/api/device/telemetry', checkDeviceToken, (req, res) => {
 
 // GET /api/device/outputs — ESP32 consulta as saídas desejadas
 app.get('/api/device/outputs', checkDeviceToken, (req, res) => {
+  const wasOnline = deviceOnline;
   lastDeviceContact = Date.now();
   deviceOnline = true;
+  if (!wasOnline) broadcastDeviceStatus();
   
   res.json({
     emergency: engine.state === 'emergency',
@@ -292,6 +318,7 @@ app.get('/api/device/status', checkDeviceToken, (req, res) => {
     deviceOnline,
     lastContact: lastDeviceContact ? new Date(lastDeviceContact).toISOString() : null,
     deviceInfo,
+    sensors: engine.getSensorHealth(),
     engine: {
       state: engine.state,
       pumpOn: engine.pumpOn,
@@ -406,6 +433,8 @@ io.on('connection', (socket) => {
   socket.emit('controller:gpio', engine.gpio);
   // Send device status
   socket.emit('controller:device', { online: deviceOnline, info: deviceInfo });
+  // Send current sensor health snapshot
+  engine.getSensorHealth().forEach((health) => socket.emit('controller:sensor-health', health));
 
   socket.on('control:start', (data) => engine.start(data?.pumpDelay || 5));
   socket.on('control:stop', () => engine.stop());

@@ -104,15 +104,25 @@ const defaultSchedules = (enabled: boolean): Record<WeekDay, WaterSchedule> => (
 });
 
 const initialZones: Zone[] = [
-  { id: 'Y1', sensorId: 'B1', name: 'Zona 1', moisture: 64, target: 55, lastWatered: 'Hoje, 18:12', on: false, waterDuration: 60, x: 28, y: 36, schedules: defaultSchedules(true) },
-  { id: 'Y2', sensorId: 'B2', name: 'Zona 2', moisture: 57, target: 52, lastWatered: 'Hoje, 17:48', on: false, waterDuration: 45, x: 70, y: 36, schedules: defaultSchedules(true) },
+  { id: 'Y1', sensorId: 'B1', name: 'Zona 1', moisture: 64, target: 55, lastWatered: 'Hoje, 18:12', on: false, waterDuration: 60, x: 26, y: 34, schedules: defaultSchedules(true) },
+  { id: 'Y2', sensorId: 'B2', name: 'Zona 2', moisture: 57, target: 52, lastWatered: 'Hoje, 17:48', on: false, waterDuration: 45, x: 75, y: 34, schedules: defaultSchedules(true) },
 ];
 
-const initialErrors: ErrorEvent[] = [
-  { id: 'E001', time: 'Hoje, 21:12', source: 'Sensor B2', message: 'Leitura recebida dentro do intervalo esperado.', severity: 'info', resolved: true },
-  { id: 'E002', time: 'Hoje, 14:03', source: 'Bomba K1', message: 'Sobrecorrente detectada no relé K1 durante o arranque.', severity: 'warning', resolved: true },
-  { id: 'E003', time: 'Ontem, 06:30', source: 'Comunicação', message: 'Timeout Modbus no barramento RS485 — sensor B1.', severity: 'critical', resolved: true },
-];
+// Sem dados de demonstração: os alarmes são derivados de eventos reais do
+// backend (severidade 'warning'/'critical') — ver eventToErrorEvent() e o
+// carregamento em loadEvents()/subscrição 'event'.
+const initialErrors: ErrorEvent[] = [];
+
+function eventToErrorEvent(ev: EventLogEntry): ErrorEvent {
+  return {
+    id: ev.id,
+    time: formatDateTime(ev.created_at),
+    source: ev.source,
+    message: ev.message,
+    severity: ev.severity === 'critical' ? 'critical' : ev.severity === 'warning' ? 'warning' : 'info',
+    resolved: false,
+  };
+}
 
 const SENSOR_GPIO_MAP: Record<string, number> = { B1: 4, B2: 5 };
 // Novo esquema: sensores B1/B2 não têm relés dedicados.
@@ -155,6 +165,19 @@ function sensorStatus(zone: Zone): 'ok' | 'warning' | 'offline' {
 function formatTime(iso: string): string {
   const d = new Date(iso);
   return d.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatDateTime(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const isToday = d.toDateString() === now.toDateString();
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  const isYesterday = d.toDateString() === yesterday.toDateString();
+  const time = d.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
+  if (isToday) return `Hoje, ${time}`;
+  if (isYesterday) return `Ontem, ${time}`;
+  return `${d.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' })}, ${time}`;
 }
 
 function eventToHistoryItem(ev: EventLogEntry): { time: string; zone: string; duration: string; eventType: string } {
@@ -211,6 +234,7 @@ function App() {
   const [weatherLoading, setWeatherLoading] = useState(false);
   const [deviceOnline, setDeviceOnline] = useState(false);
   const [deviceInfo, setDeviceInfo] = useState<{ deviceId?: string; firmware?: string; ip?: string; rssi?: number } | null>(null);
+  const [sensorHealth, setSensorHealth] = useState<Record<string, { stale: boolean; lastSeen: number | null }>>({});
   const [clock, setClock] = useState('');
   const [dateStr, setDateStr] = useState('');
 
@@ -283,6 +307,15 @@ function App() {
     setEventLogLoading(true);
     const events = await fetchEvents(100);
     setEventLog(events);
+    // Alarmes reais: derivados de eventos com severidade warning/critical
+    const alarmEvents = events.filter((e) => e.severity === 'warning' || e.severity === 'critical');
+    if (alarmEvents.length > 0) {
+      setErrors((cur) => {
+        const known = new Set(cur.map((e) => e.id));
+        const fresh = alarmEvents.filter((e) => !known.has(e.id)).map(eventToErrorEvent);
+        return [...fresh, ...cur];
+      });
+    }
     setEventLogLoading(false);
   }, []);
 
@@ -355,6 +388,14 @@ function App() {
       if (ev.message) {
         showNotice(ev.message as string);
       }
+      // Erros/alarmes reais: qualquer evento warning/critical vira alarme
+      const severity = ev.severity as string | undefined;
+      if (severity === 'warning' || severity === 'critical') {
+        setErrors((cur) => {
+          if (cur.some((e) => e.id === ev.id)) return cur;
+          return [eventToErrorEvent(ev as unknown as EventLogEntry), ...cur];
+        });
+      }
     });
 
     const unsubDevice = ctrl.on('controller:device', (dev: Record<string, unknown>) => {
@@ -362,10 +403,30 @@ function App() {
       if (dev.info) setDeviceInfo(dev.info as typeof deviceInfo);
     });
 
+    const unsubSensorHealth = ctrl.on('sensor-health', (health: Record<string, unknown>) => {
+      const sensorId = health.sensorId as string;
+      if (!sensorId) return;
+      setSensorHealth((cur) => ({ ...cur, [sensorId]: { stale: !!health.stale, lastSeen: (health.lastSeen as number) ?? null } }));
+    });
+
+    // Snapshot inicial do estado real do controlador e sensores (REST) —
+    // garante que a UI mostra dados reais mesmo antes do primeiro evento WS
+    ctrl.fetchDeviceStatus().then((status) => {
+      if (!status) return;
+      setDeviceOnline(status.deviceOnline);
+      if (status.deviceInfo) setDeviceInfo(status.deviceInfo);
+      if (Array.isArray(status.sensors)) {
+        const map: Record<string, { stale: boolean; lastSeen: number | null }> = {};
+        status.sensors.forEach((s) => { map[s.sensorId] = { stale: s.stale, lastSeen: s.lastSeen }; });
+        setSensorHealth(map);
+      }
+    });
+
     return () => {
       unsubState();
       unsubEvent();
       unsubDevice();
+      unsubSensorHealth();
       ctrl.disconnect();
     };
   }, []);
@@ -399,7 +460,13 @@ function App() {
     const id = makeZoneId();
     const sensorId = makeSensorId();
     const num = zones.length + 1;
-    const newZone: Zone = { id, sensorId, name: `Zona ${num}`, moisture: 50, target: 50, lastWatered: '—', on: false, waterDuration: 30, x: 30 + Math.random() * 40, y: 30 + Math.random() * 40, schedules: defaultSchedules(true) };
+    // Alterna entre os dois terrenos por defeito, com leve variação, para o
+    // mapa começar organizado em vez de posições totalmente aleatórias.
+    const inFieldB = zones.length % 2 === 1;
+    const baseX = inFieldB ? 75 : 26;
+    const x = Math.min(94, Math.max(6, baseX + (Math.random() * 10 - 5)));
+    const y = Math.min(76, Math.max(14, 26 + Math.floor(zones.length / 2) * 14 + (Math.random() * 6 - 3)));
+    const newZone: Zone = { id, sensorId, name: `Zona ${num}`, moisture: 50, target: 50, lastWatered: '—', on: false, waterDuration: 30, x, y, schedules: defaultSchedules(true) };
     setZones((cur) => [...cur, newZone]);
     logEvent('zone_add', `${newZone.name} · Sensor ${sensorId}`, `Sensor ${sensorId} e válvula ${id} adicionados`, 'info', { zone_id: id, sensor_id: sensorId });
     showNotice(`Sensor ${sensorId} adicionado`);
@@ -612,7 +679,7 @@ function App() {
 
   const renderPage = () => {
     if (activePage === 'Resumo') {
-      return <Overview zones={zones} pumpOn={pumpOn} autoMode={autoMode} activeZones={activeZones} onToggleZone={toggleZone} onTogglePump={togglePump} onToggleMode={toggleAutoMode} onOpenMap={() => requireAuth('Mapa')} weather={weather} language={language} />;
+      return <Overview zones={zones} pumpOn={pumpOn} autoMode={autoMode} activeZones={activeZones} onToggleZone={toggleZone} onTogglePump={togglePump} onToggleMode={toggleAutoMode} onOpenMap={() => requireAuth('Mapa')} weather={weather} language={language} deviceOnline={deviceOnline} deviceInfo={deviceInfo} sensorHealth={sensorHealth} clock={clock} dateStr={dateStr} latestAlert={errors[0]} />;
     }
     if (activePage === 'Estado') return <StateView zones={zones} pumpOn={pumpOn} autoMode={autoMode} onToggleMode={toggleAutoMode} language={language} gpioConfig={gpioConfig} editingGpio={editingGpio} setEditingGpio={setEditingGpio} handleGpioUpdate={handleGpioUpdate} saveGpioConfig={saveGpioConfig} />;
     if (activePage === 'Setpoints') return <SetpointsView zones={zones} pumpDelay={pumpDelay} setPumpDelay={setPumpDelay} onChange={(id, target) => { setZones((cur) => { const next = cur.map((z) => (z.id === id ? { ...z, target } : z)); setTimeout(() => getControllerClient().updateZones(next), 200); return next; }); }} onUpdateZone={(id, patch) => { setZones((cur) => { const next = cur.map((z) => (z.id === id ? { ...z, ...patch } : z)); setTimeout(() => getControllerClient().updateZones(next), 200); return next; }); }} onAddZone={addZone} onRemoveZone={(z) => setZoneToDelete(z)} language={language} />;
@@ -685,9 +752,42 @@ function App() {
 }
 
 /* ---------- Overview ---------- */
-function Overview({ zones, pumpOn, autoMode, activeZones, onToggleZone, onTogglePump, onToggleMode, onOpenMap, weather, language }: { zones: Zone[]; pumpOn: boolean; autoMode: boolean; activeZones: number; onToggleZone: (id: string) => void; onTogglePump: () => void; onToggleMode: () => void; onOpenMap: () => void; weather: { temp: number; desc: string; city: string; country: string; icon: string }; language: Language }) {
+function Overview({ zones, pumpOn, autoMode, activeZones, onToggleZone, onTogglePump, onToggleMode, onOpenMap, weather, language, deviceOnline, deviceInfo, sensorHealth, clock, dateStr, latestAlert }: {
+  zones: Zone[]; pumpOn: boolean; autoMode: boolean; activeZones: number; onToggleZone: (id: string) => void; onTogglePump: () => void; onToggleMode: () => void; onOpenMap: () => void; weather: { temp: number; desc: string; city: string; country: string; icon: string }; language: Language;
+  deviceOnline: boolean;
+  deviceInfo: { deviceId?: string; firmware?: string; ip?: string; rssi?: number } | null;
+  sensorHealth: Record<string, { stale: boolean; lastSeen: number | null }>;
+  clock: string;
+  dateStr: string;
+  latestAlert?: ErrorEvent;
+}) {
+  const staleSensorCount = zones.filter((z) => sensorHealth[z.sensorId]?.stale).length;
   return (
     <div className="content-stack">
+      <Panel className={`device-status-panel ${deviceOnline ? 'device-online' : 'device-offline'}`}>
+        <div className="device-status-main">
+          <span className={`device-status-dot ${deviceOnline ? 'on' : 'off'}`} />
+          <div>
+            <strong>{deviceOnline ? 'Controlador reconhecido' : 'Controlador não detetado — a simular'}</strong>
+            <span>
+              {deviceOnline && deviceInfo
+                ? `${deviceInfo.deviceId || 'ESP32-S3'} · fw ${deviceInfo.firmware || '—'} · ${deviceInfo.ip || '—'}${typeof deviceInfo.rssi === 'number' ? ` · ${deviceInfo.rssi} dBm` : ''}`
+                : 'Ligue o firmware gtc-esp32s3 à rede para ativar dados reais'}
+            </span>
+          </div>
+        </div>
+        <div className="device-status-sensors">
+          {zones.map((z) => {
+            const health = sensorHealth[z.sensorId];
+            const stale = !!health?.stale;
+            return (
+              <span key={z.id} className={`sensor-health-pill ${stale ? 'stale' : deviceOnline ? 'ok' : 'sim'}`} title={stale ? 'Sem resposta do sensor' : deviceOnline ? 'Sensor reconhecido' : 'Simulado (sem dispositivo real)'}>
+                <Radio size={12} /> {z.sensorId} {stale ? '· sem sinal' : deviceOnline ? '· ok' : '· sim.'}
+              </span>
+            );
+          })}
+        </div>
+      </Panel>
       <Panel className="hero-panel">
         <div className="hero-status">
           <div className="system-orbit"><div className="orbit-ring" /><div className="orbit-core"><Leaf size={39} /></div></div>
@@ -706,21 +806,25 @@ function Overview({ zones, pumpOn, autoMode, activeZones, onToggleZone, onToggle
           {zones.map((z) => <ActuatorRow key={z.id} icon={<Droplets />} label={`${z.name} · Válvula ${z.id}`} on={z.on} onToggle={() => onToggleZone(z.id)} />)}
         </div>
       </Panel>
-      <div className="sensor-grid">{zones.map((z) => <SensorCard key={z.id} zone={z} language={language} />)}</div>
+      <div className="sensor-grid">{zones.map((z) => <SensorCard key={z.id} zone={z} language={language} stale={!!sensorHealth[z.sensorId]?.stale} />)}</div>
       <Panel className="metrics-panel">
-        <Metric icon={<CalendarDays />} label="Data" value="10/08/2026" />
-        <Metric icon={<TimerReset />} label="Hora" value="21:16:43" />
+        <Metric icon={<CalendarDays />} label="Data" value={dateStr || '—'} />
+        <Metric icon={<TimerReset />} label="Hora" value={clock || '—'} />
         <Metric icon={<Droplets />} label="Última rega" value={zones[0]?.name ?? '—'} detail={zones[0]?.lastWatered ?? '—'} />
-        <Metric icon={<Cpu />} label="Controlador" value="ESP32-S3" detail="Wi-Fi · BLE · RS485" accent />
+        <Metric icon={<Cpu />} label="Controlador" value={deviceOnline ? (deviceInfo?.deviceId || 'ESP32-S3') : 'Simulação'} detail={deviceOnline ? `Wi-Fi · fw ${deviceInfo?.firmware || '—'}` : 'Sem dispositivo real ligado'} accent={deviceOnline} />
       </Panel>
       <div className="quick-grid">
         <Panel className="quick-panel">
           <div className="panel-title-row"><div><span className="section-kicker">{t('overview.attentionOps', language)}</span><h3>{t('overview.nextWater', language)}</h3></div><TimerReset size={20} /></div>
-          <div className="next-irrigation"><strong>Zona 2</strong><span>{t('overview.scheduled', language)}</span><ChevronRight size={18} /></div>
+          <div className="next-irrigation"><strong>{zones.find((z) => z.moisture < z.target)?.name ?? zones[0]?.name ?? '—'}</strong><span>{t('overview.scheduled', language)}</span><ChevronRight size={18} /></div>
         </Panel>
         <Panel className="quick-panel alarm-preview">
           <div className="panel-title-row"><div><span className="section-kicker">{t('overview.system', language)}</span><h3>{t('overview.recentAlerts', language)}</h3></div><AlertTriangle size={20} /></div>
-          <div className="alert-line"><span className="alert-icon"><AlertTriangle size={15} /></span><div><strong>Sensor B2</strong><span>Leitura dentro do intervalo normal</span></div><small>há 4 min</small></div>
+          {latestAlert ? (
+            <div className="alert-line"><span className="alert-icon"><AlertTriangle size={15} /></span><div><strong>{latestAlert.source}</strong><span>{latestAlert.message}</span></div><small>{latestAlert.time}</small></div>
+          ) : (
+            <div className="alert-line alert-line-empty"><span className="alert-icon ok"><CheckCircle2 size={15} /></span><div><strong>Sem alarmes ativos</strong><span>{staleSensorCount > 0 ? `${staleSensorCount} sensor(es) sem sinal` : 'Todos os sensores a reportar normalmente'}</span></div></div>
+          )}
         </Panel>
       </div>
       <div className="overview-map-link">
@@ -737,12 +841,12 @@ function ActuatorRow({ icon, label, on, onToggle }: { icon: React.ReactNode; lab
   return <div className="actuator-row"><span className="actuator-icon">{icon}</span><strong>{label}</strong><button className={`switch ${on ? 'switch-on' : ''}`} onClick={onToggle} aria-label={`Alternar ${label}`}><span /></button><span className={`actuator-state ${on ? 'on' : ''}`}>{on ? 'LIGADO' : 'DESLIGADO'}</span></div>;
 }
 
-function SensorCard({ zone, language }: { zone: Zone; language: Language }) {
+function SensorCard({ zone, language, stale }: { zone: Zone; language: Language; stale?: boolean }) {
   return (
-    <Panel className="sensor-card">
+    <Panel className={`sensor-card ${stale ? 'sensor-card-stale' : ''}`}>
       <div className="sensor-header">
         <div><span className="section-kicker">{t('overview.sensor', language)} {zone.sensorId}</span><h3>{zone.name}</h3></div>
-        <StatusBadge tone={zone.moisture >= zone.target ? 'success' : 'warning'}>{zone.moisture >= zone.target ? t('overview.normal', language) : t('overview.attention', language)}</StatusBadge>
+        <StatusBadge tone={stale ? 'warning' : zone.moisture >= zone.target ? 'success' : 'warning'}>{stale ? (language === 'PT' ? 'Sem sinal' : 'No signal') : zone.moisture >= zone.target ? t('overview.normal', language) : t('overview.attention', language)}</StatusBadge>
       </div>
       <div className="sensor-reading">
         <div className="water-icon"><Droplets size={24} /></div>
@@ -750,7 +854,7 @@ function SensorCard({ zone, language }: { zone: Zone; language: Language }) {
         <span>{t('overview.moisture', language)}</span>
       </div>
       <div className="meter"><span style={{ width: `${zone.moisture}%` }} /></div>
-      <div className="sensor-footer"><span>Setpoint <b>{zone.target}%</b></span><span>Atualizado agora</span></div>
+      <div className="sensor-footer"><span>Setpoint <b>{zone.target}%</b></span><span>{stale ? (language === 'PT' ? 'Última leitura desatualizada' : 'Reading stale') : 'Atualizado agora'}</span></div>
     </Panel>
   );
 }
@@ -962,6 +1066,9 @@ function SetpointsView({ zones, onChange, onUpdateZone, pumpDelay, setPumpDelay,
   language: Language;
 }) {
   const [keyboard, setKeyboard] = useState<{ target: 'pump' | string; value: string } | null>(null);
+  // Valores em edição (ainda não guardados) por zona — o slider já não grava sozinho
+  const [pending, setPending] = useState<Record<string, number>>({});
+  const [justSaved, setJustSaved] = useState<Record<string, boolean>>({});
 
   const openKeyboard = (target: 'pump' | string, current: number) => {
     setKeyboard({ target, value: String(current) });
@@ -973,6 +1080,26 @@ function SetpointsView({ zones, onChange, onUpdateZone, pumpDelay, setPumpDelay,
     if (keyboard.target === 'pump') setPumpDelay(n);
     else onUpdateZone(keyboard.target, { waterDuration: n });
     setKeyboard(null);
+  };
+
+  const getDisplayTarget = (zone: Zone) => pending[zone.id] ?? zone.target;
+  const isDirty = (zone: Zone) => pending[zone.id] !== undefined && pending[zone.id] !== zone.target;
+
+  const handleSlide = (id: string, value: number) => {
+    setPending((cur) => ({ ...cur, [id]: value }));
+  };
+
+  const saveSetpoint = (zone: Zone) => {
+    const value = pending[zone.id];
+    if (value === undefined || value === zone.target) return;
+    onChange(zone.id, value);
+    setPending((cur) => {
+      const next = { ...cur };
+      delete next[zone.id];
+      return next;
+    });
+    setJustSaved((cur) => ({ ...cur, [zone.id]: true }));
+    window.setTimeout(() => setJustSaved((cur) => ({ ...cur, [zone.id]: false })), 1800);
   };
 
   return (
@@ -1002,15 +1129,25 @@ function SetpointsView({ zones, onChange, onUpdateZone, pumpDelay, setPumpDelay,
         </Panel>
       </div>
       <div className="setpoint-grid">
-        {zones.map((zone) => (
-          <Panel key={zone.id} className="setpoint-card">
+        {zones.map((zone) => {
+          const displayTarget = getDisplayTarget(zone);
+          const dirty = isDirty(zone);
+          return (
+          <Panel key={zone.id} className={`setpoint-card ${dirty ? 'setpoint-dirty' : ''}`}>
             <PanelHeader eyebrow={`CONFIGURAÇÃO · SENSOR ${zone.sensorId}`} title={zone.name} showIcon={false} />
             <div className="setpoint-ids"><span><Droplets size={13} /> Válvula {zone.id}</span><span><Radio size={13} /> Sensor {zone.sensorId}</span></div>
             <button className="remove-sensor-btn" onClick={() => onRemoveZone(zone)} aria-label={`Remover ${zone.name}`}><Trash2 size={16} /></button>
-            <div className="setpoint-value"><strong>{zone.target}<small>%</small></strong><span>Humidade mínima desejada</span></div>
-            <input type="range" min="20" max="90" value={zone.target} onChange={(e) => onChange(zone.id, Number(e.target.value))} />
+            <div className="setpoint-value"><strong>{displayTarget}<small>%</small></strong><span>Humidade mínima desejada</span></div>
+            <input type="range" min="20" max="90" value={displayTarget} onChange={(e) => handleSlide(zone.id, Number(e.target.value))} />
             <div className="range-labels"><span>20%</span><span>90%</span></div>
-            <div className="setpoint-note"><Gauge size={16} /><span>Atual: <b>{zone.moisture}%</b> · {zone.moisture >= zone.target ? 'acima do mínimo' : 'abaixo do mínimo'}</span></div>
+            <div className="setpoint-note"><Gauge size={16} /><span>Atual: <b>{zone.moisture}%</b> · {zone.moisture >= displayTarget ? 'acima do mínimo' : 'abaixo do mínimo'}</span></div>
+            <button
+              className={`setpoint-save-btn ${dirty ? 'is-dirty' : ''} ${justSaved[zone.id] ? 'is-saved' : ''}`}
+              onClick={() => saveSetpoint(zone)}
+              disabled={!dirty}
+            >
+              {justSaved[zone.id] ? <><CheckCircle2 size={15} /> Setpoint guardado</> : <><Save size={15} /> {dirty ? 'Guardar setpoint' : 'Setpoint guardado'}</>}
+            </button>
             <div className="time-controls">
               <label>Tempo de rega da válvula</label>
               <div className="time-input">
@@ -1025,7 +1162,8 @@ function SetpointsView({ zones, onChange, onUpdateZone, pumpDelay, setPumpDelay,
               <ScheduleEditor zone={zone} onChange={(schedules) => onUpdateZone(zone.id, { schedules } as Partial<Zone>)} language={language} />
             </div>
           </Panel>
-        ))}
+          );
+        })}
       </div>
       {keyboard && <NumericKeyboard value={keyboard.value} onChange={(v) => setKeyboard((k) => (k ? { ...k, value: v } : k))} onSubmit={submitKeyboard} onClose={() => setKeyboard(null)} />}
     </>
@@ -1036,11 +1174,11 @@ function SetpointsView({ zones, onChange, onUpdateZone, pumpDelay, setPumpDelay,
 type MapElement = { x: number; y: number };
 type MapField = { id: string; x: number; y: number; w: number; h: number; name: string };
 
-const DEFAULT_PUMP_POS: MapElement = { x: 40, y: 82 };
-const DEFAULT_MCU_POS: MapElement = { x: 60, y: 82 };
+const DEFAULT_PUMP_POS: MapElement = { x: 38, y: 84 };
+const DEFAULT_MCU_POS: MapElement = { x: 62, y: 84 };
 const DEFAULT_FIELDS: MapField[] = [
-  { id: 'F1', x: 6, y: 6, w: 42, h: 58, name: 'Terreno A' },
-  { id: 'F2', x: 52, y: 6, w: 42, h: 58, name: 'Terreno B' },
+  { id: 'F1', x: 5, y: 8, w: 41, h: 56, name: 'Terreno A' },
+  { id: 'F2', x: 54, y: 8, w: 41, h: 56, name: 'Terreno B' },
 ];
 
 let nextFieldId = 3;

@@ -70,6 +70,11 @@ class ControlEngine {
     this.onLog = null;           // (entry) => void
     this.onGpioChange = null;    // (gpio, value) => void
     this.onSensorUpdate = null;  // (sensorId, moisture) => void
+    this.onSensorHealthChange = null; // ({ sensorId, stale, lastSeen }) => void
+
+    // Saúde dos sensores reais (telemetria do ESP32)
+    this.sensorLastSeen = {};    // sensorId -> timestamp (ms)
+    this.sensorStale = {};       // sensorId -> bool
   }
 
   // ── Inicialização ──
@@ -339,6 +344,14 @@ class ControlEngine {
 
   // ── Update sensor from real device (ESP32 telemetry) ──
   updateDeviceSensor(sensorId, moisture) {
+    // Marcar sensor como visto agora — independente de existir zona associada
+    this.sensorLastSeen[sensorId] = Date.now();
+    if (this.sensorStale[sensorId]) {
+      this.sensorStale[sensorId] = false;
+      this._log('sensor_recovered', `Sensor ${sensorId}`, `Sensor ${sensorId} voltou a reportar dados`, 'info', { sensorId });
+      if (this.onSensorHealthChange) this.onSensorHealthChange({ sensorId, stale: false, lastSeen: this.sensorLastSeen[sensorId] });
+    }
+
     const zone = this.zones.find(z => z.sensorId === sensorId);
     if (!zone) return;
     zone.moisture = moisture;
@@ -351,6 +364,31 @@ class ControlEngine {
     if (this.onSensorUpdate) {
       this.onSensorUpdate(sensorId, moisture);
     }
+  }
+
+  // Verifica sensores sem resposta há mais tempo do que o esperado
+  // (chamado periodicamente pelo server enquanto o dispositivo está online)
+  checkSensorHealth(staleAfterMs = 15000) {
+    const now = Date.now();
+    const knownSensorIds = Array.from(new Set(this.zones.map(z => z.sensorId).filter(Boolean)));
+    knownSensorIds.forEach(sensorId => {
+      const lastSeen = this.sensorLastSeen[sensorId];
+      const isStale = !lastSeen || (now - lastSeen) > staleAfterMs;
+      if (isStale && !this.sensorStale[sensorId]) {
+        this.sensorStale[sensorId] = true;
+        this._log('sensor_stale', `Sensor ${sensorId}`, `Sensor ${sensorId} sem resposta há mais de ${Math.round(staleAfterMs / 1000)}s`, 'warning', { sensorId, lastSeen: lastSeen || null });
+        if (this.onSensorHealthChange) this.onSensorHealthChange({ sensorId, stale: true, lastSeen: lastSeen || null });
+      }
+    });
+  }
+
+  getSensorHealth() {
+    const knownSensorIds = Array.from(new Set(this.zones.map(z => z.sensorId).filter(Boolean)));
+    return knownSensorIds.map(sensorId => ({
+      sensorId,
+      lastSeen: this.sensorLastSeen[sensorId] || null,
+      stale: !!this.sensorStale[sensorId],
+    }));
   }
 
   // ── Verificação do ciclo automático (com schedules) ──
@@ -430,6 +468,12 @@ class ControlEngine {
         lastWatered: z.lastWatered || '—',
         on: z.on,
         waterDuration: z.waterDuration || 30,
+        // x/y (posição no mapa) e schedules (programação semanal) têm de
+        // viajar em todos os broadcasts, senão o frontend sobrepõe-os com
+        // undefined a cada atualização de estado (bug: mapa "desorganizado").
+        x: typeof z.x === 'number' ? z.x : 50,
+        y: typeof z.y === 'number' ? z.y : 50,
+        schedules: z.schedules || null,
       })),
       gpio: { ...this.gpio },
       currentZoneIndex: this.currentZoneIndex,

@@ -140,6 +140,9 @@ export function createControllerClient() {
             case 'controller:device':
               emit('controller:device', payload);
               break;
+            case 'controller:sensor-health':
+              emit('sensor-health', payload);
+              break;
           }
         }
       } catch { /* ignore parse errors */ }
@@ -274,6 +277,18 @@ export function createControllerClient() {
         if (res.ok) return res.json();
       } catch { /* ignore */ }
       return [];
+    },
+    fetchDeviceStatus: async (): Promise<{
+      deviceOnline: boolean;
+      lastContact: string | null;
+      deviceInfo: { deviceId?: string; firmware?: string; ip?: string; rssi?: number } | null;
+      sensors: { sensorId: string; lastSeen: number | null; stale: boolean }[];
+    } | null> => {
+      try {
+        const res = await fetch(apiUrl('/api/device/status'));
+        if (res.ok) return res.json();
+      } catch { /* ignore */ }
+      return null;
     },
   };
 }
