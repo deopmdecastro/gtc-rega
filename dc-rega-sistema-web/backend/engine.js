@@ -317,30 +317,8 @@ class ControlEngine {
     this._log('mode_change', 'Modo de operação', mode ? 'Modo automático ativado' : 'Modo manual ativado', 'info');
     this._broadcast();
   }
-  // ── Simulação de sensores ──
-  updateSensors() {
-    this.zones.forEach(z => {
-      // Se a zona está a regar, humidade sobe
-      if (z.on) {
-        z.moisture = Math.min(99, z.moisture + (Math.random() * 2 + 1));
-      } else {
-        // Humidade desce lentamente
-        z.moisture = Math.max(5, z.moisture - (Math.random() * 0.3));
-      }
-      z.moisture = Math.round(z.moisture);
-      
-      // Atualizar GPIO virtual do sensor
-      const sensorGpio = z.sensorId === 'B1' ? GPIO.SENSOR_B1 : 
-                         z.sensorId === 'B2' ? GPIO.SENSOR_B2 : null;
-      if (sensorGpio !== null) {
-        this.gpio[sensorGpio] = z.moisture;
-      }
-      
-      if (this.onSensorUpdate) {
-        this.onSensorUpdate(z.sensorId, z.moisture);
-      }
-    });
-  }
+  // Nota: não existe simulação de sensores. Os valores de humidade chegam
+  // exclusivamente por telemetria real do ESP32-S3 (updateDeviceSensor).
 
   // ── Update sensor from real device (ESP32 telemetry) ──
   updateDeviceSensor(sensorId, moisture) {

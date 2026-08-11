@@ -16,6 +16,10 @@
 #define GTC_AP_SSID       "GTC-Rega-Setup"
 #define GTC_AP_PASS       "gtcrega123"
 
+// Interface web local servida pelo ESP32 (LittleFS + ESPAsyncWebServer)
+#define GTC_WEBUI_PORT    80
+#define GTC_MDNS_HOST     "gtc-rega"
+
 // Períodos (ms)
 #define POLL_INTERVAL_MS        1000   // leitura de saídas desejadas
 #define TELEMETRY_INTERVAL_MS   3000   // envio de sensores
@@ -39,6 +43,10 @@ static const int ZONE_RELAY_PINS[] = { 6, 7, 11, 12, 13, 14 };
 // Calibração ADC: valor em ar seco e submerso em água (12 bits, 0-4095)
 #define SENSOR_DRY_RAW    3200
 #define SENSOR_WET_RAW    1300
+
+// Abaixo deste valor bruto considera-se que o sensor não está ligado
+// (pino sem sinal) — usado para reportar entradas reais na vista HARDWARE
+#define SENSOR_SIGNAL_RAW_MIN 60
 
 // ── Entradas de segurança ──
 #define PIN_EMERGENCY_BTN 0     // botão BOOT como paragem de emergência (INPUT_PULLUP)

@@ -17,11 +17,13 @@
 #include <esp_task_wdt.h>
 
 #include "config.h"
+#include "webui.h"
 
 // ── Estado ──
 static String baseUrl;
 static uint32_t lastPoll = 0, lastTelemetry = 0, lastSample = 0, lastOkContact = 0;
 static bool pumpOn = false;
+static bool autoModeOn = false;
 static bool zoneOn[ZONE_COUNT] = { false };
 static float moistureB1 = 0, moistureB2 = 0;
 static bool emergencyLatched = false;
@@ -39,6 +41,7 @@ static inline void writeRelay(int pin, bool on) {
 static void allOutputsOff() {
   writeRelay(PIN_RELAY_PUMP, false);
   writeRelay(PIN_RELAY_AUTO, false);
+  autoModeOn = false;
   for (size_t i = 0; i < ZONE_COUNT; i++) {
     writeRelay(ZONE_RELAY_PINS[i], false);
     zoneOn[i] = false;
@@ -68,6 +71,50 @@ static void sampleSensors() {
   moistureB2 = moistureB2 == 0 ? b2 : (moistureB2 * 0.8f + b2 * 0.2f);
 }
 
+// ── Estado elétrico real dos pinos ──
+// INPUT: valor lido no pino (1 = a receber sinal)
+// OUTPUT: 1 quando o pino está a emitir sinal para o relé
+static void gpioSnapshot(JsonObject out) {
+  out[String(PIN_SENSOR_B1)] = analogRead(PIN_SENSOR_B1) > SENSOR_SIGNAL_RAW_MIN ? 1 : 0;
+  out[String(PIN_SENSOR_B2)] = analogRead(PIN_SENSOR_B2) > SENSOR_SIGNAL_RAW_MIN ? 1 : 0;
+  out[String(PIN_EMERGENCY_BTN)] = digitalRead(PIN_EMERGENCY_BTN) == LOW ? 1 : 0;
+  out[String(PIN_RELAY_PUMP)] = pumpOn ? 1 : 0;
+  out[String(PIN_RELAY_STOP)] = emergencyLatched ? 1 : 0;
+  out[String(PIN_RELAY_AUTO)] = autoModeOn ? 1 : 0;
+  for (size_t i = 0; i < ZONE_COUNT; i++) out[String(ZONE_RELAY_PINS[i])] = zoneOn[i] ? 1 : 0;
+}
+
+// Estado real exposto pela interface local (webui.h)
+String gtcStatusJson() {
+  JsonDocument doc;
+  doc["deviceId"] = GTC_DEVICE_ID;
+  doc["firmware"] = GTC_FIRMWARE;
+  doc["online"] = WiFi.status() == WL_CONNECTED;
+  doc["serverOnline"] = serverOnline;
+  doc["ip"] = WiFi.localIP().toString();
+  doc["rssi"] = WiFi.RSSI();
+  doc["uptime"] = millis() / 1000;
+  doc["emergency"] = emergencyLatched;
+  doc["pump"] = pumpOn;
+  JsonArray sensors = doc["sensors"].to<JsonArray>();
+  JsonObject s1 = sensors.add<JsonObject>();
+  s1["sensorId"] = "B1"; s1["moisture"] = (int)roundf(moistureB1);
+  s1["ok"] = analogRead(PIN_SENSOR_B1) > SENSOR_SIGNAL_RAW_MIN;
+  JsonObject s2 = sensors.add<JsonObject>();
+  s2["sensorId"] = "B2"; s2["moisture"] = (int)roundf(moistureB2);
+  s2["ok"] = analogRead(PIN_SENSOR_B2) > SENSOR_SIGNAL_RAW_MIN;
+  gpioSnapshot(doc["gpio"].to<JsonObject>());
+  String out;
+  serializeJson(doc, out);
+  return out;
+}
+
+void gtcLocalEmergency() {
+  emergencyLatched = true;
+  allOutputsOff();
+  Serial.println("[EMERGENCY] paragem pela interface local");
+}
+
 // ── HTTP ──
 static bool httpJson(const char* method, const String& path, const String& body, JsonDocument& out) {
   if (WiFi.status() != WL_CONNECTED) return false;
@@ -94,10 +141,17 @@ static bool httpJson(const char* method, const String& path, const String& body,
 static void applyOutputs(JsonDocument& doc) {
   bool emergency = doc["emergency"] | false;
   bool wantPump = doc["pump"] | false;
+  bool wantAuto = doc["auto"] | false;
 
   if (emergency) {
     allOutputsOff();
     return;
+  }
+
+  if (wantAuto != autoModeOn) {
+    autoModeOn = wantAuto;
+    writeRelay(PIN_RELAY_AUTO, wantAuto);
+    Serial.printf("[AUTO] %s\n", wantAuto ? "ON" : "OFF");
   }
 
   JsonArray zones = doc["zones"].as<JsonArray>();
@@ -139,6 +193,9 @@ static void sendTelemetry() {
   JsonObject s2 = sensors.add<JsonObject>();
   s2["sensorId"] = "B2";
   s2["moisture"] = (int)roundf(moistureB2);
+
+  // Sinal real de cada pino (entradas e saídas) para a vista HARDWARE
+  gpioSnapshot(body["gpio"].to<JsonObject>());
 
   String payload;
   serializeJson(body, payload);
@@ -193,6 +250,8 @@ void setup() {
     ESP.restart();
   }
   Serial.printf("[WIFI] ligado: %s\n", WiFi.localIP().toString().c_str());
+
+  webuiBegin();
 
   baseUrl = String("http://") + GTC_SERVER_HOST + ":" + GTC_SERVER_PORT;
 

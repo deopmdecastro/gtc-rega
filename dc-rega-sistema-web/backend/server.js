@@ -60,34 +60,32 @@ function broadcastDeviceStatus() {
   io.emit('controller:device', { online: deviceOnline, info: deviceInfo });
 }
 
-// Sensor simulation loop (every 3 seconds) — only runs when device is offline
-let sensorInterval = null;
-function startSensorSim() {
-  if (sensorInterval) clearInterval(sensorInterval);
-  sensorInterval = setInterval(() => {
-    // Only simulate if no real device is connected
-    if (!deviceOnline || Date.now() - lastDeviceContact > DEVICE_OFFLINE_TIMEOUT) {
-      if (deviceOnline) {
-        console.log('[DEVICE] ESP32 offline — switching to simulation');
-        deviceOnline = false;
-        engine._log('device_offline', 'ESP32-S3',
-          `Dispositivo ${deviceInfo?.deviceId || 'desconhecido'} perdeu contacto — a simular sensores até reconectar`,
-          'critical', { deviceId: deviceInfo?.deviceId || null });
-        broadcastDeviceStatus();
-      }
-      engine.updateSensors();
-    } else {
-      // Dispositivo real online — verificar se algum sensor deixou de reportar
-      engine.checkSensorHealth(15000);
+// ── Monitorização real (a cada 3s) ──
+// Não existe simulação de sensores: todos os valores vêm da telemetria real do
+// ESP32-S3 (POST /api/device/telemetry). Aqui apenas verificamos presença do
+// controlador, saúde dos sensores e horários de rega.
+let monitorInterval = null;
+function startMonitor() {
+  if (monitorInterval) clearInterval(monitorInterval);
+  monitorInterval = setInterval(() => {
+    const silentFor = Date.now() - lastDeviceContact;
+    if (deviceOnline && silentFor > DEVICE_OFFLINE_TIMEOUT) {
+      deviceOnline = false;
+      console.log('[DEVICE] ESP32-S3 offline — sem telemetria');
+      engine._log('device_offline', 'ESP32-S3',
+        `Controlador ${deviceInfo?.deviceId || 'ESP32-S3'} sem contacto há ${Math.round(silentFor / 1000)}s — sem dados reais`,
+        'critical', { deviceId: deviceInfo?.deviceId || null, silentFor });
+      broadcastDeviceStatus();
     }
-    // A verificação da programação semanal tem de correr sempre — com ou
-    // sem dispositivo real ligado — senão os horários configurados nunca
-    // disparam a rega automática quando o ESP32 está online (bug: ciclo
-    // automático só arrancava em modo simulação).
+
+    // Sensores sem reporte → alarme real (warning)
+    engine.checkSensorHealth(15000);
+
+    // Horários de rega correm sempre
     engine.checkAutoCycle();
   }, 3000);
 }
-startSensorSim();
+startMonitor();
 
 // ── Persistent state helpers ──
 let appState = { eventLog: [] };
@@ -252,7 +250,7 @@ app.post('/api/device/hello', checkDeviceToken, (req, res) => {
 
 // POST /api/device/telemetry — recebe sensores e devolve saídas desejadas
 app.post('/api/device/telemetry', checkDeviceToken, (req, res) => {
-  const { deviceId, firmware, ip, rssi, uptime, emergency, sensors } = req.body || {};
+  const { deviceId, firmware, ip, rssi, uptime, emergency, sensors, gpio } = req.body || {};
   
   const wasOnline = deviceOnline;
   deviceOnline = true;
@@ -276,6 +274,21 @@ app.post('/api/device/telemetry', checkDeviceToken, (req, res) => {
     });
   }
   
+  // Estado elétrico real dos pinos (INPUT a receber / OUTPUT a emitir),
+  // reportado pelo firmware. É a única fonte destes valores na UI.
+  if (gpio && typeof gpio === 'object') {
+    Object.entries(gpio).forEach(([pin, value]) => {
+      const p = Number(pin);
+      if (Number.isNaN(p)) return;
+      const num = typeof value === 'boolean' ? (value ? 1 : 0) : Number(value);
+      if (Number.isNaN(num)) return;
+      if (engine.gpio[p] !== num) {
+        engine.gpio[p] = num;
+        io.emit('controller:gpio', { pin: p, value: num });
+      }
+    });
+  }
+
   // Handle emergency signal from device
   if (emergency && engine.state !== 'emergency') {
     engine.emergencyStop();
