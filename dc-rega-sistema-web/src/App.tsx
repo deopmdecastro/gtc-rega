@@ -49,6 +49,13 @@ import { fetchEvents, logEvent, type EventLogEntry, saveState, loadState, saveLa
 import { t } from '@/lang';
 import { getControllerClient } from '@/lib/controller';
 
+// Métricas do diagrama HARDWARE (têm de coincidir com --hw-row/--hw-gap no CSS)
+const HW_ROW = 46;
+const HW_GAP = 8;
+const HW_HEADER_OFFSET = 56;   // altura do header do chip + padding do grupo de pinos
+const HW_DIVIDER_GAP = 17;     // padding inferior + divisor + padding superior
+
+
 type Page = 'Resumo' | 'Estado' | 'Setpoints' | 'Mapa' | 'Histórico' | 'Comandos' | 'Alarmes' | 'WiFi';
 type WeekDay = 'sun' | 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat';
 type WaterSchedule = {
@@ -999,7 +1006,7 @@ function StateView({ zones, pumpOn, autoMode, onToggleMode, language, gpioConfig
 
         <div
           className="hw3-diagram"
-          style={{ '--hw-left-offset': '76px', '--hw-right-offset': `${76 + inputPins.length * 58 + Math.max(inputPins.length - 1, 0) * 14 + 25}px` } as React.CSSProperties}
+          style={{ '--hw-left-offset': `${HW_HEADER_OFFSET}px`, '--hw-right-offset': `${HW_HEADER_OFFSET + inputPins.length * HW_ROW + Math.max(inputPins.length - 1, 0) * HW_GAP + HW_DIVIDER_GAP}px` } as React.CSSProperties}
         >
           {/* ── Coluna 1: Sensores (INPUT) ── */}
           <div className="hw3-col hw3-col-left" style={{ '--hw-offset': 'var(--hw-left-offset)' } as React.CSSProperties}>

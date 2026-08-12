@@ -2256,3 +2256,83 @@ textarea:focus-visible,
   .command-actions { grid-template-columns: 1fr; }
   .setpoint-grid-v2 { grid-template-columns: 1fr; gap: 18px; }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   REFINO DASHBOARD — espaçamento, alinhamento e layout compacto
+   (apenas ajustes visuais; sem alterar tema, paleta ou tipografia)
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── 1. Top Bar: hamburger apenas quando a navegação é off-canvas ── */
+@media (min-width: 901px) {
+  .mobile-menu { display: none !important; }
+}
+.topbar-inner { align-items: center; }
+
+/* ── 2. LEITURA EM TEMPO REAL: respiração entre kicker/título e conteúdo ── */
+.panel-heading { padding: 18px 22px 16px; }
+.panel-heading h3 { margin: 7px 0 0; line-height: 1.25; }
+.panel-heading .section-kicker { line-height: 1.2; }
+.panel-heading + .state-list,
+.panel-heading + .alarm-list { padding-top: 6px; }
+
+/* ── 3. Estado dos equipamentos: cards alinhados e compactos ── */
+.state-list { padding: 0 22px 8px; }
+.state-row { padding: 12px 6px; margin: 0 -6px; gap: 12px; align-items: center; }
+.state-icon { flex: 0 0 34px; width: 34px; height: 34px; align-self: center; }
+.state-icon > svg { width: 17px; height: 17px; }
+.state-row > div { display: flex; flex-direction: column; justify-content: center; gap: 3px; }
+.state-row div span { margin-top: 0; line-height: 1.35; }
+.state-row > .status-badge { margin-left: auto; align-self: center; flex: 0 0 auto; min-width: 104px; justify-content: center; }
+
+/* ── 4. ALARMES ATIVOS: banner e itens perfeitamente alinhados ── */
+.alarm-banner { padding: 16px 22px; gap: 14px; align-items: center; }
+.alarm-banner-icon { width: 38px; height: 38px; flex: 0 0 38px; align-self: center; }
+.alarm-banner h3 { margin: 6px 0 4px; line-height: 1.25; }
+.alarm-banner > .status-badge { align-self: center; }
+
+.alarm-list { padding: 0 22px 8px; }
+.alarm-item { padding: 14px 6px; margin: 0 -6px; gap: 14px; align-items: flex-start; }
+.alarm-item:first-child { padding-top: 14px; }
+.alarm-item:last-child { padding-bottom: 14px; }
+.alarm-item-icon { width: 36px; height: 36px; flex: 0 0 36px; margin-top: 1px; }
+.alarm-item-icon > svg { width: 16px; height: 16px; }
+.alarm-item-body { gap: 3px; }
+.alarm-item-top { margin-bottom: 0; }
+.alarm-item-top strong { line-height: 1.3; }
+.alarm-item-badge { flex: 0 0 auto; align-self: center; min-width: 76px; text-align: center; }
+.alarm-item-msg { margin-bottom: 2px; }
+.alarm-meta { margin-top: 2px; }
+.alarm-item > .resolve-btn { align-self: center; margin-left: 4px; }
+
+/* ── 5. Requerem atenção: hierarquia e consistência com ALARMES ATIVOS ── */
+.alarm-item + .alarm-item { border-top: 0; }
+.alarm-item { border-bottom-color: #182530; }
+
+/* ── 6/7/8. HARDWARE · ESP32-S3 · Mapa de Ligações GPIO — mais compacto ── */
+.estado-pinout-panel { padding: 16px 18px 14px; }
+.hw3-header { margin-bottom: 16px; padding-bottom: 12px; gap: 12px; }
+.hw3-header h3 { margin: 3px 0 1px; font-size: 20px; }
+.hw3-subtitle { font-size: 11px; }
+
+.hw3-diagram { --hw-row: 46px; --hw-gap: 8px; }
+.hw3-block { padding: 6px 10px; gap: 8px; }
+.hw3-block-label { width: 28px; height: 28px; font-size: 12px; border-radius: 8px; }
+.hw3-block-info strong { font-size: 12px; }
+.hw3-block-info span { font-size: 10px; }
+.hw3-col-caption { top: -16px; }
+
+.hw3-chip-frame { max-width: 276px; min-width: 226px; }
+.hw3-chip-header { height: 48px; padding: 0 12px; gap: 9px; }
+.hw3-chip-icon { width: 28px; height: 28px; }
+.hw3-chip-icon > svg { width: 16px; height: 16px; }
+.hw3-chip-titles strong { font-size: 12.5px; }
+.hw3-pin-group { padding: 8px 8px; }
+.hw3-pin { padding: 0 10px; font-size: 10.5px; }
+.hw3-chip-divider { margin: 0 8px; }
+
+.hw3-wire { width: 52px; }
+.hw3-legend { margin-top: 14px; padding: 9px 14px; gap: 14px; font-size: 10.5px; }
+
+@media (max-width: 1000px) {
+  .hw3-wire { width: 34px; }
+}
