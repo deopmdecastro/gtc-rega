@@ -308,8 +308,8 @@ function App() {
   const [eventLogLoading, setEventLogLoading] = useState(false);
   const startTimers = useRef<number[]>([]);
 
-  // Weather state – real API
-  const [weather, setWeather] = useState({ temp: 24, desc: 'Parcialmente nublado', city: 'Leiria', country: 'Portugal', icon: '⛅' });
+  // Weather state – real API (Open-Meteo)
+  const [weather, setWeather] = useState({ temp: 24, desc: 'Parcialmente nublado', city: 'Amora', country: 'Portugal', icon: '⛅', humidity: 0, precipitation: 0, windSpeed: 0, rainChance: 0 });
   const [weatherLoading, setWeatherLoading] = useState(false);
   const [deviceOnline, setDeviceOnline] = useState(false);
   const [deviceInfo, setDeviceInfo] = useState<{ deviceId?: string; firmware?: string; ip?: string; rssi?: number; uptime?: number } | null>(null);
@@ -335,11 +335,11 @@ function App() {
     const fetchWeather = async () => {
       setWeatherLoading(true);
       try {
-        const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=39.7437&longitude=-8.8071&current_weather=true&timezone=Europe/Lisbon');
+        const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=38.7223&longitude=-9.1393&current=temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m&hourly=precipitation_probability,precipitation&forecast_days=1&timezone=Europe/Lisbon');
         if (res.ok) {
           const data = await res.json();
-          const cw = data.current_weather;
-          const code = cw.weathercode;
+          const cur = data.current;
+          const code = cur.weather_code;
           const iconMap: Record<number, string> = {
             0: '☀️', 1: '🌤️', 2: '⛅', 3: '☁️', 45: '🌫️', 48: '🌫️',
             51: '🌦️', 53: '🌦️', 55: '🌧️', 61: '🌧️', 63: '🌧️', 65: '🌧️',
@@ -354,12 +354,25 @@ function App() {
             80: 'Aguaceiros', 81: 'Aguaceiros', 82: 'Aguaceiros fortes',
             95: 'Trovoada', 96: 'Trovoada', 99: 'Trovoada',
           };
+          // Maior probabilidade de precipitação nas próximas 6h (para decisões de rega)
+          const hourly = data.hourly;
+          let rainChance = 0;
+          if (hourly?.time && hourly?.precipitation_probability) {
+            const nowIso = new Date().toISOString().slice(0, 13);
+            const startIdx = Math.max(0, hourly.time.findIndex((t: string) => t.slice(0, 13) === nowIso));
+            const window = hourly.precipitation_probability.slice(startIdx, startIdx + 6);
+            rainChance = window.length ? Math.max(...window) : 0;
+          }
           setWeather({
-            temp: Math.round(cw.temperature),
+            temp: Math.round(cur.temperature_2m),
             desc: descMap[code] || 'Desconhecido',
             icon: iconMap[code] || '🌡️',
-            city: 'Leiria',
+            city: 'Amora',
             country: 'Portugal',
+            humidity: Math.round(cur.relative_humidity_2m ?? 0),
+            precipitation: cur.precipitation ?? 0,
+            windSpeed: Math.round(cur.wind_speed_10m ?? 0),
+            rainChance,
           });
         }
       } catch { /* keep fallback */ }
@@ -844,7 +857,7 @@ function App() {
         <div className="sidebar-footer">
           <StatusBadge tone={backendOnline ? 'success' : 'error'}>{backendOnline ? t('sidebar.system', language) : (language === 'PT' ? 'Sem ligação à API' : 'API offline')}</StatusBadge>
           <div className="footer-reading"><TimerReset size={17} /><div><strong>{clock || '—'}</strong><span>{dateStr || '—'}</span></div></div>
-          <div className="footer-reading"><CloudSun size={19} /><div><strong>{weather.temp}°C</strong><span>{weather.city} · {weather.desc}</span></div></div>
+          <div className="footer-reading"><CloudSun size={19} /><div><strong>{weather.temp}°C</strong><span>{weather.city} · {weather.desc} · {weather.humidity}% hum.</span></div></div>
           <div className="footer-reading"><Cpu size={17} /><div><strong>ESP32-S3</strong><span>{t('sidebar.controller', language)}</span></div></div>
         </div>
       </aside>
@@ -859,7 +872,7 @@ function App() {
               <h1 className="topbar-h1-short">GTC</h1>
             </div>
             <div className="topbar-right">
-              <div className="weather"><CloudSun size={28} /><div><strong>{weather.temp}°C</strong><span>{weather.city}, {weather.country} · {weather.desc}</span></div></div>
+              <div className="weather" title={`Humidade ${weather.humidity}% · Vento ${weather.windSpeed} km/h · Prob. chuva (6h) ${weather.rainChance}%`}><CloudSun size={28} /><div><strong>{weather.temp}°C</strong><span>{weather.city}, {weather.country} · {weather.desc}</span></div></div>
               <button className="lang-toggle-btn" onClick={() => setLanguage(l => l === 'PT' ? 'EN' : 'PT')} aria-label="Trocar idioma" title={language === 'PT' ? 'Switch to English' : 'Mudar para Português'}>
                 <Globe2 size={18} /><span className="lang-label">{language}</span>
               </button>
@@ -894,7 +907,7 @@ function App() {
 
 /* ---------- Overview ---------- */
 function Overview({ zones, pumpOn, autoMode, activeZones, onToggleZone, onTogglePump, onToggleMode, onOpenMap, weather, language, deviceOnline, deviceInfo, sensorHealth, clock, dateStr, latestAlert, systemRunning, starting, startStep, onStart, onStop, onReset }: {
-  zones: Zone[]; pumpOn: boolean; autoMode: boolean; activeZones: number; onToggleZone: (id: string) => void; onTogglePump: () => void; onToggleMode: () => void; onOpenMap: () => void; weather: { temp: number; desc: string; city: string; country: string; icon: string }; language: Language;
+  zones: Zone[]; pumpOn: boolean; autoMode: boolean; activeZones: number; onToggleZone: (id: string) => void; onTogglePump: () => void; onToggleMode: () => void; onOpenMap: () => void; weather: { temp: number; desc: string; city: string; country: string; icon: string; humidity: number; precipitation: number; windSpeed: number; rainChance: number }; language: Language;
   deviceOnline: boolean;
   deviceInfo: { deviceId?: string; firmware?: string; ip?: string; rssi?: number; uptime?: number } | null;
   sensorHealth: Record<string, { stale: boolean; lastSeen: number | null }>;
@@ -1725,7 +1738,7 @@ function MapView({ zones, pumpOn, onAddZone, onDuplicateZone, onDragZone, onRena
   onRemoveZone: (zone: Zone) => void;
   onClearAll: () => void;
   onToggleZone: (id: string) => void;
-  weather: { temp: number; desc: string; city: string; country: string; icon: string };
+  weather: { temp: number; desc: string; city: string; country: string; icon: string; humidity: number; precipitation: number; windSpeed: number; rainChance: number };
   language: Language;
 }) {
   const [pumpPos, setPumpPos] = useState<MapElement>(DEFAULT_PUMP_POS);
