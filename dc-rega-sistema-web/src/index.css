@@ -616,7 +616,7 @@ textarea:focus-visible {
 .gpio-edit-table-wrap { margin-top: 24px; padding-top: 20px; border-top: 1px solid #1a2a33; }
 .gpio-edit-table-wrap h4 { margin: 0 0 14px; font-size: 14px; color: #dce5e8; }
 .gpio-edit-table-scroll { overflow-x: auto; border: 1px solid #1a2a33; border-radius: 10px; margin-bottom: 14px; }
-.gpio-edit-table { width: 100%; min-width: 560px; border-collapse: collapse; font-size: 12px; }
+.gpio-edit-table { width: 100%; min-width: 640px; border-collapse: collapse; font-size: 12px; }
 .gpio-edit-table th { text-align: left; padding: 10px 14px; border-bottom: 1px solid #1a2a33; color: #78909a; font-size: 10px; letter-spacing: .06em; font-weight: 700; white-space: nowrap; }
 .gpio-edit-table th:first-child, .gpio-edit-table td:first-child { padding-left: 16px; }
 .gpio-edit-table th:last-child, .gpio-edit-table td:last-child { padding-right: 16px; }
@@ -629,6 +629,43 @@ textarea:focus-visible {
 .gpio-input:focus, .gpio-select:focus { outline: none; border-color: #12bcb6; }
 .gpio-input-sm { max-width: 70px; }
 
+/* GPIO table heading + usage counter */
+.gpio-edit-table-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.gpio-edit-table-heading h4 { margin: 0; }
+.gpio-edit-count { font-size: 10px; font-weight: 700; letter-spacing: .04em; color: #78909a; background: #0d171e; border: 1px solid #263943; border-radius: 20px; padding: 4px 10px; white-space: nowrap; }
+
+/* Text field + inline virtual-keyboard toggle */
+.gpio-field { display: flex; align-items: center; gap: 6px; }
+.gpio-field .gpio-input { flex: 1; }
+.gpio-kb-toggle { display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; flex-shrink: 0; border: 1px solid #263943; border-radius: 5px; background: #0d171e; color: #6c828d; cursor: pointer; transition: .2s; }
+.gpio-kb-toggle:hover { border-color: #12bcb6; color: #1ad5d0; }
+.gpio-kb-toggle.active { border-color: #12bcb6; color: #06121a; background: linear-gradient(135deg, #1adbd4, #5ee58a); }
+
+/* Row delete + add-GPIO button */
+.gpio-row-delete { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 1px solid rgba(255,107,107,.28); border-radius: 6px; background: rgba(255,107,107,.06); color: #ff8a8a; cursor: pointer; transition: .2s; }
+.gpio-row-delete:hover { background: rgba(255,107,107,.16); border-color: rgba(255,107,107,.5); color: #ffb3b3; }
+.gpio-add-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 11px; margin-bottom: 10px; border: 1px dashed #2b4753; border-radius: 10px; background: rgba(18,188,182,.05); color: #1ad5d0; font-size: 12px; font-weight: 700; letter-spacing: .02em; cursor: pointer; transition: .2s; }
+.gpio-add-btn:hover { background: rgba(18,188,182,.12); border-color: #12bcb6; }
+.gpio-add-btn:disabled { opacity: .4; cursor: not-allowed; }
+.gpio-reserved-note { margin: 0 0 16px; font-size: 10.5px; line-height: 1.5; color: #5a6f7a; }
+
+/* Branded custom <select> — usa a marca "folha" GTC em vez do <select> nativo */
+.brand-select { position: relative; }
+.brand-select-trigger { display: flex; align-items: center; gap: 6px; width: 100%; padding: 5px 8px; border: 1px solid #263943; border-radius: 5px; background: #0d171e; color: #dce5e8; font: 600 11px 'DM Mono', monospace; cursor: pointer; transition: .2s; text-align: left; }
+.brand-select-trigger:hover { border-color: #2f4a56; }
+.brand-select.open .brand-select-trigger, .brand-select-trigger:focus { outline: none; border-color: #12bcb6; box-shadow: 0 0 0 2px rgba(18,188,182,.15); }
+.brand-select.disabled .brand-select-trigger { opacity: .45; cursor: not-allowed; }
+.brand-select-mark { display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; flex-shrink: 0; border-radius: 5px; background: linear-gradient(135deg, #1adbd4, #5ee58a); color: #06121a; }
+.brand-select-value { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.brand-select-chevron { flex-shrink: 0; color: #5a6f7a; transition: transform .18s; }
+.brand-select.open .brand-select-chevron { transform: rotate(180deg); color: #1ad5d0; }
+.brand-select-menu { position: absolute; z-index: 40; top: calc(100% + 4px); left: 0; min-width: 100%; max-height: 220px; overflow-y: auto; margin: 0; padding: 4px; list-style: none; border: 1px solid #263943; border-radius: 8px; background: #0b141a; box-shadow: 0 12px 28px -8px rgba(0,0,0,.6); }
+.brand-select-option { display: flex; align-items: center; gap: 6px; padding: 7px 8px; border-radius: 5px; font: 600 11px 'DM Mono', monospace; color: #a8bac2; cursor: pointer; white-space: nowrap; }
+.brand-select-option:hover { background: rgba(20,221,214,.08); color: #dce5e8; }
+.brand-select-option.selected { color: #1ad5d0; background: rgba(20,221,214,.06); }
+.brand-select-option-check { display: flex; align-items: center; justify-content: center; width: 12px; flex-shrink: 0; color: #1ad5d0; }
+.brand-select-pin { min-width: 90px; }
+.brand-select-direction { min-width: 96px; }
 
 /* ---------- Full Keyboard (layout tipo teclado físico) ---------- */
 .full-keyboard { max-width: 760px; margin: 0 auto; }

@@ -266,8 +266,13 @@
   .gpio-edit-table td:nth-child(3)::before { content: "Rótulo"; }
   .gpio-edit-table td:nth-child(4)::before { content: "Função"; }
   .gpio-edit-table td:nth-child(5)::before { content: "Canal"; }
+  .gpio-edit-table td:nth-child(6)::before { content: "Ações"; }
   .gpio-input, .gpio-select { min-height: 40px; flex: 1; }
   .gpio-input-sm { max-width: none; }
+  .brand-select-trigger { min-height: 40px; }
+  .gpio-field { flex: 1; }
+  .gpio-kb-toggle { width: 36px; height: 36px; }
+  .gpio-row-delete { width: 36px; height: 36px; }
 
   /* Setpoints ----------------------------------------------------- */
   .setpoint-card { padding: 12px !important; }
