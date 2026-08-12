@@ -2900,9 +2900,9 @@ function AlarmItem({ event, onResolve, language }: { event: ErrorEvent; onResolv
               {isCritical ? (language === 'PT' ? 'CRÍTICO' : 'CRITICAL') : isWarning ? (language === 'PT' ? 'AVISO' : 'WARNING') : 'INFO'}
             </span>
             {!event.resolved && onResolve ? (
-              <button className="resolve-btn" onClick={onResolve}><CheckCircle2 size={15} />{language === 'PT' ? 'Resolver' : 'Resolve'}</button>
+              <button className="resolve-btn" onClick={onResolve}><CheckCircle2 size={14} />{language === 'PT' ? 'Resolver' : 'Resolve'}</button>
             ) : event.resolved ? (
-              <StatusBadge tone="success">{language === 'PT' ? 'Resolvido' : 'Resolved'}</StatusBadge>
+              <span className="resolved-badge"><CheckCircle2 size={13} />{language === 'PT' ? 'Resolvido' : 'Resolved'}</span>
             ) : null}
           </div>
         </div>

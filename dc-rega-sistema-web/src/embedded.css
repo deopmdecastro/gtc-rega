@@ -351,7 +351,8 @@
   .alarm-item div span { font-size: 9px; }
   .alarm-meta { gap: 6px; margin-top: 6px; }
   .alarm-meta small { font-size: 9px; }
-  .resolve-btn { padding: 8px 10px; font-size: 10px; min-height: 36px; }
+  .resolve-btn { padding: 7px 12px; font-size: 10px; min-height: 32px; }
+  .resolved-badge { padding: 6px 11px; font-size: 9px; min-height: 28px; }
 
   /* Comandos — cmd-btn --------------------------------------------- */
   .cmd-btn { padding: 14px 8px; gap: 6px; min-height: 68px; }
@@ -946,8 +947,14 @@
   }
   .resolve-btn {
     margin-left: auto;
-    min-height: 30px;
+    min-height: 28px;
     font-size: 9px !important;
+    padding: 5px 10px !important;
+  }
+  .resolved-badge {
+    margin-left: auto;
+    min-height: 28px;
+    font-size: 8px !important;
     padding: 4px 9px !important;
   }
   .alarm-item-msg { font-size: 9px !important; line-height: 1.35; }
