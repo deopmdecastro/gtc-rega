@@ -805,7 +805,9 @@ function App() {
           <div className="topbar-inner">
             <button className="mobile-menu" onClick={() => setMobileOpen(true)} aria-label="Abrir menu"><Menu size={22} /></button>
             <div className="topbar-title compact">
-              <h1>GTC <span>—</span> {t('topbar.title', language)}</h1>
+              <div className="topbar-logo-mark" aria-hidden="true"><Leaf size={18} /></div>
+              <h1 className="topbar-h1-full">GTC <span>—</span> {t('topbar.title', language)}</h1>
+              <h1 className="topbar-h1-short">GTC</h1>
             </div>
             <div className="topbar-right">
               <div className="weather"><CloudSun size={28} /><div><strong>{weather.temp}°C</strong><span>{weather.city}, {weather.country} · {weather.desc}</span></div></div>
@@ -1383,11 +1385,15 @@ function SetpointsView({ zones, onChange, onUpdateZone, pumpDelay, setPumpDelay,
               </div>
 
               <div className="sp2-slider-section">
-                <span className="sp2-slider-label">{language === 'PT' ? 'Humidade mínima desejada' : 'Minimum desired moisture'}</span>
+                <div className="sp2-slider-label-row">
+                  <span className="sp2-slider-label">{language === 'PT' ? 'Humidade mínima desejada' : 'Minimum desired moisture'}</span>
+                  <span className={`sp2-slider-value ${dirty ? 'sp2-slider-value-dirty' : ''}`}>{displayTarget}%</span>
+                </div>
                 <div className="sp2-slider-row">
                   <input
                     type="range" min="20" max="90" value={displayTarget}
                     onChange={(e) => handleSlide(zone.id, Number(e.target.value))}
+                    onInput={(e) => handleSlide(zone.id, Number((e.target as HTMLInputElement).value))}
                     className={`sp2-range ${dirty ? 'sp2-range-dirty' : ''}`}
                     title={`${displayTarget}%`}
                     aria-label={language === 'PT' ? 'Humidade mínima desejada' : 'Minimum desired moisture'}

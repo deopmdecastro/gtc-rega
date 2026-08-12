@@ -69,10 +69,12 @@ textarea:focus-visible {
 .main-content { flex: 1; min-width: 0; margin-left: 236px; }
 .content-wrap { max-width: 1460px; margin: 0 auto; padding: 0 32px 48px; }
 .topbar-inner { display: flex; justify-content: space-between; gap: 16px; align-items: center; width: 100%; max-width: 1460px; margin: 0 auto; padding: 20px 32px 16px; }
-.topbar-title { flex: 1; min-width: 200px; }
-.topbar-title.compact { display: flex; align-items: center; min-height: 42px; }
-.topbar h1 { margin: 0; color: #f1f5f6; font-size: clamp(21px, 2vw, 28px); letter-spacing: -.045em; line-height: 1.08; }
+.topbar-title { flex: 1; min-width: 0; }
+.topbar-title.compact { display: flex; align-items: center; gap: 10px; min-height: 42px; min-width: 0; }
+.topbar h1 { margin: 0; color: #f1f5f6; font-size: clamp(21px, 2vw, 28px); letter-spacing: -.045em; line-height: 1.08; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .topbar h1 span { color: #58717b; font-weight: 400; }
+.topbar-logo-mark { display: none; flex-shrink: 0; width: 34px; height: 34px; border-radius: 9px; align-items: center; justify-content: center; color: #18d6d0; background: #0b171d; border: 1px solid #263943; }
+.topbar-h1-short { display: none; }
 .topbar p { margin: 0; color: #869aa5; font-size: 13px; }
 .eyebrow span { color: #18cbc7; margin: 0 4px; }
 .weather { display: flex; align-items: center; gap: 11px; min-width: 188px; padding: 12px 16px; border: 1px solid #20303a; border-radius: 12px; color: #bacbd2; background: rgba(14, 23, 29, .72); }
@@ -767,6 +769,58 @@ textarea:focus-visible {
   .kb-key { height: 46px; font-size: 18px; }
 }
 
+/* ---------- Topbar: em telas pequenas mostra só o logo (sem título longo) ---------- */
+@media (max-width: 560px) {
+  .topbar-h1-full { display: none; }
+  .topbar-logo-mark { display: flex; }
+  .topbar-h1-short { display: block; font-size: 17px; }
+  .topbar-inner { padding: 14px 12px 12px; }
+  .topbar-title.compact { gap: 8px; }
+  .topbar-right { gap: 6px; }
+}
+
+/* ---------- Telas muito pequenas (≤480px): reduzir fontes, cards e botões
+   em vez de cortar/sobrepor elementos. Empilha em vez de comprimir. ---------- */
+@media (max-width: 480px) {
+  .content-wrap { padding: 0 10px 28px; }
+  .page-heading { flex-direction: column; align-items: flex-start; gap: 10px; margin: 18px 0 12px; }
+  .page-heading h2 { font-size: 19px; }
+  .connection { font-size: 10px; }
+  .panel, .setpoint-card-v2, .sensor-card, .hero-panel, .add-sensor-panel, .pump-panel {
+    padding: 14px !important;
+    border-radius: 12px;
+  }
+  .sp2-header, .sp2-tags, .sp2-metrics-row, .sp2-status-row, .sp2-duration-section, .sp2-schedule-section {
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+  }
+  .section-kicker { font-size: 9px; }
+  h3 { font-size: 15px; }
+  .btn-step, .sp2-dur-btn { width: 30px; height: 30px; }
+  .time-display, .sp2-dur-value { font-size: 17px; padding: 6px; }
+  .sp2-slider-value { font-size: 13px; }
+  .sp2-slider-label { font-size: 10px; }
+  .add-sensor-btn, .save-btn, .sp2-save-btn { font-size: 11px; padding: 10px 12px; }
+  .nav-item { font-size: 13px; padding: 10px 12px; }
+  .weather strong { font-size: 12px; }
+  .footer-reading strong { font-size: 12px; }
+  .footer-reading span { font-size: 10px; }
+  .app-footer { flex-wrap: wrap; font-size: 10px; text-align: center; justify-content: center; }
+}
+
+/* ---------- Telas ultra pequenas (≤360px, ex. dobráveis/telefones antigos) ---------- */
+@media (max-width: 360px) {
+  .topbar-inner { padding: 12px 10px 10px; }
+  .content-wrap { padding: 0 8px 24px; }
+  .page-heading h2 { font-size: 17px; }
+  .panel, .setpoint-card-v2, .sensor-card, .hero-panel, .add-sensor-panel, .pump-panel { padding: 12px !important; }
+  .sched2-grid { grid-template-columns: repeat(3, 1fr); gap: 4px; }
+  .sched2-day { padding: 8px 4px 10px; }
+  .btn-step, .sp2-dur-btn { width: 28px; height: 28px; }
+  .settings-btn, .lang-toggle-btn { width: 34px; height: 34px; }
+  .mobile-menu { width: 36px; height: 36px; }
+}
+
 /* ---------- Top bar fixa (full-bleed, alinhada com o conteúdo por dentro) ---------- */
 .topbar { position: fixed; top: 0; left: 236px; right: 0; z-index: 30; width: auto; background: #060b10; border-bottom: 1px solid #17232c; isolation: isolate; }
 .topbar-right { display: flex; align-items: center; gap: 12px; }
@@ -1216,6 +1270,10 @@ textarea:focus-visible {
 /* Slider */
 .sp2-slider-section { flex: 1 1 auto; min-width: 0; padding: 0; }
 .sp2-slider-label { display: block; font-size: 11px; color: #7c929c; margin-bottom: 10px; font-weight: 500; text-align: right; }
+.sp2-slider-label-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.sp2-slider-label-row .sp2-slider-label { margin-bottom: 0; text-align: left; }
+.sp2-slider-value { font-size: 15px; font-weight: 700; color: #14ddd6; font-variant-numeric: tabular-nums; white-space: nowrap; transition: color .15s; }
+.sp2-slider-value-dirty { color: #f9b247; }
 .sp2-slider-row { display: flex; align-items: center; gap: 12px; }
 .sp2-range { flex: 1; -webkit-appearance: none; appearance: none; height: 6px; border-radius: 3px; background: linear-gradient(90deg, #f2b35d 0%, #14ddd6 50%, #5ee58a 100%); outline: none; }
 .sp2-range::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #fff; border: 2px solid #14ddd6; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.3); }
