@@ -16,32 +16,49 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 28px;
+        gap: 18px;
         background: radial-gradient(circle at 50% 40%, rgba(0,190,190,.07), transparent 50%), #060b10;
         transition: opacity .5s ease, visibility .5s ease;
       }
       #splash.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
       .splash-logo {
-        width: 88px; height: 88px;
+        width: 64px; height: 64px;
         display: grid; place-items: center;
         border: 1px solid rgba(20,221,214,.42);
-        border-radius: 22px;
+        border-radius: 18px;
         background: rgba(20,221,214,.1);
         animation: splash-pulse 1.8s ease-in-out infinite;
       }
-      .splash-logo svg { color: #14ddd6; }
-      .splash-title { font-family: 'Manrope', system-ui, sans-serif; font-weight: 800; font-size: 26px; letter-spacing: .12em; color: #eef3f4; }
-      .splash-sub { font-family: 'Manrope', system-ui, sans-serif; font-size: 11px; letter-spacing: .25em; color: #526875; text-transform: uppercase; }
-      .splash-bar { width: 200px; height: 3px; border-radius: 99px; background: #17232c; overflow: hidden; }
+      .splash-logo svg { width: 32px; height: 32px; color: #14ddd6; }
+      .splash-title { font-family: 'Manrope', system-ui, sans-serif; font-weight: 800; font-size: 20px; letter-spacing: .12em; color: #eef3f4; }
+      .splash-sub { font-family: 'Manrope', system-ui, sans-serif; font-size: 9px; letter-spacing: .22em; color: #526875; text-transform: uppercase; }
+      .splash-bar { width: 140px; height: 3px; border-radius: 99px; background: #17232c; overflow: hidden; }
       .splash-bar span { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, #0cb4aa, #19dfd5); animation: splash-load 1.6s ease forwards; }
-      @keyframes splash-pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(20,221,214,.3); } 50% { box-shadow: 0 0 0 14px rgba(20,221,214,0); } }
+      @keyframes splash-pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(20,221,214,.3); } 50% { box-shadow: 0 0 0 10px rgba(20,221,214,0); } }
       @keyframes splash-load { from { width: 0; } to { width: 100%; } }
+      /* Splash ainda mais compacto no target HMI 320×240 */
+      @media (max-height: 260px) and (orientation: landscape) {
+        #splash { gap: 10px; }
+        .splash-logo { width: 44px; height: 44px; border-radius: 12px; }
+        .splash-logo svg { width: 22px; height: 22px; }
+        .splash-title { font-size: 15px; letter-spacing: .1em; }
+        .splash-sub { font-size: 8px; letter-spacing: .18em; }
+        .splash-bar { width: 110px; height: 2px; }
+      }
+      @media (max-width: 260px) {
+        #splash { gap: 12px; }
+        .splash-logo { width: 48px; height: 48px; border-radius: 14px; }
+        .splash-logo svg { width: 24px; height: 24px; }
+        .splash-title { font-size: 17px; }
+        .splash-sub { font-size: 8px; }
+        .splash-bar { width: 120px; }
+      }
     </style>
   </head>
   <body>
     <div id="splash">
       <div class="splash-logo">
-        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6"/></svg>
       </div>
       <div style="text-align:center">
         <div class="splash-title">GTC REGA</div>
