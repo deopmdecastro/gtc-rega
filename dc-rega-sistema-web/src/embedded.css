@@ -476,8 +476,8 @@
   .section-kicker { display: none; }
   .connection { font-size: 9px; }
 
-  /* Aproveitar a largura: duas colunas em landscape */
-  .content-stack,
+  /* Aproveitar a largura: duas colunas em landscape (mas os "cards"
+   * empilham sempre em coluna única — ficam demasiado apertados a par) */
   .two-column,
   .commands-layout,
   .alarms-layout,
@@ -485,12 +485,18 @@
   .sensor-grid,
   .setpoint-grid,
   .setpoint-grid-v2,
-  .alarm-summary-grid,
-  .command-actions {
+  .alarm-summary-grid {
     display: grid !important;
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 8px !important;
   }
+  .content-stack,
+  .command-actions {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+  }
+  .content-stack > .panel { padding: 8px !important; }
   .metrics-panel { grid-template-columns: repeat(4, 1fr) !important; padding: 6px !important; gap: 4px !important; }
   .metric { padding: 4px !important; border-right: 1px solid #182530; border-bottom: 0; min-height: 40px; }
   .metric:last-child { border-right: 0; }
