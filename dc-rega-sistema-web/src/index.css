@@ -829,6 +829,13 @@ textarea:focus-visible {
 
 /* ---------- Top bar fixa (full-bleed, alinhada com o conteúdo por dentro) ---------- */
 .topbar { position: fixed; top: 0; left: 236px; right: 0; z-index: 30; width: auto; background: #060b10; border-bottom: 1px solid #17232c; isolation: isolate; }
+/* Reforça left:0 em mobile/tablet (sidebar em drawer) — esta regra tem de vir DEPOIS
+   da definição base acima, senão a ordem no ficheiro faz o left:236px vencer mesmo
+   dentro do media query que já existia lá em cima. Era esta a causa da topbar aparecer
+   encolhida/deslocada para a direita em ecrãs pequenos. */
+@media (max-width: 900px) {
+  .topbar { left: 0; }
+}
 .topbar-right { display: flex; align-items: center; gap: 12px; }
 .settings-btn { display: grid; place-items: center; width: 42px; height: 42px; border: 1px solid #263943; border-radius: 11px; color: #18d6d0; background: #0b171d; transition: .2s; flex-shrink: 0; }
 .settings-btn:hover { background: rgba(20,221,214,.1); border-color: #12bcb6; }
