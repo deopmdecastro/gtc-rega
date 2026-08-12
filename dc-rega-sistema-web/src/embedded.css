@@ -651,6 +651,73 @@
   .footer-reading { display: none; }
   .app-footer { margin-top: 10px; padding-top: 6px; font-size: 8px; }
 
+  /* Regra única de empilhamento: cards um de baixo do outro em 320×240,
+   * para nunca ficarem achatados. Cobre todos os contentores restantes que
+   * ainda poderiam renderizar lado-a-lado no landscape HMI. */
+  .quick-grid,
+  .sensor-grid,
+  .setpoint-grid,
+  .setpoint-grid-v2,
+  .alarm-summary-grid,
+  .pinout-grid,
+  .pinout-full-grid,
+  .map-toolbar,
+  .map-legend,
+  .command-actions,
+  .save-all-banner,
+  .metrics-panel,
+  .content-stack,
+  .two-column,
+  .commands-layout,
+  .alarms-layout {
+    grid-template-columns: 1fr !important;
+    flex-direction: column !important;
+    flex-wrap: wrap;
+    gap: 6px !important;
+  }
+  .map-toolbar { display: flex !important; }
+  .map-toolbar > * { width: 100%; }
+  .map-primary-btns { display: flex !important; flex-wrap: wrap !important; gap: 4px !important; }
+  .map-primary-btns > * { flex: 1 1 auto; }
+  .map-legend { display: flex !important; flex-wrap: wrap !important; gap: 4px 6px !important; font-size: 8px !important; }
+  .map-legend > span { font-size: 8px !important; }
+  .save-all-banner { flex-direction: column !important; gap: 6px !important; align-items: flex-start !important; }
+  .save-all-banner-left { width: 100%; }
+  .save-all-banner-btn { width: 100%; justify-content: center; min-height: 36px; }
+  .device-status-panel { padding: 8px !important; }
+  .device-status-main { gap: 8px; }
+  .device-status-dot { width: 10px; height: 10px; }
+  .device-status-info strong { font-size: 11px; }
+  .device-status-info span { font-size: 9px; }
+  .device-status-sensors-label { font-size: 9px; }
+  .sensor-health-pill { font-size: 9px; padding: 2px 6px; }
+  .summary-actions-panel .command-actions { grid-template-columns: 1fr !important; }
+  .cmd-btn { min-height: 44px; padding: 8px 10px; font-size: 11px; }
+  .cmd-btn strong { font-size: 12px; }
+  .cmd-btn small { font-size: 9px; }
+  .panel-title-row h3 { font-size: 13px; }
+  .next-irrigation { font-size: 11px; }
+  .alert-line { gap: 6px; padding: 4px 6px; }
+  .alert-line strong { font-size: 10px; }
+  .alert-line span { font-size: 8px; }
+  .action-button { padding: 8px 10px; font-size: 10px; min-height: 40px; }
+  .map-sel-actions { flex-direction: column; gap: 4px; }
+  .map-sel-btn { width: 100%; min-height: 34px; font-size: 10px; }
+  .history-item, .error-item, .alarm-item { padding: 5px 6px; gap: 6px; min-height: 34px; }
+  .history-item strong, .error-item strong, .alarm-item strong { font-size: 10px; }
+  .history-item span, .error-item span, .alarm-item span { font-size: 8px; }
+  .alarm-banner { padding: 6px 8px; gap: 6px; min-height: 32px; }
+  .alarm-banner strong { font-size: 10px; }
+  .info-list { gap: 4px; padding-top: 4px; }
+  .info-list > div { min-height: 22px; padding: 2px 0; font-size: 10px; }
+  .mode-card { padding: 8px; gap: 8px; }
+  .mode-graphic { width: 32px; height: 32px; flex-basis: 32px; }
+  .mode-graphic svg { width: 16px; height: 16px; }
+  .mode-card strong { font-size: 11px; }
+  .mode-card p { font-size: 9px; }
+  .mode-toggle-btn { padding: 6px 10px; min-height: 32px; font-size: 10px; }
+  .page-heading .connection { font-size: 9px; gap: 4px; padding: 2px 6px; }
+
   /* Login screen — landscape 320×240 */
   .login-screen { align-items: flex-start; justify-content: center; padding: 4px 8px; overflow-y: auto; }
   .login-screen-card {
