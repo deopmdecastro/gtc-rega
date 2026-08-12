@@ -5,6 +5,7 @@ import {
   Bell,
   CalendarDays,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
   CloudSun,
   Copy,
@@ -151,6 +152,19 @@ const SYSTEM_RELAYS = [
   { relay: 'K10', gpio: 13, inChannel: '', func: 'Reserva' },
 ];
 
+// Todos os GPIOs de uso geral disponíveis numa placa ESP32-S3-DevKitC-1
+// (exclui os pinos de flash/PSRAM interno 22–25/27–32 e os pinos USB
+// D+/D- 19/20, que não devem ser reatribuídos).
+const ESP32S3_ALL_GPIOS = [
+  0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 21,
+  35, 36, 37, 38, 39, 40, 41, 42, 45, 46, 47, 48,
+];
+// Pinos já reservados internamente pelo firmware (não reatribuíveis na tabela)
+const ESP32S3_RESERVED_GPIOS: Record<number, string> = {
+  0: 'Botão BOOT / Emergência',
+  48: 'LED de estado on-board',
+};
+
 // Formata o uptime real do ESP32-S3 (segundos desde o último arranque, vindo da telemetria)
 function formatUptime(seconds?: number): string | null {
   if (typeof seconds !== 'number' || seconds < 0) return null;
@@ -262,18 +276,19 @@ function App() {
   const [startStep, setStartStep] = useState('');
   const [engineState, setEngineState] = useState('idle');
   const [currentWateringZone, setCurrentWateringZone] = useState(-1);
-  const [gpioConfig, setGpioConfig] = useState<{ gpio: number; direction: 'INPUT' | 'OUTPUT'; label: string; func: string; inChannel: string }[]>([
-    { gpio: 4, direction: 'INPUT', label: 'B1', func: 'Sensor B1', inChannel: '' },
-    { gpio: 5, direction: 'INPUT', label: 'B2', func: 'Sensor B2', inChannel: '' },
-    { gpio: 6, direction: 'OUTPUT', label: 'K3', func: 'Temporizador 1', inChannel: 'IN3' },
-    { gpio: 7, direction: 'OUTPUT', label: 'K4', func: 'Temporizador 2', inChannel: 'IN4' },
-    { gpio: 8, direction: 'OUTPUT', label: 'K5', func: 'START GTC', inChannel: 'IN5' },
-    { gpio: 9, direction: 'OUTPUT', label: 'K6', func: 'STOP / Emergência', inChannel: 'IN6' },
-    { gpio: 10, direction: 'OUTPUT', label: 'K7', func: 'AUTOMÁTICO', inChannel: 'IN7' },
-    { gpio: 11, direction: 'OUTPUT', label: 'K8', func: 'Reserva', inChannel: 'IN8' },
-    { gpio: 12, direction: 'OUTPUT', label: 'K9', func: 'Reserva', inChannel: '' },
-    { gpio: 13, direction: 'OUTPUT', label: 'K10', func: 'Reserva', inChannel: '' },
+  const [gpioConfig, setGpioConfig] = useState<{ id: string; gpio: number; direction: 'INPUT' | 'OUTPUT'; label: string; func: string; inChannel: string }[]>([
+    { id: 'row-1', gpio: 4, direction: 'INPUT', label: 'B1', func: 'Sensor B1', inChannel: '' },
+    { id: 'row-2', gpio: 5, direction: 'INPUT', label: 'B2', func: 'Sensor B2', inChannel: '' },
+    { id: 'row-3', gpio: 6, direction: 'OUTPUT', label: 'K3', func: 'Temporizador 1', inChannel: 'IN3' },
+    { id: 'row-4', gpio: 7, direction: 'OUTPUT', label: 'K4', func: 'Temporizador 2', inChannel: 'IN4' },
+    { id: 'row-5', gpio: 8, direction: 'OUTPUT', label: 'K5', func: 'START GTC', inChannel: 'IN5' },
+    { id: 'row-6', gpio: 9, direction: 'OUTPUT', label: 'K6', func: 'STOP / Emergência', inChannel: 'IN6' },
+    { id: 'row-7', gpio: 10, direction: 'OUTPUT', label: 'K7', func: 'AUTOMÁTICO', inChannel: 'IN7' },
+    { id: 'row-8', gpio: 11, direction: 'OUTPUT', label: 'K8', func: 'Reserva', inChannel: 'IN8' },
+    { id: 'row-9', gpio: 12, direction: 'OUTPUT', label: 'K9', func: 'Reserva', inChannel: '' },
+    { id: 'row-10', gpio: 13, direction: 'OUTPUT', label: 'K10', func: 'Reserva', inChannel: '' },
   ]);
+  const gpioRowCounter = useRef(11);
   const [editingGpio, setEditingGpio] = useState<number | null>(null);
   // Estado elétrico real de cada pino (vindo da telemetria do ESP32-S3 via
   // backend): INPUT = valor lido no pino, OUTPUT = 1 quando o pino emite sinal.
@@ -759,8 +774,35 @@ function App() {
     } catch {}
   };
 
-  const handleGpioUpdate = (gpio: number, key: string, value: string) => {
-    setGpioConfig(prev => prev.map(g => g.gpio === gpio ? { ...g, [key]: value } : g));
+  const handleGpioUpdate = (id: string, key: string, value: string) => {
+    setGpioConfig(prev => prev.map(g => g.id === id ? { ...g, [key]: value } : g));
+  };
+
+  // Lista de GPIOs ainda livres (não usados por nenhuma linha, e não reservados
+  // pelo firmware). Quando `excludeId` é indicado, o GPIO dessa própria linha
+  // continua disponível para que ela possa manter o valor atual na lista.
+  const getAvailableGpios = useCallback((excludeId?: string) => {
+    const used = new Set(gpioConfig.filter(g => g.id !== excludeId).map(g => g.gpio));
+    return ESP32S3_ALL_GPIOS.filter(p => !used.has(p) && !(p in ESP32S3_RESERVED_GPIOS));
+  }, [gpioConfig]);
+
+  const addGpioRow = () => {
+    const free = getAvailableGpios();
+    if (free.length === 0) {
+      showNotice(language === 'PT' ? 'Não há mais GPIOs disponíveis no ESP32-S3' : 'No more GPIOs available on the ESP32-S3');
+      return;
+    }
+    const id = `row-${gpioRowCounter.current++}`;
+    setGpioConfig(prev => [...prev, { id, gpio: free[0], direction: 'OUTPUT', label: '', func: '', inChannel: '' }]);
+    setEditingGpio(-1);
+  };
+
+  const removeGpioRow = (id: string) => {
+    setGpioConfig(prev => prev.filter(g => g.id !== id));
+  };
+
+  const handleGpioPinChange = (id: string, newPin: number) => {
+    setGpioConfig(prev => prev.map(g => g.id === id ? { ...g, gpio: newPin } : g));
   };
 
   const saveSettings = () => {
@@ -773,7 +815,7 @@ function App() {
     if (activePage === 'Resumo') {
       return <Overview zones={zones} pumpOn={pumpOn} autoMode={autoMode} activeZones={activeZones} onToggleZone={toggleZone} onTogglePump={togglePump} onToggleMode={toggleAutoMode} onOpenMap={() => requireAuth('Mapa')} weather={weather} language={language} deviceOnline={deviceOnline} deviceInfo={deviceInfo} sensorHealth={sensorHealth} clock={clock} dateStr={dateStr} latestAlert={errors[0]} systemRunning={systemRunning} starting={starting} startStep={startStep} onStart={handleStart} onStop={handleStop} onReset={handleReset} />;
     }
-    if (activePage === 'Estado') return <StateView zones={zones} pumpOn={pumpOn} autoMode={autoMode} onToggleMode={toggleAutoMode} language={language} gpioConfig={gpioConfig} editingGpio={editingGpio} setEditingGpio={setEditingGpio} handleGpioUpdate={handleGpioUpdate} saveGpioConfig={saveGpioConfig} deviceOnline={deviceOnline} deviceInfo={deviceInfo} sensorHealth={sensorHealth} engineState={engineState} gpioLive={gpioLive} systemRunning={systemRunning} alarmCount={alarmCount} />;
+    if (activePage === 'Estado') return <StateView zones={zones} pumpOn={pumpOn} autoMode={autoMode} onToggleMode={toggleAutoMode} language={language} gpioConfig={gpioConfig} editingGpio={editingGpio} setEditingGpio={setEditingGpio} handleGpioUpdate={handleGpioUpdate} saveGpioConfig={saveGpioConfig} addGpioRow={addGpioRow} removeGpioRow={removeGpioRow} handleGpioPinChange={handleGpioPinChange} getAvailableGpios={getAvailableGpios} deviceOnline={deviceOnline} deviceInfo={deviceInfo} sensorHealth={sensorHealth} engineState={engineState} gpioLive={gpioLive} systemRunning={systemRunning} alarmCount={alarmCount} />;
     if (activePage === 'Setpoints') return <SetpointsView zones={zones} pumpDelay={pumpDelay} setPumpDelay={setPumpDelay} onChange={(id, target) => { setZones((cur) => { const next = cur.map((z) => (z.id === id ? { ...z, target } : z)); setTimeout(() => getControllerClient().updateZones(next), 200); return next; }); }} onUpdateZone={(id, patch) => { setZones((cur) => { const next = cur.map((z) => (z.id === id ? { ...z, ...patch } : z)); setTimeout(() => getControllerClient().updateZones(next), 200); return next; }); }} onAddZone={addZone} onRemoveZone={(z) => setZoneToDelete(z)} language={language} />;
     if (activePage === 'Mapa') return <MapView zones={zones} pumpOn={pumpOn} onAddZone={addZoneFromMap} onDuplicateZone={duplicateZoneFromMap} onDragZone={updateZonePosition} onRenameZone={renameZone} onRemoveZone={(z) => setZoneToDelete(z)} onClearAll={clearAllZones} onToggleZone={toggleZone} weather={weather} language={language} />;
     if (activePage === 'Histórico') return <HistoryView errors={errors} eventLog={eventLog} eventLogLoading={eventLogLoading} onRefresh={loadEvents} language={language} />;
@@ -990,7 +1032,75 @@ function Metric({ icon, label, value, detail, accent }: { icon: React.ReactNode;
 }
 
 /* ---------- Estado ---------- */
-function StateView({ zones, pumpOn, autoMode, onToggleMode, language, gpioConfig, editingGpio, setEditingGpio, handleGpioUpdate, saveGpioConfig, deviceOnline, deviceInfo, sensorHealth, engineState, gpioLive, systemRunning, alarmCount }: { zones: Zone[]; pumpOn: boolean; autoMode: boolean; onToggleMode: () => void; language: Language; gpioConfig: { gpio: number; direction: string; label: string; func: string; inChannel: string }[]; editingGpio: number | null; setEditingGpio: (v: number | null) => void; handleGpioUpdate: (gpio: number, key: string, value: string) => void; saveGpioConfig: () => void; deviceOnline: boolean; deviceInfo: { deviceId?: string; firmware?: string; ip?: string; rssi?: number; uptime?: number } | null; sensorHealth: Record<string, { stale: boolean; lastSeen: number | null }>; engineState: string; gpioLive: Record<number, number | boolean>; systemRunning: boolean; alarmCount: number; }) {
+/* ---------- Branded custom <select> replacement ----------
+ * Estilizado com a identidade visual do site (marca "folha" GTC em gradiente
+ * teal), já que o <select> nativo não pode ser totalmente personalizado em
+ * todos os browsers. */
+function BrandSelect<T extends string | number>({ value, options, onChange, className, disabled }: {
+  value: T;
+  options: { value: T; label: string }[];
+  onChange: (v: T) => void;
+  className?: string;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    const escHandler = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', handler);
+    document.addEventListener('keydown', escHandler);
+    return () => {
+      document.removeEventListener('mousedown', handler);
+      document.removeEventListener('keydown', escHandler);
+    };
+  }, [open]);
+
+  const current = options.find(o => o.value === value);
+
+  return (
+    <div className={`brand-select ${className || ''} ${open ? 'open' : ''} ${disabled ? 'disabled' : ''}`} ref={rootRef}>
+      <button
+        type="button"
+        className="brand-select-trigger"
+        onClick={() => !disabled && setOpen(o => !o)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        disabled={disabled}
+      >
+        <span className="brand-select-mark"><Leaf size={10} /></span>
+        <span className="brand-select-value">{current?.label ?? String(value)}</span>
+        <ChevronDown size={13} className="brand-select-chevron" />
+      </button>
+      {open && (
+        <ul className="brand-select-menu" role="listbox">
+          {options.map(o => (
+            <li
+              key={String(o.value)}
+              role="option"
+              aria-selected={o.value === value}
+              className={`brand-select-option ${o.value === value ? 'selected' : ''}`}
+              onClick={() => { onChange(o.value); setOpen(false); }}
+            >
+              <span className="brand-select-option-check">{o.value === value && <CheckCircle2 size={12} />}</span>
+              <span>{o.label}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function StateView({ zones, pumpOn, autoMode, onToggleMode, language, gpioConfig, editingGpio, setEditingGpio, handleGpioUpdate, saveGpioConfig, addGpioRow, removeGpioRow, handleGpioPinChange, getAvailableGpios, deviceOnline, deviceInfo, sensorHealth, engineState, gpioLive, systemRunning, alarmCount }: { zones: Zone[]; pumpOn: boolean; autoMode: boolean; onToggleMode: () => void; language: Language; gpioConfig: { id: string; gpio: number; direction: string; label: string; func: string; inChannel: string }[]; editingGpio: number | null; setEditingGpio: (v: number | null) => void; handleGpioUpdate: (id: string, key: string, value: string) => void; saveGpioConfig: () => void; addGpioRow: () => void; removeGpioRow: (id: string) => void; handleGpioPinChange: (id: string, newPin: number) => void; getAvailableGpios: (excludeId?: string) => number[]; deviceOnline: boolean; deviceInfo: { deviceId?: string; firmware?: string; ip?: string; rssi?: number; uptime?: number } | null; sensorHealth: Record<string, { stale: boolean; lastSeen: number | null }>; engineState: string; gpioLive: Record<number, number | boolean>; systemRunning: boolean; alarmCount: number; }) {
+  const [gpioKb, setGpioKb] = useState<{ id: string; field: 'label' | 'func' | 'inChannel' } | null>(null);
+  const toggleGpioKb = (id: string, field: 'label' | 'func' | 'inChannel') => {
+    setGpioKb(prev => (prev && prev.id === id && prev.field === field) ? null : { id, field });
+  };
   const inputPins = gpioConfig.filter((g) => g.direction === 'INPUT');
   const outputPins = gpioConfig.filter((g) => g.direction === 'OUTPUT');
   const okSensorCount = zones.filter((z) => deviceOnline && !sensorHealth[z.sensorId]?.stale).length;
@@ -1179,10 +1289,15 @@ function StateView({ zones, pumpOn, autoMode, onToggleMode, language, gpioConfig
           </div>
         </div>
 
-        {/* Editable GPIO Table */}        {/* Editable GPIO Table */}
+        {/* Editable GPIO Table */}
         {editingGpio !== null && (
           <div className="gpio-edit-table-wrap">
-            <h4>{language === 'PT' ? 'Editar configuração GPIO' : 'Edit GPIO Configuration'}</h4>
+            <div className="gpio-edit-table-heading">
+              <h4>{language === 'PT' ? 'Editar configuração GPIO' : 'Edit GPIO Configuration'}</h4>
+              <span className="gpio-edit-count">
+                {gpioConfig.length}/{ESP32S3_ALL_GPIOS.length} {language === 'PT' ? 'GPIOs em uso' : 'GPIOs in use'}
+              </span>
+            </div>
             <div className="gpio-edit-table-scroll">
             <table className="gpio-edit-table">
               <thead>
@@ -1192,29 +1307,103 @@ function StateView({ zones, pumpOn, autoMode, onToggleMode, language, gpioConfig
                   <th>{language === 'PT' ? 'Rótulo' : 'Label'}</th>
                   <th>{language === 'PT' ? 'Função' : 'Function'}</th>
                   <th>{language === 'PT' ? 'Canal Relé' : 'Relay Channel'}</th>
+                  <th>{language === 'PT' ? 'Ações' : 'Actions'}</th>
                 </tr>
               </thead>
               <tbody>
-                {gpioConfig.map((g) => (
-                  <tr key={g.gpio}>
-                    <td><span className="gpio-badge">{g.gpio}</span></td>
-                    <td>
-                      <select className="gpio-select" value={g.direction} onChange={(e) => handleGpioUpdate(g.gpio, 'direction', e.target.value)}>
-                        <option value="INPUT">INPUT</option>
-                        <option value="OUTPUT">OUTPUT</option>
-                      </select>
-                    </td>
-                    <td><input className="gpio-input" value={g.label} onChange={(e) => handleGpioUpdate(g.gpio, 'label', e.target.value)} /></td>
-                    <td><input className="gpio-input" value={g.func} onChange={(e) => handleGpioUpdate(g.gpio, 'func', e.target.value)} /></td>
-                    <td><input className="gpio-input gpio-input-sm" value={g.inChannel} onChange={(e) => handleGpioUpdate(g.gpio, 'inChannel', e.target.value)} placeholder="IN—" /></td>
-                  </tr>
-                ))}
+                {gpioConfig.map((g) => {
+                  const pinOptions = [g.gpio, ...getAvailableGpios(g.id)]
+                    .filter((p, i, arr) => arr.indexOf(p) === i)
+                    .sort((a, b) => a - b)
+                    .map(p => ({ value: p, label: `GPIO ${p}` }));
+                  return (
+                    <tr key={g.id}>
+                      <td>
+                        <BrandSelect
+                          value={g.gpio}
+                          options={pinOptions}
+                          onChange={(v) => handleGpioPinChange(g.id, v)}
+                          className="brand-select-pin"
+                        />
+                      </td>
+                      <td>
+                        <BrandSelect
+                          value={g.direction}
+                          options={[
+                            { value: 'INPUT', label: 'INPUT' },
+                            { value: 'OUTPUT', label: 'OUTPUT' },
+                          ]}
+                          onChange={(v) => handleGpioUpdate(g.id, 'direction', v)}
+                          className="brand-select-direction"
+                        />
+                      </td>
+                      <td>
+                        <div className="gpio-field">
+                          <input className="gpio-input" value={g.label} onChange={(e) => handleGpioUpdate(g.id, 'label', e.target.value)} />
+                          <button type="button" className={`gpio-kb-toggle ${gpioKb?.id === g.id && gpioKb.field === 'label' ? 'active' : ''}`} onClick={() => toggleGpioKb(g.id, 'label')} aria-label={language === 'PT' ? 'Teclado virtual' : 'Virtual keyboard'}>
+                            <Keyboard size={13} />
+                          </button>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="gpio-field">
+                          <input className="gpio-input" value={g.func} onChange={(e) => handleGpioUpdate(g.id, 'func', e.target.value)} />
+                          <button type="button" className={`gpio-kb-toggle ${gpioKb?.id === g.id && gpioKb.field === 'func' ? 'active' : ''}`} onClick={() => toggleGpioKb(g.id, 'func')} aria-label={language === 'PT' ? 'Teclado virtual' : 'Virtual keyboard'}>
+                            <Keyboard size={13} />
+                          </button>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="gpio-field">
+                          <input className="gpio-input gpio-input-sm" value={g.inChannel} onChange={(e) => handleGpioUpdate(g.id, 'inChannel', e.target.value)} placeholder="IN—" />
+                          <button type="button" className={`gpio-kb-toggle ${gpioKb?.id === g.id && gpioKb.field === 'inChannel' ? 'active' : ''}`} onClick={() => toggleGpioKb(g.id, 'inChannel')} aria-label={language === 'PT' ? 'Teclado virtual' : 'Virtual keyboard'}>
+                            <Keyboard size={13} />
+                          </button>
+                        </div>
+                      </td>
+                      <td>
+                        <button type="button" className="gpio-row-delete" onClick={() => removeGpioRow(g.id)} aria-label={language === 'PT' ? 'Remover GPIO' : 'Remove GPIO'} title={language === 'PT' ? 'Remover esta entrada/saída' : 'Remove this input/output'}>
+                          <Trash2 size={14} />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
             </div>
+            <button type="button" className="gpio-add-btn" onClick={addGpioRow} disabled={getAvailableGpios().length === 0}>
+              <Plus size={15} /> {language === 'PT' ? 'Adicionar GPIO' : 'Add GPIO'}
+            </button>
+            <p className="gpio-reserved-note">
+              {language === 'PT'
+                ? `Pinos reservados pelo firmware (não disponíveis): GPIO 0 (Botão BOOT / Emergência), GPIO 48 (LED de estado).`
+                : `Pins reserved by the firmware (not available): GPIO 0 (BOOT button / Emergency), GPIO 48 (status LED).`}
+            </p>
             <button className="save-btn" onClick={saveGpioConfig}>
               <Save size={15} /> {language === 'PT' ? 'Guardar configuração GPIO' : 'Save GPIO configuration'}
             </button>
+            {gpioKb && (() => {
+              const row = gpioConfig.find(r => r.id === gpioKb.id);
+              if (!row) return null;
+              const fieldLabels: Record<string, { PT: string; EN: string }> = {
+                label: { PT: 'Rótulo', EN: 'Label' },
+                func: { PT: 'Função', EN: 'Function' },
+                inChannel: { PT: 'Canal Relé', EN: 'Relay Channel' },
+              };
+              const value = (row as unknown as Record<string, string>)[gpioKb.field] || '';
+              return (
+                <FullKeyboard
+                  value={value}
+                  onChange={(v) => handleGpioUpdate(row.id, gpioKb.field, v)}
+                  onSubmit={() => setGpioKb(null)}
+                  onClose={() => setGpioKb(null)}
+                  language={language}
+                  title={`GPIO ${row.gpio} · ${language === 'PT' ? fieldLabels[gpioKb.field].PT : fieldLabels[gpioKb.field].EN}`}
+                  hint={language === 'PT' ? 'Também pode escrever com o teclado físico' : 'You can also type using your physical keyboard'}
+                />
+              );
+            })()}
           </div>
         )}
       </Panel>
