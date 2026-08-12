@@ -23,21 +23,32 @@
       }
       #splash.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
       .splash-logo {
+        position: relative;
         width: 64px; height: 64px;
         display: grid; place-items: center;
-        animation: splash-pulse 1.8s ease-in-out infinite;
       }
-      .splash-logo img { width: 100%; height: 100%; object-fit: contain; display: block; }
+      .splash-logo::before {
+        content: '';
+        position: absolute;
+        inset: -22px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(20,221,214,.55), rgba(20,221,214,0) 72%);
+        filter: blur(16px);
+        animation: splash-glow 1.8s ease-in-out infinite;
+        z-index: 0;
+      }
+      .splash-logo img { width: 100%; height: 100%; object-fit: contain; display: block; position: relative; z-index: 1; }
       .splash-title { font-family: 'Manrope', system-ui, sans-serif; font-weight: 800; font-size: 20px; letter-spacing: .12em; color: #eef3f4; }
       .splash-sub { font-family: 'Manrope', system-ui, sans-serif; font-size: 9px; letter-spacing: .22em; color: #526875; text-transform: uppercase; }
       .splash-bar { width: 140px; height: 3px; border-radius: 99px; background: #17232c; overflow: hidden; }
       .splash-bar span { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, #0cb4aa, #19dfd5); animation: splash-load 1.6s ease forwards; }
-      @keyframes splash-pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(20,221,214,.3); } 50% { box-shadow: 0 0 0 10px rgba(20,221,214,0); } }
+      @keyframes splash-glow { 0%,100% { opacity: .45; transform: scale(.85); } 50% { opacity: 1; transform: scale(1.15); } }
       @keyframes splash-load { from { width: 0; } to { width: 100%; } }
       /* Splash ainda mais compacto no target HMI 320×240 */
       @media (max-height: 260px) and (orientation: landscape) {
         #splash { gap: 10px; }
         .splash-logo { width: 44px; height: 44px; }
+        .splash-logo::before { inset: -16px; filter: blur(12px); }
         .splash-title { font-size: 15px; letter-spacing: .1em; }
         .splash-sub { font-size: 8px; letter-spacing: .18em; }
         .splash-bar { width: 110px; height: 2px; }
@@ -45,6 +56,7 @@
       @media (max-width: 260px) {
         #splash { gap: 12px; }
         .splash-logo { width: 48px; height: 48px; }
+        .splash-logo::before { inset: -18px; filter: blur(13px); }
         .splash-title { font-size: 17px; }
         .splash-sub { font-size: 8px; }
         .splash-bar { width: 120px; }

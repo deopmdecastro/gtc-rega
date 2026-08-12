@@ -336,7 +336,8 @@
   .alarm-summary-card span { font-size: 9px; }
   .alarm-summary-icon { width: 36px; height: 36px; flex-basis: 36px; }
   .alarm-summary-icon svg { width: 18px; height: 18px; }
-  .alarm-banner { flex-direction: column; align-items: flex-start; gap: 8px; padding: 12px; }
+  .alarm-banner { flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 12px; }
+  .alarm-banner > div { display: flex; flex-direction: column; align-items: center; }
   .alarm-banner > .status-badge { margin-left: 0 !important; margin-top: 0 !important; }
   .alarm-banner h3 { font-size: 12px; }
   .alarm-banner p { font-size: 9px; }
