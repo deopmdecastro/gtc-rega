@@ -390,7 +390,6 @@
   .login-desc { font-size: 10px; margin-bottom: 16px; }
   .login-brand { margin-bottom: 16px; gap: 8px; }
   .login-brand-mark { width: 40px; height: 40px; border-radius: 10px; }
-  .login-brand-mark svg { width: 22px; height: 22px; }
   .login-brand-text { font-size: 16px; }
   .login-input-group { padding: 10px 12px; gap: 8px; min-height: 44px; }
   .login-input-group input { font-size: 14px; }
@@ -733,7 +732,6 @@
   }
   .login-brand { margin-bottom: 8px !important; gap: 6px; }
   .login-brand-mark { width: 28px !important; height: 28px !important; border-radius: 8px; }
-  .login-brand-mark svg { width: 16px !important; height: 16px !important; }
   .login-brand-text { font-size: 13px !important; }
   .login-screen-card h2 { font-size: 12px !important; margin: 0 0 3px; }
   .login-desc { font-size: 9px !important; margin: 0 0 8px; }
@@ -849,6 +847,68 @@
     color: #1ad5d0;
     background: rgba(18, 188, 182, .12);
   }
+
+  /* ---- Inputs e campos (SSID, Senha, Utilizador, etc.): compactar em
+     TODA a plataforma, nao so no Wi-Fi ---------------------------------- */
+  .field-label { margin-top: 10px !important; gap: 5px !important; font-size: 9px !important; }
+  .field-label input,
+  .wifi-add-form input,
+  .login-input-group input {
+    padding: 8px 34px 8px 10px !important;
+    font-size: 12px !important;
+    border-radius: 8px !important;
+  }
+  .field-input-group input { padding-right: 34px !important; }
+  .field-kb-toggle,
+  .login-kb-toggle { width: 26px !important; height: 26px !important; right: 4px !important; }
+  .field-kb-toggle svg,
+  .login-kb-toggle svg { width: 13px !important; height: 13px !important; }
+
+  /* ---- Botoes-icone genericos (Procurar, Adicionar rede, etc.) -------- */
+  .gpio-edit-btn { min-height: 30px !important; padding: 0 8px !important; }
+  .gpio-edit-btn svg { width: 13px !important; height: 13px !important; }
+  .panel-heading .gpio-edit-btn,
+  .wifi-add-form .gpio-edit-btn { width: 30px !important; min-width: 30px !important; padding: 0 !important; }
+
+  /* ---- Botoes principais (Guardar, Terminar sessao, etc.) ------------- */
+  .save-btn,
+  .logout-btn {
+    padding: 9px !important;
+    font-size: 11px !important;
+    border-radius: 8px !important;
+    margin-top: 10px !important;
+  }
+  .save-btn svg { width: 14px !important; height: 14px !important; }
+
+  /* ---- Painel de Definicoes: cabe inteiro no ecra 320x240 ------------- */
+  .settings-drawer { padding: 12px !important; }
+  .drawer-header { padding-bottom: 10px !important; }
+  .drawer-header h3 { font-size: 14px !important; margin: 2px 0 0 !important; }
+  .drawer-header .section-kicker { font-size: 8px !important; }
+  .drawer-close { width: 26px !important; height: 26px !important; }
+  .drawer-close svg { width: 13px !important; height: 13px !important; }
+  .settings-section { padding: 12px 0 !important; }
+  .settings-label { gap: 8px !important; }
+  .settings-label svg { width: 14px !important; height: 14px !important; }
+  .settings-label strong { font-size: 11px !important; }
+  .settings-label span { font-size: 9px !important; margin-top: 2px !important; }
+  .language-toggle { gap: 6px !important; margin-top: 10px !important; }
+  .language-toggle button { padding: 8px !important; font-size: 11px !important; border-radius: 8px !important; }
+  .security-note { margin-top: 10px !important; padding: 8px 10px !important; font-size: 9px !important; gap: 6px !important; }
+  .drawer-footer { padding-top: 12px !important; }
+
+  /* ---- Painel Wi-Fi: formulario, resultados e lista de redes --------- */
+  .wifi-add-form { padding: 10px !important; margin-top: 8px !important; gap: 8px !important; }
+  .wifi-scan-results { padding: 8px !important; max-height: 110px !important; gap: 4px !important; }
+  .wifi-scan-item { padding: 7px 8px !important; }
+  .wifi-scan-item strong { font-size: 11px !important; }
+  .wifi-scan-item-left svg { width: 12px !important; height: 12px !important; }
+  .wifi-networks-list { margin-top: 8px !important; max-height: 140px !important; }
+  .wifi-network-item { padding: 9px 10px !important; gap: 8px !important; }
+  .wifi-network-icon { width: 26px !important; height: 26px !important; flex: 0 0 26px !important; }
+  .wifi-network-icon svg { width: 13px !important; height: 13px !important; }
+  .wifi-network-info strong { font-size: 11px !important; }
+  .wifi-network-info span { font-size: 9px !important; }
 
   /* ---- Alarmes / histórico: cartões compactos ------------------- */
   .alarm-item, .history-item, .error-item {
