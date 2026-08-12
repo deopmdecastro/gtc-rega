@@ -232,6 +232,19 @@ function App() {
   const [pumpDelay, setPumpDelay] = useState(5);
   const [autoMode, setAutoMode] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const topbarRef = useRef<HTMLElement>(null);
+  const [topbarHeight, setTopbarHeight] = useState(0);
+
+  useEffect(() => {
+    const el = topbarRef.current;
+    if (!el) return;
+    const update = () => setTopbarHeight(el.offsetHeight);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    window.addEventListener('resize', update);
+    return () => { ro.disconnect(); window.removeEventListener('resize', update); };
+  }, []);
   const [notice, setNotice] = useState('');
   const [errors, setErrors] = useState<ErrorEvent[]>(initialErrors);
   const [systemRunning, setSystemRunning] = useState(false);
@@ -785,22 +798,22 @@ function App() {
       </aside>
       {mobileOpen && <button className="scrim" onClick={() => setMobileOpen(false)} aria-label="Fechar menu" />}
       <main className="main-content">
-        <header className="topbar">
+        <header className="topbar" ref={topbarRef}>
           <div className="topbar-inner">
             <button className="mobile-menu" onClick={() => setMobileOpen(true)} aria-label="Abrir menu"><Menu size={22} /></button>
             <div className="topbar-title compact">
               <h1>GTC <span>—</span> {t('topbar.title', language)}</h1>
             </div>
             <div className="topbar-right">
+              <div className="weather"><CloudSun size={28} /><div><strong>{weather.temp}°C</strong><span>{weather.city}, {weather.country} · {weather.desc}</span></div></div>
               <button className="lang-toggle-btn" onClick={() => setLanguage(l => l === 'PT' ? 'EN' : 'PT')} aria-label="Trocar idioma" title={language === 'PT' ? 'Switch to English' : 'Mudar para Português'}>
                 <Globe2 size={18} /><span className="lang-label">{language}</span>
               </button>
-              <div className="weather"><CloudSun size={28} /><div><strong>{weather.temp}°C</strong><span>{weather.city}, {weather.country} · {weather.desc}</span></div></div>
               <button className="settings-btn" onClick={() => setSettingsOpen(true)} aria-label="Abrir definições"><Settings2 size={20} /></button>
             </div>
           </div>
         </header>
-        <div className="content-wrap">
+        <div className="content-wrap" style={{ paddingTop: topbarHeight }}>
           <div className="page-heading">
             <div><span className="section-kicker">{t('heading.overview', language)}</span><h2>{t(`nav.${activePage.toLowerCase()}`, language)}</h2></div>
             <div className={`connection ${deviceOnline ? 'connection-online' : backendOnline ? 'connection-waiting' : 'connection-offline'}`} title={lastContact ? `Último contacto: ${new Date(lastContact).toLocaleString('pt-PT')}` : undefined}>
