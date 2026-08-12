@@ -16,6 +16,7 @@ const pt: Dict = {
   'nav.comandos': 'Comandos',
   'nav.alarmes': 'Alarmes',
   'nav.conexão': 'Conexão',
+  'nav.esquema': 'Esquema',
 
   // Topbar
   'topbar.title': 'Sistema de Rega Automatizada',
@@ -216,6 +217,7 @@ const en: Dict = {
   'nav.comandos': 'Commands',
   'nav.alarmes': 'Alarms',
   'nav.conexão': 'Connection',
+  'nav.esquema': 'Schematic',
 
   'topbar.title': 'Automated Irrigation System',
   'topbar.settings': 'Open settings',

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import gtcIcon from './assets/gtc-icon.png';
+import esquemaPdf from './assets/esquema-eletrico.pdf?url';
 import {
   Activity,
   AlertTriangle,
@@ -56,6 +57,8 @@ import {
   Search,
   CircuitBoard,
   Zap,
+  Download,
+  ExternalLink,
 } from 'lucide-react';
 import { fetchEvents, logEvent, type EventLogEntry, saveState, loadState, saveLayout, loadLayout } from '@/lib/supabase';
 import { t } from '@/lang';
@@ -69,7 +72,7 @@ const HW_HEADER_OFFSET = 56;   // altura do header do chip + padding do grupo de
 const HW_DIVIDER_GAP = 17;     // padding inferior + divisor + padding superior
 
 
-type Page = 'Resumo' | 'Estado' | 'Setpoints' | 'Mapa' | 'Histórico' | 'Comandos' | 'Alarmes' | 'Conexão';
+type Page = 'Resumo' | 'Estado' | 'Setpoints' | 'Mapa' | 'Histórico' | 'Comandos' | 'Alarmes' | 'Conexão' | 'Esquema';
 type WeekDay = 'sun' | 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat';
 type WaterSchedule = {
   enabled: boolean;
@@ -111,6 +114,7 @@ const pages: { label: Page; icon: typeof Home }[] = [
   { label: 'Comandos', icon: PlayCircle },
   { label: 'Alarmes', icon: Bell },
   { label: 'Conexão', icon: Bluetooth },
+  { label: 'Esquema', icon: CircuitBoard },
 ];
 
 const defaultSchedule = (enabled: boolean, hour: number, minute: number): WaterSchedule => ({ enabled, hour, minute });
@@ -837,12 +841,12 @@ function App() {
   };
 
   const visiblePages = useMemo(
-    () => (isEmbedded ? pages.filter((p) => p.label !== 'Mapa') : pages),
+    () => (isEmbedded ? pages.filter((p) => p.label !== 'Mapa' && p.label !== 'Esquema') : pages),
     [isEmbedded],
   );
 
   useEffect(() => {
-    if (isEmbedded && activePage === 'Mapa') setActivePage('Resumo');
+    if (isEmbedded && (activePage === 'Mapa' || activePage === 'Esquema')) setActivePage('Resumo');
   }, [isEmbedded, activePage]);
 
   const renderPage = () => {
@@ -858,6 +862,7 @@ function App() {
     if (activePage === 'Histórico') return <HistoryView errors={errors} eventLog={eventLog} eventLogLoading={eventLogLoading} onRefresh={loadEvents} language={language} />;
     if (activePage === 'Comandos') return <CommandsView zones={zones} pumpOn={pumpOn} systemRunning={systemRunning} starting={starting} startStep={startStep} autoMode={autoMode} onToggleZone={toggleZone} onTogglePump={togglePump} onToggleMode={toggleAutoMode} onEmergencyStop={handleEmergencyStop} onTestCycle={handleTestCycle} onStart={handleStart} onStop={handleStop} onReset={handleReset} language={language} />;
     if (activePage === 'Conexão') return <ConnectionView language={language} deviceOnline={deviceOnline} deviceInfo={deviceInfo} />;
+    if (activePage === 'Esquema') return <SchematicView language={language} />;
     return <AlarmsView errors={errors} onResolve={(id) => setErrors((cur) => cur.map((e) => (e.id === id ? { ...e, resolved: true } : e)))} language={language} />;
   };
 
@@ -3830,3 +3835,38 @@ function ConnectionView({ language, deviceOnline, deviceInfo }: { language: Lang
 }
 
 export default App;
+
+/* ---------- Schematic View (esquema elétrico em PDF) ---------- */
+function SchematicView({ language }: { language: Language }) {
+  return (
+    <div className="two-column">
+      <Panel style={{ gridColumn: '1 / -1' }}>
+        <PanelHeader
+          eyebrow={language === 'PT' ? 'DOCUMENTAÇÃO' : 'DOCUMENTATION'}
+          title={language === 'PT' ? 'Esquema elétrico' : 'Electrical schematic'}
+        />
+        <p className="schematic-desc">
+          {language === 'PT'
+            ? 'Esquema elétrico completo do sistema GTC Rega (ligações do ESP32-S3, sensores, relés e alimentação).'
+            : 'Full electrical schematic of the GTC Rega system (ESP32-S3 wiring, sensors, relays and power supply).'}
+        </p>
+        <div className="schematic-actions">
+          <a className="schematic-open-btn" href={esquemaPdf} target="_blank" rel="noopener noreferrer">
+            <ExternalLink size={15} />{language === 'PT' ? 'Abrir em nova aba' : 'Open in new tab'}
+          </a>
+          <a className="schematic-download-btn" href={esquemaPdf} download="Esquema - GTC Rega.pdf">
+            <Download size={15} />{language === 'PT' ? 'Descarregar PDF' : 'Download PDF'}
+          </a>
+        </div>
+        <div className="schematic-viewer">
+          <iframe src={esquemaPdf} title={language === 'PT' ? 'Esquema elétrico' : 'Electrical schematic'} />
+        </div>
+        <p className="schematic-hint">
+          {language === 'PT'
+            ? 'Se a pré-visualização não aparecer (comum em alguns navegadores móveis), usa o botão "Abrir em nova aba".'
+            : 'If the preview doesn\'t show (common on some mobile browsers), use the "Open in new tab" button.'}
+        </p>
+      </Panel>
+    </div>
+  );
+}
