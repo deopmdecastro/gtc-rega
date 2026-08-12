@@ -5,9 +5,9 @@
         <property name="saveddate-us" show="1">2026-08-12</property>
         <property name="savedfilename" show="1">Esquema - GTC Rega</property>
         <property name="savedfilepath" show="1">C:/Users/Deogracia de Castro/Documents/Estudos/GTC REGA/gtc-rega/schematics/Esquema - GTC Rega.qet</property>
-        <property name="savedtime" show="1">22:18</property>
+        <property name="savedtime" show="1">23:28</property>
     </properties>
-    <usage enabled="true" time_spent="19096"/>
+    <usage enabled="true" time_spent="23300"/>
     <newdiagrams>
         <border rows="8" colsize="60" displayrows="true" rowsize="80" cols="17" displaycols="true"/>
         <inset date="now" locmach="" author="Deogracia de Castro" displayAt="bottom" plant="" title="" filename="" indexrev="" folio="%id/%total" version="" auto_page_num="Créer un Folio Numérotation Auto"/>
@@ -1552,13 +1552,14 @@
                 <inputs/>
                 <elementInformations>
                     <elementInformation name="exclude_from_bom" show="1">false</elementInformation>
+                    <elementInformation name="label" show="1">H5</elementInformation>
                 </elementInformations>
                 <dynamic_texts>
                     <dynamic_elmt_text font="Liberation Sans,9,-1,5,50,0,0,0,0,0,Regular" rotation_point_center="false" text_from="UserText" text_width="-1" Valignment="AlignTop" y="-8.5" uuid="{6c38fb44-5836-4b80-950e-fd32a7806626}" x="15" Halignment="AlignLeft" frame="false" keep_visual_rotation="false" rotation="0">
                         <text></text>
                     </dynamic_elmt_text>
                     <dynamic_elmt_text font="Liberation Sans,6,-1,5,50,0,0,0,0,0,Regular" rotation_point_center="false" text_from="ElementInfo" text_width="-1" Valignment="AlignTop" y="-5.5" uuid="{1efab92a-8e6b-49fe-95b7-05c4f3cb3f74}" x="5.5" Halignment="AlignLeft" frame="false" keep_visual_rotation="false" rotation="0">
-                        <text></text>
+                        <text>H5</text>
                         <info_name>label</info_name>
                     </dynamic_elmt_text>
                 </dynamic_texts>
@@ -1590,13 +1591,14 @@
                 <inputs/>
                 <elementInformations>
                     <elementInformation name="exclude_from_bom" show="1">false</elementInformation>
+                    <elementInformation name="label" show="1">H4</elementInformation>
                 </elementInformations>
                 <dynamic_texts>
                     <dynamic_elmt_text font="Liberation Sans,9,-1,5,50,0,0,0,0,0,Regular" rotation_point_center="false" text_from="UserText" text_width="-1" Valignment="AlignTop" y="-8.5" uuid="{6c38fb44-5836-4b80-950e-fd32a7806626}" x="15" Halignment="AlignLeft" frame="false" keep_visual_rotation="false" rotation="0">
                         <text></text>
                     </dynamic_elmt_text>
                     <dynamic_elmt_text font="Liberation Sans,6,-1,5,50,0,0,0,0,0,Regular" rotation_point_center="false" text_from="ElementInfo" text_width="-1" Valignment="AlignTop" y="-5.5" uuid="{1efab92a-8e6b-49fe-95b7-05c4f3cb3f74}" x="5.5" Halignment="AlignLeft" frame="false" keep_visual_rotation="false" rotation="0">
-                        <text></text>
+                        <text>H4</text>
                         <info_name>label</info_name>
                     </dynamic_elmt_text>
                 </dynamic_texts>
@@ -1926,13 +1928,13 @@
             <conductor bicolor="false" num="0V" element2_label="K4" dash-size="2" x="0" element1="{585583e2-de4c-49bb-8059-bfb50245c79f}" text_color="#000000" color2="#000000" terminal2="{c5376fd7-bdf1-4c10-985a-0d7d5f52c8f9}" element1_name="Terminal de combinação" tension_protocol="" function="" element2_linked="" formula="" displaytext="0" color="#0000ff" numsize="5" cable="" conductor_section="" horizontal-alignment="AlignBottom" horizrotatetext="0" bus="" vertirotatetext="270" terminalname2="A2" terminal1="{396041da-b0d7-480a-8c0b-5bf2b1cca6f5}" onetextperfolio="0" conductor_color="" element2_name="Coil" type="multi" y="0" terminalname1="" element1_label="" vertical-alignment="AlignRight" condsize="1" freezeLabel="false" element2="{243a7011-4a78-4ab9-808e-c2a8d3770b34}">
                 <sequentialNumbers/>
             </conductor>
-            <conductor bicolor="false" num="0V" element2_label="" dash-size="2" x="0" element1="{aa09e8f1-a455-49a0-905c-9e620129e9b6}" text_color="#000000" color2="#000000" terminal2="{78c445e3-750a-444b-80c3-62f11922386c}" element1_name="Terminal de combinação" tension_protocol="" function="" formula="" displaytext="0" color="#0000ff" numsize="5" cable="" conductor_section="" horizontal-alignment="AlignBottom" horizrotatetext="0" bus="" vertirotatetext="270" terminalname2="A2" terminal1="{396041da-b0d7-480a-8c0b-5bf2b1cca6f5}" onetextperfolio="0" conductor_color="" element2_name="Lâmpada" type="multi" y="0" terminalname1="" element1_label="" vertical-alignment="AlignRight" condsize="1" freezeLabel="false" element2="{959fa3e1-be0c-48ed-bdf7-4b2effdd326f}">
+            <conductor bicolor="false" num="0V" element2_label="H5" dash-size="2" x="0" element1="{aa09e8f1-a455-49a0-905c-9e620129e9b6}" text_color="#000000" color2="#000000" terminal2="{78c445e3-750a-444b-80c3-62f11922386c}" element1_name="Terminal de combinação" tension_protocol="" function="" formula="" displaytext="0" color="#0000ff" numsize="5" cable="" conductor_section="" horizontal-alignment="AlignBottom" horizrotatetext="0" bus="" vertirotatetext="270" terminalname2="A2" terminal1="{396041da-b0d7-480a-8c0b-5bf2b1cca6f5}" onetextperfolio="0" conductor_color="" element2_name="Lâmpada" type="multi" y="0" terminalname1="" element1_label="" vertical-alignment="AlignRight" condsize="1" freezeLabel="false" element2="{959fa3e1-be0c-48ed-bdf7-4b2effdd326f}">
                 <sequentialNumbers/>
             </conductor>
-            <conductor bicolor="false" num="" element2_label="" dash-size="2" x="0" element1="{74abe07b-c60c-4b1f-b4a8-d745607215a0}" text_color="#000000" color2="#000000" terminal2="{b9683546-f0a2-4386-b114-ef1d46b2df3d}" element1_name="Lâmpada" tension_protocol="" function="" element2_linked="K3" formula="" displaytext="0" numsize="5" cable="" conductor_section="" horizontal-alignment="AlignBottom" horizrotatetext="0" bus="" vertirotatetext="270" terminalname2="" terminal1="{a18642fe-cb88-46c0-a178-1ec47b939b27}" onetextperfolio="0" conductor_color="" element2_name="Contacto simples (NO)" type="multi" y="0" terminalname1="A1" element1_label="" vertical-alignment="AlignRight" condsize="1" freezeLabel="false" element2="{7c4d50c2-6384-4076-9dd9-72d80617560c}">
+            <conductor bicolor="false" num="" element2_label="" dash-size="2" x="0" element1="{74abe07b-c60c-4b1f-b4a8-d745607215a0}" text_color="#000000" color2="#000000" terminal2="{b9683546-f0a2-4386-b114-ef1d46b2df3d}" element1_name="Lâmpada" tension_protocol="" function="" element2_linked="K3" formula="" displaytext="0" numsize="5" cable="" conductor_section="" horizontal-alignment="AlignBottom" horizrotatetext="0" bus="" vertirotatetext="270" terminalname2="" terminal1="{a18642fe-cb88-46c0-a178-1ec47b939b27}" onetextperfolio="0" conductor_color="" element2_name="Contacto simples (NO)" type="multi" y="0" terminalname1="A1" element1_label="H4" vertical-alignment="AlignRight" condsize="1" freezeLabel="false" element2="{7c4d50c2-6384-4076-9dd9-72d80617560c}">
                 <sequentialNumbers/>
             </conductor>
-            <conductor bicolor="false" num="0V" element2_label="" dash-size="2" x="0" element1="{74abe07b-c60c-4b1f-b4a8-d745607215a0}" text_color="#000000" color2="#000000" terminal2="{396041da-b0d7-480a-8c0b-5bf2b1cca6f5}" element1_name="Lâmpada" tension_protocol="" function="" formula="" displaytext="0" color="#0000ff" numsize="5" cable="" conductor_section="" horizontal-alignment="AlignBottom" horizrotatetext="0" bus="" vertirotatetext="270" terminalname2="" terminal1="{78c445e3-750a-444b-80c3-62f11922386c}" onetextperfolio="0" conductor_color="" element2_name="Terminal de combinação" type="multi" y="0" terminalname1="A2" element1_label="" vertical-alignment="AlignRight" condsize="1" freezeLabel="false" element2="{aa445ad6-c042-4284-8d85-e6d3039b32f9}">
+            <conductor bicolor="false" num="0V" element2_label="" dash-size="2" x="0" element1="{74abe07b-c60c-4b1f-b4a8-d745607215a0}" text_color="#000000" color2="#000000" terminal2="{396041da-b0d7-480a-8c0b-5bf2b1cca6f5}" element1_name="Lâmpada" tension_protocol="" function="" formula="" displaytext="0" color="#0000ff" numsize="5" cable="" conductor_section="" horizontal-alignment="AlignBottom" horizrotatetext="0" bus="" vertirotatetext="270" terminalname2="" terminal1="{78c445e3-750a-444b-80c3-62f11922386c}" onetextperfolio="0" conductor_color="" element2_name="Terminal de combinação" type="multi" y="0" terminalname1="A2" element1_label="H4" vertical-alignment="AlignRight" condsize="1" freezeLabel="false" element2="{aa445ad6-c042-4284-8d85-e6d3039b32f9}">
                 <sequentialNumbers/>
             </conductor>
             <conductor bicolor="false" num="0V" element2_label="" dash-size="2" x="0" element1="{aa09e8f1-a455-49a0-905c-9e620129e9b6}" text_color="#000000" color2="#000000" terminal2="{d7fd0bec-9f05-4651-a50b-29d7ffabeb41}" element1_name="Terminal de combinação" tension_protocol="" function="" element2_linked="" formula="" displaytext="0" color="#0000ff" numsize="5" cable="" conductor_section="" horizontal-alignment="AlignBottom" horizrotatetext="0" bus="" vertirotatetext="270" terminalname2="1" terminal1="{ce25d169-cbfd-4df9-8f1a-b808b4167e9d}" onetextperfolio="0" conductor_color="" element2_name="Coming arrow" type="multi" y="0" terminalname1="" element1_label="" vertical-alignment="AlignRight" condsize="1" freezeLabel="false" element2="{d9fde19d-167e-4b54-ad1b-9d0cb9f02008}">
@@ -1944,7 +1946,7 @@
             <conductor bicolor="false" num="0V" element2_label="" dash-size="2" x="0" element1="{585583e2-de4c-49bb-8059-bfb50245c79f}" text_color="#000000" color2="#000000" terminal2="{d7fd0bec-9f05-4651-a50b-29d7ffabeb41}" element1_name="Terminal de combinação" tension_protocol="" function="" element2_linked="" formula="" displaytext="0" color="#0000ff" numsize="5" cable="" conductor_section="" horizontal-alignment="AlignBottom" horizrotatetext="0" bus="" vertirotatetext="270" terminalname2="1" terminal1="{ce25d169-cbfd-4df9-8f1a-b808b4167e9d}" onetextperfolio="0" conductor_color="" element2_name="Coming arrow" type="multi" y="0" terminalname1="" element1_label="" vertical-alignment="AlignRight" condsize="1" freezeLabel="false" element2="{d9fde19d-167e-4b54-ad1b-9d0cb9f02008}">
                 <sequentialNumbers/>
             </conductor>
-            <conductor bicolor="false" num="" element2_label="" dash-size="2" x="0" element1="{0bb1cd1e-3dd4-48fa-aa06-acf84734cb3b}" text_color="#000000" color2="#000000" terminal2="{a18642fe-cb88-46c0-a178-1ec47b939b27}" element1_name="Contacto simples (NO)" element1_linked="K4" tension_protocol="" function="" formula="" displaytext="0" numsize="5" cable="" conductor_section="" horizontal-alignment="AlignBottom" horizrotatetext="0" bus="" vertirotatetext="270" terminalname2="A1" terminal1="{b9683546-f0a2-4386-b114-ef1d46b2df3d}" onetextperfolio="0" conductor_color="" element2_name="Lâmpada" type="multi" y="0" terminalname1="" element1_label="" vertical-alignment="AlignRight" condsize="1" freezeLabel="false" element2="{959fa3e1-be0c-48ed-bdf7-4b2effdd326f}">
+            <conductor bicolor="false" num="" element2_label="H5" dash-size="2" x="0" element1="{0bb1cd1e-3dd4-48fa-aa06-acf84734cb3b}" text_color="#000000" color2="#000000" terminal2="{a18642fe-cb88-46c0-a178-1ec47b939b27}" element1_name="Contacto simples (NO)" element1_linked="K4" tension_protocol="" function="" formula="" displaytext="0" numsize="5" cable="" conductor_section="" horizontal-alignment="AlignBottom" horizrotatetext="0" bus="" vertirotatetext="270" terminalname2="A1" terminal1="{b9683546-f0a2-4386-b114-ef1d46b2df3d}" onetextperfolio="0" conductor_color="" element2_name="Lâmpada" type="multi" y="0" terminalname1="" element1_label="" vertical-alignment="AlignRight" condsize="1" freezeLabel="false" element2="{959fa3e1-be0c-48ed-bdf7-4b2effdd326f}">
                 <sequentialNumbers/>
             </conductor>
             <conductor bicolor="false" num="" element2_label="" dash-size="2" x="0" element1="{0bb1cd1e-3dd4-48fa-aa06-acf84734cb3b}" text_color="#000000" color2="#000000" terminal2="{b3b3dc63-1c98-409b-ab79-3dbaea3556cb}" element1_name="Contacto simples (NO)" element1_linked="K4" tension_protocol="" function="" element2_linked="K3" formula="" displaytext="0" numsize="5" cable="" conductor_section="" horizontal-alignment="AlignBottom" horizrotatetext="0" bus="" vertirotatetext="270" terminalname2="" terminal1="{b3b3dc63-1c98-409b-ab79-3dbaea3556cb}" onetextperfolio="0" conductor_color="" element2_name="Contacto simples (NO)" type="multi" y="0" terminalname1="" element1_label="" vertical-alignment="AlignRight" condsize="1" freezeLabel="false" element2="{7c4d50c2-6384-4076-9dd9-72d80617560c}">
@@ -2575,13 +2577,14 @@
                 <inputs/>
                 <elementInformations>
                     <elementInformation name="exclude_from_bom" show="1">false</elementInformation>
+                    <elementInformation name="label" show="1">H7</elementInformation>
                 </elementInformations>
                 <dynamic_texts>
                     <dynamic_elmt_text font="Liberation Sans,9,-1,5,50,0,0,0,0,0,Regular" rotation_point_center="false" text_from="UserText" text_width="-1" Valignment="AlignTop" y="-8.5" uuid="{6c38fb44-5836-4b80-950e-fd32a7806626}" x="15" Halignment="AlignLeft" frame="false" keep_visual_rotation="false" rotation="0">
                         <text></text>
                     </dynamic_elmt_text>
                     <dynamic_elmt_text font="Liberation Sans,6,-1,5,50,0,0,0,0,0,Regular" rotation_point_center="false" text_from="ElementInfo" text_width="-1" Valignment="AlignTop" y="-5.5" uuid="{1efab92a-8e6b-49fe-95b7-05c4f3cb3f74}" x="5.5" Halignment="AlignLeft" frame="false" keep_visual_rotation="false" rotation="0">
-                        <text></text>
+                        <text>H7</text>
                         <info_name>label</info_name>
                     </dynamic_elmt_text>
                 </dynamic_texts>
@@ -3116,7 +3119,7 @@
             <conductor bicolor="false" num="" element2_label="" dash-size="2" x="0" element1="{33430ba7-1581-49f9-85f6-74075d1b8a33}" text_color="#000000" color2="#000000" terminal2="{d6e0cd1d-504b-405a-810c-7d5ae24c981d}" element1_name="Going arrow" element1_linked="" tension_protocol="" function="" element2_linked="K8" formula="" displaytext="0" numsize="5" cable="" conductor_section="" horizontal-alignment="AlignBottom" horizrotatetext="0" bus="" vertirotatetext="270" terminalname2="" terminal1="{975add6f-4ba5-44af-a4c0-e1f1c2024601}" onetextperfolio="0" conductor_color="" element2_name="Contacto simples (NC)" type="multi" y="0" terminalname1="1" element1_label="" vertical-alignment="AlignRight" condsize="1" freezeLabel="false" element2="{3c139f34-37f4-4c58-a5aa-48785bbf3ef9}">
                 <sequentialNumbers/>
             </conductor>
-            <conductor bicolor="false" num="" element2_label="" dash-size="2" x="0" element1="{850490c1-8482-48b7-814a-8051ff9e9da6}" text_color="#000000" color2="#000000" terminal2="{a18642fe-cb88-46c0-a178-1ec47b939b27}" element1_name="Contacto simples (NO)" element1_linked="K2" tension_protocol="" function="" formula="" displaytext="0" numsize="5" cable="" conductor_section="" horizontal-alignment="AlignBottom" horizrotatetext="0" bus="" vertirotatetext="270" terminalname2="A1" terminal1="{b9683546-f0a2-4386-b114-ef1d46b2df3d}" onetextperfolio="0" conductor_color="" element2_name="Lâmpada" type="multi" y="0" terminalname1="" element1_label="" vertical-alignment="AlignRight" condsize="1" freezeLabel="false" element2="{e777ea1a-5596-43c3-b510-62b42ca7eeca}">
+            <conductor bicolor="false" num="" element2_label="H7" dash-size="2" x="0" element1="{850490c1-8482-48b7-814a-8051ff9e9da6}" text_color="#000000" color2="#000000" terminal2="{a18642fe-cb88-46c0-a178-1ec47b939b27}" element1_name="Contacto simples (NO)" element1_linked="K2" tension_protocol="" function="" formula="" displaytext="0" numsize="5" cable="" conductor_section="" horizontal-alignment="AlignBottom" horizrotatetext="0" bus="" vertirotatetext="270" terminalname2="A1" terminal1="{b9683546-f0a2-4386-b114-ef1d46b2df3d}" onetextperfolio="0" conductor_color="" element2_name="Lâmpada" type="multi" y="0" terminalname1="" element1_label="" vertical-alignment="AlignRight" condsize="1" freezeLabel="false" element2="{e777ea1a-5596-43c3-b510-62b42ca7eeca}">
                 <sequentialNumbers/>
             </conductor>
             <conductor bicolor="false" num="" element2_label="" dash-size="2" x="0" element1="{c82cb647-7c89-421f-b901-d266d1127fa4}" text_color="#000000" color2="#000000" terminal2="{b9683546-f0a2-4386-b114-ef1d46b2df3d}" element1_name="Contacto simples (NO)" element1_linked="KM1" tension_protocol="" function="" element2_linked="K2" formula="" displaytext="0" numsize="5" cable="" conductor_section="" horizontal-alignment="AlignBottom" horizrotatetext="0" bus="" vertirotatetext="270" terminalname2="" terminal1="{b9683546-f0a2-4386-b114-ef1d46b2df3d}" onetextperfolio="0" conductor_color="" element2_name="Contacto simples (NO)" type="multi" y="0" terminalname1="" element1_label="" vertical-alignment="AlignRight" condsize="1" freezeLabel="false" element2="{850490c1-8482-48b7-814a-8051ff9e9da6}">
@@ -3151,7 +3154,7 @@
                 <segment orientation="vertical" length="-10"/>
                 <sequentialNumbers/>
             </conductor>
-            <conductor bicolor="false" num="0V" element2_label="" dash-size="2" x="0" element1="{e777ea1a-5596-43c3-b510-62b42ca7eeca}" text_color="#000000" color2="#000000" terminal2="{396041da-b0d7-480a-8c0b-5bf2b1cca6f5}" element1_name="Lâmpada" tension_protocol="" function="" formula="" displaytext="0" color="#0000ff" numsize="5" cable="" conductor_section="" horizontal-alignment="AlignBottom" horizrotatetext="0" bus="" vertirotatetext="270" terminalname2="" terminal1="{78c445e3-750a-444b-80c3-62f11922386c}" onetextperfolio="0" conductor_color="" element2_name="Terminal de combinação" type="multi" y="0" terminalname1="A2" element1_label="" vertical-alignment="AlignRight" condsize="1" freezeLabel="false" element2="{f410bb37-5fc3-4f80-8b8d-d846295d23b8}">
+            <conductor bicolor="false" num="0V" element2_label="" dash-size="2" x="0" element1="{e777ea1a-5596-43c3-b510-62b42ca7eeca}" text_color="#000000" color2="#000000" terminal2="{396041da-b0d7-480a-8c0b-5bf2b1cca6f5}" element1_name="Lâmpada" tension_protocol="" function="" formula="" displaytext="0" color="#0000ff" numsize="5" cable="" conductor_section="" horizontal-alignment="AlignBottom" horizrotatetext="0" bus="" vertirotatetext="270" terminalname2="" terminal1="{78c445e3-750a-444b-80c3-62f11922386c}" onetextperfolio="0" conductor_color="" element2_name="Terminal de combinação" type="multi" y="0" terminalname1="A2" element1_label="H7" vertical-alignment="AlignRight" condsize="1" freezeLabel="false" element2="{f410bb37-5fc3-4f80-8b8d-d846295d23b8}">
                 <sequentialNumbers/>
             </conductor>
             <conductor bicolor="false" num="_" element2_label="KM1" dash-size="2" x="0" element1="{ee6515f5-2ffb-46c5-af09-3cd69b8d93cb}" text_color="#000000" color2="#000000" terminal2="{8d0fa333-2d98-4a75-8a4e-21c81cce7ec3}" element1_name="Contacto simples (NC)" tension_protocol="" function="" element2_linked="" formula="" displaytext="0" numsize="5" cable="" conductor_section="" horizontal-alignment="AlignBottom" horizrotatetext="0" bus="" vertirotatetext="270" terminalname2="A1" terminal1="{9472aef6-8807-4083-bb2c-e774011a97d9}" onetextperfolio="0" conductor_color="" element2_name="Coil" type="multi" y="0" terminalname1="" element1_label="" vertical-alignment="AlignRight" condsize="1" freezeLabel="false" element2="{7f2645ec-1b94-49a0-827d-4b54aed340b1}">
