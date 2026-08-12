@@ -221,6 +221,13 @@ function formatDateTime(iso: string): string {
   return `${d.toLocaleDateString('pt-PT', { day: '2-digit', month: '2-digit' })}, ${time}`;
 }
 
+function severityLabel(severity: 'critical' | 'warning' | 'info', language: Language): string {
+  if (language === 'PT') {
+    return severity === 'critical' ? 'CRÍTICO' : severity === 'warning' ? 'AVISO' : 'INFORMAÇÃO';
+  }
+  return severity.toUpperCase();
+}
+
 function eventToHistoryItem(ev: EventLogEntry): { time: string; zone: string; duration: string; eventType: string } {
   const time = formatTime(ev.created_at);
   const meta = ev.metadata as Record<string, unknown> | null;
@@ -2469,7 +2476,7 @@ function HistoryItem({ event, language }: { event: EventLogEntry; language: Lang
         <span className="history-msg">{event.message}</span>
         <div className="history-meta">
           <span className="history-tag">{eventLabel[event.event_type] || event.event_type}</span>
-          <span className={`history-severity hist-sev-${event.severity}`}>{event.severity.toUpperCase()}</span>
+          <span className={`history-severity hist-sev-${event.severity}`}>{severityLabel(event.severity, language)}</span>
         </div>
       </div>
     </div>

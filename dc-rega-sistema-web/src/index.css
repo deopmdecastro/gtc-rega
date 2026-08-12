@@ -206,6 +206,10 @@ textarea:focus-visible {
 .panel-heading > svg { color: #4e6d78; margin-right: 4px; }
 .panel-heading:has(+ .alarm-list) { padding-bottom: 19px; }
 .two-column > .panel, .commands-layout > .panel { padding: 26px; }
+.summary-actions-panel .command-actions { padding: 4px 26px 26px; }
+@media (max-width: 720px) {
+  .summary-actions-panel .command-actions { padding: 4px 16px 20px; }
+}
 
 /* ---------- Estado ---------- */
 .state-list { display: grid; }
