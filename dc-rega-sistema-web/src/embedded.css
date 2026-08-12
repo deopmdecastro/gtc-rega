@@ -1,0 +1,564 @@
+/* ================================================================
+ * GTC — Modo Embedded HMI (ESP32-S3 · IPS 2,8" · 240×320)
+ * ----------------------------------------------------------------
+ * Estilos específicos para dispositivos-alvo pequenos.
+ * Detecção: pura media query (nada muda no JS/estrutura React).
+ *
+ *  • Embedded portrait target: 240×320 (breakpoint: max-width 340px)
+ *  • Embedded landscape target: 320×240 (max-height 260 + landscape)
+ *
+ * Objetivos:
+ *  - eliminar scroll horizontal;
+ *  - preservar identidade visual (cores/ícones/logo/dark palette);
+ *  - alvos de toque ≥ 40×40 px;
+ *  - layout vertical priorizando informação crítica;
+ *  - tipografia legível em ecrã de 2,8".
+ * ================================================================ */
+
+/* ================================================================
+ *  EMBEDDED — PORTRAIT (240 × 320) e ecrãs muito estreitos
+ * ================================================================ */
+@media (max-width: 340px) {
+  /* Root / global -------------------------------------------------- */
+  html, body { min-width: 0; overflow-x: hidden; }
+  body { min-width: 240px; font-size: 14px; }
+  :root { font-size: 14px; }
+  .app-shell { min-height: 100vh; background: #060b10; }
+
+  /* Sidebar / drawer ---------------------------------------------- */
+  .sidebar {
+    width: 100vw !important;
+    max-width: 240px;
+    left: -240px;
+    padding: 14px 10px 12px !important;
+    padding-left: max(10px, env(safe-area-inset-left)) !important;
+  }
+  .sidebar-open { left: 0; }
+  .brand { padding: 2px 4px 18px; gap: 8px; }
+  .brand-mark { width: 28px; height: 28px; }
+  .brand strong { font-size: 16px; }
+  .brand span { font-size: 8px; }
+  .sidebar-label { padding: 0 6px 8px; font-size: 8px; }
+  .side-nav { gap: 3px; }
+  .nav-item {
+    min-height: 44px;
+    padding: 10px 10px;
+    gap: 10px;
+    font-size: 13px;
+    border-radius: 8px;
+  }
+  .nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
+  .nav-count { font-size: 10px; padding: 2px 5px; }
+  .sidebar-footer { padding: 10px; margin-top: 12px; border-radius: 9px; }
+  .footer-reading { margin-top: 10px; gap: 8px; }
+  .footer-reading strong { font-size: 12px; }
+  .footer-reading span { font-size: 9px; }
+
+  /* Main content / topbar ----------------------------------------- */
+  .main-content { margin-left: 0 !important; width: 100%; }
+  .topbar { left: 0 !important; right: 0; position: fixed; }
+  .topbar-inner {
+    padding: 8px 8px !important;
+    gap: 6px;
+    min-height: 44px;
+  }
+  .topbar-title.compact { min-height: 32px; }
+  .topbar h1 { font-size: 15px !important; letter-spacing: -.03em; line-height: 1; }
+  .topbar h1 span { display: none; } /* separador — omitir para caber */
+  .topbar p { display: none; }
+  .weather { display: none !important; }
+  .topbar-right { gap: 6px; }
+  .settings-btn,
+  .lang-toggle-btn { width: 40px; height: 40px; border-radius: 9px; }
+  .lang-toggle-btn svg { width: 14px; height: 14px; }
+  .lang-label { font-size: 9px; }
+  .mobile-menu {
+    display: grid !important;
+    width: 40px; height: 40px;
+    margin: 0;
+    border-radius: 9px;
+  }
+
+  /* Content wrap --------------------------------------------------- */
+  .content-wrap { padding: 0 8px 16px !important; max-width: 100%; }
+  .page-heading { margin: 12px 0 8px; align-items: flex-start; flex-direction: column; gap: 6px; }
+  .page-heading h2 { font-size: 16px; margin: 2px 0 0; }
+  .section-kicker { font-size: 8px; letter-spacing: .1em; }
+  .connection { font-size: 10px; gap: 5px; }
+  .connection span:first-of-type { display: inline; }
+
+  /* Layout: força coluna única em TODAS as grelhas -------------- */
+  .content-stack,
+  .two-column,
+  .commands-layout,
+  .alarms-layout,
+  .quick-grid,
+  .sensor-grid,
+  .setpoint-grid,
+  .setpoint-grid-v2,
+  .alarm-summary-grid,
+  .metrics-panel,
+  .command-actions,
+  .pinout-grid,
+  .pinout-full-grid {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  /* Painéis -------------------------------------------------------- */
+  .panel { border-radius: 10px; box-shadow: none; }
+  .two-column > .panel,
+  .commands-layout > .panel { padding: 12px !important; }
+  .panel-heading { padding: 12px 12px 10px; }
+  .panel-heading h3 { font-size: 13px; }
+  .panel-title-row > small { font-size: 9px; }
+  .panel-title-row > svg,
+  .panel-heading > svg { width: 16px; height: 16px; }
+
+  /* Header do Dashboard (Resumo) — device status ----------------- */
+  .device-status-panel { padding: 10px 12px; gap: 8px; flex-direction: column; align-items: stretch; }
+  .device-status-main { gap: 8px; }
+  .device-status-main strong { font-size: 12px; }
+  .device-status-main span { font-size: 9px; }
+  .device-status-sensors { gap: 5px; }
+  .device-status-sensors-label { font-size: 9px; }
+  .sensor-health-pill { font-size: 9px; padding: 4px 7px; gap: 4px; }
+  .sensor-health-pill svg { width: 10px; height: 10px; }
+
+  /* Hero panel — Estado do sistema (destaque crítico) ------------- */
+  .hero-panel {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+    padding: 12px !important;
+    text-align: center;
+  }
+  .hero-status { flex-direction: column; gap: 10px; }
+  .hero-divider { width: 100%; height: 1px; }
+  .system-orbit { flex-basis: 82px !important; width: 82px !important; height: 82px !important; margin: 0 auto; transform: none !important; }
+  .orbit-core { width: 60px; height: 60px; }
+  .orbit-core svg { width: 26px; height: 26px; }
+  .hero-status h3 { font-size: 20px; margin: 4px 0 6px; letter-spacing: -.03em; }
+  .hero-status .label { font-size: 8px; }
+
+  /* Actuator list -------------------------------------------------- */
+  .actuator-list { padding-top: 4px; }
+  .actuator-row { min-height: 44px; padding: 4px 0; gap: 8px; }
+  .actuator-row strong { font-size: 12px; }
+  .actuator-icon { width: 22px; }
+  .actuator-icon svg { width: 18px; height: 18px; }
+  .actuator-state { font-size: 8px; padding: 5px 7px; }
+  /* Alvos de toque generosos */
+  .switch { width: 44px; height: 26px; }
+  .switch span { width: 20px; height: 20px; }
+  .switch-on span { transform: translateX(18px); }
+
+  /* Sensor cards --------------------------------------------------- */
+  .sensor-card { padding: 12px 12px 10px; }
+  .sensor-header h3 { font-size: 13px; margin: 3px 0 0; }
+  .sensor-reading { padding: 6px 0 4px; }
+  .sensor-reading strong { font-size: 32px; letter-spacing: -.04em; }
+  .sensor-reading strong small { font-size: 14px; }
+  .sensor-reading > span { font-size: 9px; }
+  .water-icon svg { width: 18px; height: 18px; }
+  .sensor-footer { font-size: 9px; margin-top: 8px; }
+
+  /* Metrics -------------------------------------------------------- */
+  .metrics-panel { padding: 8px !important; gap: 4px !important; }
+  .metric { padding: 8px !important; gap: 8px; border-right: 0; border-bottom: 1px solid #182530; min-height: 44px; }
+  .metric:last-child { border-bottom: 0; }
+  .metric-icon { width: 32px; height: 32px; flex-basis: 32px; }
+  .metric-icon svg { width: 15px; height: 15px; }
+  .metric strong { font-size: 12px; margin-top: 3px; }
+  .metric small { font-size: 9px; margin-top: 2px; }
+
+  /* Quick panels --------------------------------------------------- */
+  .quick-panel { padding: 12px 12px; }
+  .quick-panel h3 { font-size: 12px; }
+  .next-irrigation, .alert-line { gap: 8px; margin-top: 10px; padding-top: 10px; }
+  .next-irrigation strong { font-size: 12px; }
+  .next-irrigation span,
+  .alert-line > div span { font-size: 9px; }
+  .alert-line strong { font-size: 11px; }
+  .alert-line small { font-size: 9px; }
+
+  /* Estado — State rows ------------------------------------------- */
+  .state-row, .command-row {
+    gap: 10px; padding: 10px 4px;
+    min-height: 46px;
+    border-radius: 8px;
+    flex-wrap: wrap;
+  }
+  .state-icon, .command-icon { flex: 0 0 34px; height: 34px; }
+  .state-icon svg, .command-icon svg { width: 16px; height: 16px; }
+  .state-row strong, .command-row strong { font-size: 11px; }
+  .state-row div span, .command-row div span { font-size: 9px; }
+  .info-list { gap: 10px; padding-top: 12px; }
+  .info-list div { flex-wrap: wrap; gap: 6px; }
+  .info-list span, .info-list strong { font-size: 9px; }
+  .mode-card { padding: 12px 0; gap: 10px; }
+  .mode-card strong { font-size: 12px; }
+  .mode-card p { font-size: 9px; }
+  .mode-graphic { width: 38px; height: 38px; }
+  .mode-graphic svg { width: 18px; height: 18px; }
+  .mode-toggle-btn { padding: 10px 12px; min-height: 40px; font-size: 10px; }
+
+  /* Hardware diagram (ESP32 pinout) — reorganizar em vertical ----- */
+  .hw3-header {
+    flex-direction: column; align-items: stretch;
+    gap: 10px; padding-bottom: 10px; margin-bottom: 14px;
+  }
+  .hw3-header .gpio-edit-btn { position: static !important; align-self: center; min-height: 40px; }
+  .hw3-header h3 { font-size: 18px; }
+  .hw3-subtitle { font-size: 10px; }
+  .hw3-diagram {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+    --hw-row: 46px;
+    --hw-gap: 6px;
+  }
+  .hw3-col-left, .hw3-col-right { padding-top: 0 !important; }
+  .hw3-col-caption { position: static; margin-bottom: 4px; }
+  .hw3-col-center { order: -1; }
+  .hw3-chip-frame { max-width: 100% !important; min-width: 0 !important; border-radius: 12px; }
+  .hw3-chip-header { height: 46px; padding: 0 10px; gap: 8px; }
+  .hw3-chip-titles strong { font-size: 12px; }
+  .hw3-chip-titles span { font-size: 9px; }
+  .hw3-pin-group { padding: 8px 6px; gap: 4px; }
+  .hw3-pin { padding: 0 8px; font-size: 10px; height: 40px; }
+  .hw3-pin-num { font-size: 10px; }
+  .hw3-pin-dir { font-size: 7px; }
+  .hw3-block { padding: 6px 8px; gap: 6px; }
+  .hw3-block-label { width: 30px; height: 30px; font-size: 11px; }
+  .hw3-block-info strong { font-size: 11px; }
+  .hw3-block-info span { font-size: 9px; }
+  .hw3-signal { font-size: 9px; }
+  .hw3-wire { width: 20px !important; }
+  .hw3-legend { flex-direction: column; align-items: flex-start; gap: 6px; padding: 10px; font-size: 10px; }
+
+  /* Tabela GPIO: transformar em cards verticais ------------------- */
+  .gpio-edit-table-scroll { border: 0; overflow: visible; }
+  .gpio-edit-table { min-width: 0; width: 100%; }
+  .gpio-edit-table thead { display: none; }
+  .gpio-edit-table, .gpio-edit-table tbody, .gpio-edit-table tr, .gpio-edit-table td {
+    display: block; width: 100%;
+  }
+  .gpio-edit-table tr {
+    border: 1px solid #1a2a33;
+    border-radius: 9px;
+    padding: 10px;
+    margin-bottom: 8px;
+    background: #0b151b;
+  }
+  .gpio-edit-table td { border: 0; padding: 4px 0 !important; display: flex; align-items: center; gap: 8px; }
+  .gpio-edit-table td::before {
+    content: attr(data-label);
+    min-width: 78px;
+    font-size: 9px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: #78909a;
+    font-weight: 700;
+  }
+  /* fallback: rótulos por ordem em cascata quando não há data-label */
+  .gpio-edit-table td:nth-child(1)::before { content: "GPIO"; }
+  .gpio-edit-table td:nth-child(2)::before { content: "Direção"; }
+  .gpio-edit-table td:nth-child(3)::before { content: "Rótulo"; }
+  .gpio-edit-table td:nth-child(4)::before { content: "Função"; }
+  .gpio-edit-table td:nth-child(5)::before { content: "Canal"; }
+  .gpio-input, .gpio-select { min-height: 40px; flex: 1; }
+  .gpio-input-sm { max-width: none; }
+
+  /* Setpoints ----------------------------------------------------- */
+  .setpoint-card { padding: 12px !important; }
+  .setpoint-card .panel-heading { padding-right: 40px; padding: 0 40px 8px 0; border: 0; }
+  .setpoint-value { margin: 12px 0 10px; }
+  .setpoint-value strong { font-size: 28px; }
+  .setpoint-value small { font-size: 12px; }
+  .setpoint-value span { font-size: 9px; }
+  .setpoint-note { font-size: 9px; padding: 8px; margin-top: 12px; }
+  .setpoint-ids { flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
+  .setpoint-ids span { font-size: 9px; padding: 4px 7px; }
+  .setpoint-save-btn { padding: 12px; min-height: 44px; font-size: 11px; }
+  .remove-sensor-btn { width: 32px; height: 32px; top: 10px; right: 10px; }
+
+  /* Semana de rega — grid mais denso e touch ---------------------- */
+  .setpoint-schedule { margin-top: 14px; padding-top: 12px; }
+  .setpoint-schedule > label { font-size: 9px; margin-bottom: 8px; }
+  .schedule-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .schedule-day { padding: 8px 4px 6px; gap: 6px; }
+  .schedule-day-label { font-size: 9px; }
+  .schedule-time-btn { width: 26px; height: 26px; }
+  .schedule-time-display { font-size: 10px; padding: 4px 5px; }
+
+  /* Time input --------------------------------------------------- */
+  .time-controls { margin-top: 12px; padding-top: 12px; gap: 8px; }
+  .time-controls label { font-size: 10px; }
+  .time-controls small { font-size: 9px; }
+  .btn-step { width: 40px; height: 40px; font-size: 16px; }
+  .time-display { min-width: 78px; font-size: 22px; padding: 8px 12px; }
+  .time-display span { font-size: 12px; }
+
+  /* Add sensor btn ----------------------------------------------- */
+  .add-sensor-btn { padding: 12px; min-height: 44px; font-size: 11px; }
+  .add-sensor-info strong { font-size: 12px; }
+  .add-sensor-info span { font-size: 9px; }
+
+  /* Alarms — banner + cards + list ------------------------------- */
+  .alarm-summary-card { padding: 10px 12px; gap: 8px; min-height: 60px; }
+  .alarm-summary-card strong { font-size: 22px; }
+  .alarm-summary-card span { font-size: 9px; }
+  .alarm-summary-icon { width: 36px; height: 36px; flex-basis: 36px; }
+  .alarm-summary-icon svg { width: 18px; height: 18px; }
+  .alarm-banner { flex-direction: column; align-items: flex-start; gap: 8px; padding: 12px; }
+  .alarm-banner > .status-badge { margin-left: 0 !important; margin-top: 0 !important; }
+  .alarm-banner h3 { font-size: 12px; }
+  .alarm-banner p { font-size: 9px; }
+  .alarm-list { padding: 6px; }
+  .alarm-item { padding: 10px 6px !important; gap: 10px; flex-wrap: wrap; }
+  .alarm-item:first-child { padding-top: 10px !important; }
+  .alarm-item:last-child { padding-bottom: 10px !important; }
+  .alarm-item-icon { width: 30px; height: 30px; flex-basis: 30px; }
+  .alarm-item-icon svg { width: 14px; height: 14px; }
+  .alarm-item strong { font-size: 11px; }
+  .alarm-item div span { font-size: 9px; }
+  .alarm-meta { gap: 6px; margin-top: 6px; }
+  .alarm-meta small { font-size: 9px; }
+  .resolve-btn { padding: 8px 10px; font-size: 10px; min-height: 36px; }
+
+  /* Comandos — cmd-btn --------------------------------------------- */
+  .cmd-btn { padding: 14px 8px; gap: 6px; min-height: 68px; }
+  .cmd-btn svg { width: 22px; height: 22px; }
+  .cmd-btn strong { font-size: 12px; }
+  .cmd-btn small { font-size: 9px; }
+  .action-button { padding: 12px 0; gap: 10px; min-height: 44px; }
+  .action-button strong { font-size: 11px; }
+  .action-button small { font-size: 9px; }
+
+  /* Histórico / eventos ------------------------------------------- */
+  .history-item { gap: 10px; padding: 10px 0; }
+  .history-time { font-size: 11px; min-width: 44px; }
+  .history-item strong { font-size: 11px; }
+  .history-item > div span { font-size: 9px; }
+  .history-item small { font-size: 9px; }
+  .error-item { gap: 10px; padding: 12px 6px; flex-wrap: wrap; }
+  .error-icon { flex-basis: 30px; height: 30px; }
+  .error-icon svg { width: 14px; height: 14px; }
+  .error-top strong { font-size: 11px; }
+  .error-msg { font-size: 10px; }
+  .error-meta small { font-size: 9px; }
+
+  /* Chart / gráfico ----------------------------------------------- */
+  .chart { height: 130px; margin-top: 14px; gap: 6px; }
+  .chart-grid { font-size: 8px; }
+  .chart-labels { font-size: 8px; bottom: -20px; }
+  .legend { margin: 20px 0 0 20px; font-size: 9px; gap: 12px; }
+  .chart-panel { min-height: 220px; }
+
+  /* Toast --------------------------------------------------------- */
+  .toast { left: 8px; right: 8px; bottom: 8px; font-size: 10px; padding: 10px 12px; }
+
+  /* Login / modais ------------------------------------------------ */
+  .login-screen-card { width: calc(100vw - 16px) !important; padding: 20px 14px 16px !important; }
+  .login-screen-card h2 { font-size: 16px; }
+  .login-desc { font-size: 10px; margin-bottom: 16px; }
+  .login-brand { margin-bottom: 16px; gap: 8px; }
+  .login-brand-mark { width: 40px; height: 40px; border-radius: 10px; }
+  .login-brand-mark svg { width: 22px; height: 22px; }
+  .login-brand-text { font-size: 16px; }
+  .login-input-group { padding: 10px 12px; gap: 8px; min-height: 44px; }
+  .login-input-group input { font-size: 14px; }
+  .login-kb-toggle { width: 32px; height: 32px; }
+  .login-submit-btn { padding: 12px; min-height: 44px; font-size: 13px; }
+  .login-footer { font-size: 9px; margin-top: 14px; gap: 8px; }
+  .confirm-modal { width: calc(100vw - 16px); padding: 18px 14px 14px; }
+  .confirm-modal-icon { width: 42px; height: 42px; margin-bottom: 10px; }
+  .confirm-modal h3 { font-size: 14px; }
+  .confirm-modal p { font-size: 11px; margin-bottom: 14px; }
+  .confirm-delete-btn { padding: 12px; min-height: 44px; font-size: 12px; }
+
+  /* Teclado numérico ---------------------------------------------- */
+  .keyboard { width: calc(100vw - 12px); border-radius: 12px; }
+  .keyboard-header { padding: 10px 12px; font-size: 10px; }
+  .keyboard-display { padding: 14px 10px; font-size: 30px; }
+  .keyboard-display span { font-size: 14px; }
+  .keyboard-keys { padding: 10px 10px 6px; gap: 5px; }
+  .kb-key { height: 42px; font-size: 15px; }
+  .keyboard-actions { padding: 6px 10px 12px; gap: 5px; }
+  .kb-clear, .kb-confirm { padding: 12px; font-size: 11px; min-height: 44px; }
+
+  /* Teclado full (texto) ------------------------------------------ */
+  .text-keyboard, .full-keyboard { width: calc(100vw - 8px); }
+  .text-display { font-size: 16px; padding: 12px; }
+  .pk-body { padding: 8px 6px 10px; gap: 3px; }
+  .pk-row { gap: 2px; }
+  .pk-key { height: 32px; font-size: 10px; border-radius: 6px; }
+  .pk-tab, .pk-caps, .pk-shift, .pk-ctrl, .pk-alt, .pk-enter, .pk-backspace { font-size: 9px; }
+
+  /* Mapa — canvas mais curto -------------------------------------- */
+  .map-canvas { min-height: 200px !important; max-height: 240px !important; height: 220px !important; aspect-ratio: auto; }
+  .map-panel { padding: 12px; }
+  .map-legend { gap: 6px; font-size: 8px; }
+  .map-toolbar { gap: 4px; flex-wrap: wrap; }
+  .map-tool-btn { padding: 8px 10px; font-size: 9px; min-height: 40px; }
+  .map-hint { font-size: 9px; }
+  .map-hint svg { width: 12px; height: 12px; }
+
+  /* Footer -------------------------------------------------------- */
+  .app-footer {
+    flex-direction: column; gap: 3px;
+    margin-top: 20px; padding-top: 12px;
+    font-size: 9px; text-align: center;
+  }
+  .footer-divider { display: none; }
+
+  /* Blindar contra qualquer overflow horizontal (barras, tabelas) */
+  .content-wrap, .main-content, .panel, .two-column > .panel {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+  .gpio-edit-table-scroll,
+  .chart-panel { overflow-x: auto; }
+}
+
+/* ================================================================
+ *  EMBEDDED — TARGET EXATO 240×320 (portrait)
+ *  Reforço final para o dispositivo HMI real
+ * ================================================================ */
+@media (max-width: 260px) and (max-height: 360px) {
+  .content-wrap { padding: 0 6px 12px !important; }
+  .topbar-inner { padding: 6px !important; gap: 4px; }
+  .topbar h1 { font-size: 13px !important; }
+  .settings-btn, .lang-toggle-btn, .mobile-menu { width: 36px; height: 36px; }
+  .hero-status h3 { font-size: 17px; }
+  .sensor-reading strong { font-size: 26px; }
+  .setpoint-value strong { font-size: 22px; }
+  .nav-item { min-height: 42px; padding: 8px; }
+}
+
+/* ================================================================
+ *  EMBEDDED — LANDSCAPE (320 × 240)
+ *  Reorganiza em duas áreas quando há largura suficiente.
+ * ================================================================ */
+@media (max-height: 260px) and (orientation: landscape) and (max-width: 480px) {
+  html, body { overflow-x: hidden; overflow-y: auto; }
+  :root { font-size: 13px; }
+
+  .sidebar {
+    width: 200px;
+    max-width: 200px;
+    left: -200px;
+    padding: 8px 6px !important;
+  }
+  .sidebar-open { left: 0; }
+  .brand { padding: 2px 4px 10px; }
+  .side-nav { gap: 2px; }
+  .nav-item { min-height: 36px; padding: 6px 8px; font-size: 11px; }
+  .nav-item svg { width: 14px; height: 14px; }
+  .sidebar-footer { display: none; } /* poupa altura */
+
+  .main-content { margin-left: 0; }
+  .topbar { position: static; }
+  .topbar-inner { padding: 4px 8px !important; min-height: 36px; }
+  .topbar h1 { font-size: 13px !important; }
+  .topbar h1 span { display: none; }
+  .weather { display: none !important; }
+  .settings-btn, .lang-toggle-btn, .mobile-menu { width: 34px; height: 34px; border-radius: 8px; }
+
+  .content-wrap { padding: 4px 8px 8px !important; }
+  .page-heading { flex-direction: row; align-items: center; margin: 4px 0 6px; gap: 8px; }
+  .page-heading h2 { font-size: 13px; }
+  .section-kicker { display: none; }
+  .connection { font-size: 9px; }
+
+  /* Aproveitar a largura: duas colunas em landscape */
+  .content-stack,
+  .two-column,
+  .commands-layout,
+  .alarms-layout,
+  .quick-grid,
+  .sensor-grid,
+  .setpoint-grid,
+  .setpoint-grid-v2,
+  .alarm-summary-grid,
+  .command-actions {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+  .metrics-panel { grid-template-columns: repeat(4, 1fr) !important; padding: 6px !important; gap: 4px !important; }
+  .metric { padding: 4px !important; border-right: 1px solid #182530; border-bottom: 0; min-height: 40px; }
+  .metric:last-child { border-right: 0; }
+  .metric-icon { width: 28px; height: 28px; flex-basis: 28px; }
+  .metric-icon svg { width: 14px; height: 14px; }
+  .metric strong { font-size: 11px; margin-top: 2px; }
+  .metric small { font-size: 8px; }
+
+  .panel { border-radius: 8px; }
+  .two-column > .panel, .commands-layout > .panel { padding: 8px !important; }
+  .panel-heading { padding: 8px 10px 6px; }
+  .panel-heading h3 { font-size: 12px; }
+
+  .hero-panel { grid-template-columns: 1fr 1px 1fr !important; padding: 8px !important; gap: 8px !important; }
+  .system-orbit { flex-basis: 60px !important; width: 60px !important; height: 60px !important; transform: none !important; margin: 0; }
+  .orbit-core { width: 44px; height: 44px; }
+  .orbit-core svg { width: 20px; height: 20px; }
+  .hero-status h3 { font-size: 15px; margin: 2px 0 4px; }
+  .hero-divider { height: 80px; width: 1px; }
+
+  .actuator-row { min-height: 36px; padding: 3px 0; }
+  .actuator-row strong { font-size: 11px; }
+  .actuator-state { font-size: 8px; padding: 3px 5px; }
+
+  .sensor-card { padding: 8px 10px; }
+  .sensor-reading { padding: 4px 0 2px; }
+  .sensor-reading strong { font-size: 22px; }
+  .sensor-reading strong small { font-size: 11px; }
+
+  .state-row, .command-row { min-height: 36px; padding: 6px 4px; gap: 8px; }
+  .state-icon, .command-icon { flex-basis: 28px; height: 28px; border-radius: 7px; }
+  .state-icon svg, .command-icon svg { width: 14px; height: 14px; }
+  .state-row strong, .command-row strong { font-size: 11px; }
+  .state-row div span, .command-row div span { font-size: 9px; }
+
+  .cmd-btn { padding: 10px 6px; min-height: 56px; gap: 4px; }
+  .cmd-btn svg { width: 18px; height: 18px; }
+  .cmd-btn strong { font-size: 11px; }
+  .cmd-btn small { font-size: 9px; }
+
+  .alarm-summary-card { padding: 8px 10px; min-height: 46px; }
+  .alarm-summary-card strong { font-size: 18px; }
+  .alarm-summary-card span { font-size: 9px; }
+  .alarm-summary-icon { width: 30px; height: 30px; flex-basis: 30px; }
+
+  .hw3-diagram { grid-template-columns: 1fr auto 1fr !important; gap: 8px !important; --hw-row: 34px; --hw-gap: 4px; }
+  .hw3-chip-frame { max-width: 200px; min-width: 0; }
+  .hw3-block { padding: 4px 6px; }
+  .hw3-block-label { width: 24px; height: 24px; font-size: 10px; }
+  .hw3-block-info strong { font-size: 10px; }
+  .hw3-block-info span { font-size: 8px; }
+  .hw3-wire { width: 14px !important; }
+
+  .footer-reading { display: none; }
+  .app-footer { margin-top: 10px; padding-top: 6px; font-size: 8px; }
+}
+
+/* ================================================================
+ *  UTIL — Alvos de toque garantidos em qualquer tamanho pequeno
+ * ================================================================ */
+@media (max-width: 340px), (max-height: 260px) and (orientation: landscape) {
+  button,
+  a.action-button,
+  [role="button"] {
+    -webkit-tap-highlight-color: rgba(20, 221, 214, .15);
+  }
+  /* Impede qualquer hover-only para touch */
+  .nav-item:hover,
+  .cmd-btn:hover,
+  .state-row:hover { background: initial; }
+  /* Blindagem final: nada de scroll horizontal em toda a app */
+  html, body, #root, .app-shell, .main-content, .content-wrap {
+    overflow-x: hidden !important;
+    max-width: 100vw;
+  }
+}
