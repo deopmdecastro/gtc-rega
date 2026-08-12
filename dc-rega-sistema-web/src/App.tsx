@@ -44,8 +44,6 @@ import {
   Minus,
   Eraser,
   CircuitBoard,
-  Waveform,
-  Wifi,
 } from 'lucide-react';
 import { fetchEvents, logEvent, type EventLogEntry, saveState, loadState, saveLayout, loadLayout } from '@/lib/supabase';
 import { t } from '@/lang';
@@ -1181,14 +1179,14 @@ function PinSlot({ gpio, label, func, direction, inChannel, connected }: { gpio:
 
 function StateRow({ icon, title, detail, status, active, tone }: { icon: React.ReactNode; title: string; detail: string; status: string; active?: boolean; tone?: 'success' | 'warning' | 'error' | 'neutral' | 'cyan' | 'blue' }) {
   // Semântica de cores: verde = online / em funcionamento, vermelho = alarme,
-  // cinza = offline / desligado, azul = modo automático.
+  // laranja = offline / sem sinal, azul = modo automático.
   const resolved: 'success' | 'warning' | 'error' | 'neutral' | 'cyan' | 'blue' = tone ?? (
-    status === 'Online' || status === 'Ligada' || status === 'Ligado' ? 'success' :
-    status === 'Offline' || status === 'Desligada' || status === 'Desligado' ? 'neutral' :
-    status === 'Sem sinal' || status === 'No signal' || status === 'Alarme' ? 'error' :
-    status === 'Automático' ? 'blue' :
+    status === 'Online' || status === 'Ligada' || status === 'Ligado' || status === 'Running' || status === 'Em funcionamento' ? 'success' :
+    status === 'Offline' || status === 'Desligada' || status === 'Desligado' || status === 'No signal' || status === 'Sem sinal' ? 'warning' :
+    status === 'Alarme' ? 'error' :
+    status === 'Automático' || status === 'Automatic' ? 'blue' :
     status === 'Atenção' ? 'warning' :
-    active ? 'success' : 'neutral');
+    active ? 'success' : 'warning');
   return <div className={`state-row state-row-${resolved}`}><span className={`state-icon state-icon-${resolved}`}>{icon}</span><div><strong>{title}</strong><span>{detail}</span></div><StatusBadge tone={resolved}>{status}</StatusBadge></div>;
 }
 

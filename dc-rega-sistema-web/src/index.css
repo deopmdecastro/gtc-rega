@@ -1602,3 +1602,177 @@ select:focus-visible, [role="button"]:focus-visible {
   transform: translateY(-50%);
 }
 @keyframes cursor-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+
+/* ==========================================================================
+   REFINAMENTO UI/UX v2.16 — Foco, margens, alinhamento e scrolls
+   (verde ok · vermelho alarme · laranja offline · azul automático)
+   ========================================================================== */
+
+/* ── Ícones dentro de containers: sempre centralizados ── */
+.state-icon,
+.metric-icon,
+.alarm-item-icon,
+.alarm-summary-icon,
+.actuator-icon,
+.mode-graphic,
+.brand-mark,
+.footer-reading > svg,
+.wifi-network-icon,
+.save-all-banner-icon,
+.alert-icon,
+.device-status-dot,
+.hw3-block-label,
+.hw3-chip-icon,
+.settings-btn,
+.lang-toggle-btn,
+.mobile-menu,
+.login-kb-toggle,
+.close-menu {
+  display: grid;
+  place-items: center;
+}
+.state-icon > svg,
+.metric-icon > svg,
+.alarm-item-icon > svg,
+.alarm-summary-icon > svg,
+.actuator-icon > svg,
+.mode-graphic > svg { display: block; margin: 0; }
+
+/* ── Estado offline = laranja (não cinza) por decisão de UX ── */
+.state-row.state-row-offline { border-left: 3px solid #f0a145; }
+.state-icon-offline { color: #f0a145; border-color: rgba(240,161,69,.32); background: rgba(240,161,69,.08); }
+.status-offline { color: #f0a145; background: rgba(240,161,69,.12); border: 1px solid rgba(240,161,69,.28); }
+.device-status-dot.off { background: #f0a145; box-shadow: 0 0 0 5px rgba(240,161,69,.16); }
+.device-status-main strong { color: #eef3f5; }
+
+/* ── Tabelas com margens e espaçamento consistentes ── */
+.gpio-edit-table th,
+.gpio-edit-table td { padding: 12px 16px; }
+.gpio-edit-table th:first-child,
+.gpio-edit-table td:first-child { padding-left: 20px; }
+.gpio-edit-table th:last-child,
+.gpio-edit-table td:last-child { padding-right: 20px; }
+.gpio-edit-table-wrap { margin-top: 26px; }
+.gpio-edit-table-scroll { max-height: 420px; overflow-y: auto; }
+.pinout-table-wrap { max-height: 380px; overflow-y: auto; margin-top: 12px; padding: 4px; }
+.pinout-ref-table th,
+.pinout-ref-table td { padding: 8px 12px; }
+
+/* ── Scroll em painéis com muita informação ── */
+.alarm-list { max-height: 520px; overflow-y: auto; padding-right: 6px; }
+.state-list { max-height: 640px; overflow-y: auto; padding-right: 6px; }
+.info-list { max-height: 320px; overflow-y: auto; }
+.wifi-networks-list { max-height: 360px; overflow-y: auto; padding-right: 4px; }
+.device-status-sensors { max-height: 128px; overflow-y: auto; padding: 2px; }
+.hw3-diagram { max-height: 660px; overflow-y: auto; padding-right: 6px; }
+.error-list { max-height: 520px; overflow-y: auto; padding-right: 6px; }
+.event-log-list, .history-list { max-height: 520px; overflow-y: auto; padding-right: 6px; }
+
+/* Barra de scroll fina e discreta dentro de painéis */
+.alarm-list::-webkit-scrollbar,
+.state-list::-webkit-scrollbar,
+.info-list::-webkit-scrollbar,
+.wifi-networks-list::-webkit-scrollbar,
+.device-status-sensors::-webkit-scrollbar,
+.hw3-diagram::-webkit-scrollbar,
+.event-log-list::-webkit-scrollbar,
+.history-list::-webkit-scrollbar,
+.pinout-table-wrap::-webkit-scrollbar,
+.gpio-edit-table-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+.alarm-list::-webkit-scrollbar-thumb,
+.state-list::-webkit-scrollbar-thumb,
+.info-list::-webkit-scrollbar-thumb,
+.wifi-networks-list::-webkit-scrollbar-thumb,
+.device-status-sensors::-webkit-scrollbar-thumb,
+.hw3-diagram::-webkit-scrollbar-thumb,
+.event-log-list::-webkit-scrollbar-thumb,
+.history-list::-webkit-scrollbar-thumb,
+.pinout-table-wrap::-webkit-scrollbar-thumb,
+.gpio-edit-table-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #13bcb6, #0d8a85);
+  border-radius: 99px;
+  border: 0;
+}
+
+/* ── Login: teclado virtual com melhor entrada e ancoragem ── */
+.login-screen .keyboard-overlay {
+  align-items: flex-end;
+  padding-bottom: 24px;
+  background: rgba(3,7,11,.55);
+}
+.login-screen .keyboard {
+  animation: kb-slide-up .32s cubic-bezier(.22,.61,.36,1);
+  border: 1px solid #12bcb6;
+  box-shadow: 0 -12px 40px rgba(18,188,182,.18), 0 24px 60px rgba(0,0,0,.55);
+}
+.login-screen .keyboard-display {
+  padding: 22px 20px;
+  font-size: 36px;
+  color: #1adbd4;
+  letter-spacing: .12em;
+}
+.login-screen .full-keyboard { max-width: 560px; }
+@keyframes kb-slide-up {
+  from { transform: translateY(24px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* Input do login: mais espaço + alinhamento perfeito */
+.login-input-group { padding: 15px 18px; gap: 14px; }
+.login-input-group input { line-height: 1.4; }
+.login-input-group.login-input-active { border-color: #12bcb6; box-shadow: 0 0 0 3px rgba(18,188,182,.12); }
+.login-kb-toggle:focus-visible { outline: 2px solid #1adbd4; outline-offset: 2px; }
+
+/* Teclado (global): teclas maiores para toque + hover foco */
+.kb-key { min-height: 56px; font-size: 21px; }
+.kb-key:focus-visible { outline: 2px solid #1adbd4; outline-offset: -3px; }
+.keyboard-header { padding: 16px 22px; }
+.keyboard-hint { padding: 6px 20px 4px; font-style: italic; }
+
+/* ── Painéis: margens laterais e respiro consistentes ── */
+.two-column > .panel { padding: 22px 22px; }
+.panel-heading { padding: 4px 4px 18px; }
+.panel-title-row { padding: 2px 2px 14px; }
+
+/* ── Sensor / actuator rows: alinhamento e ícones centralizados ── */
+.actuator-icon { width: 36px; height: 36px; border-radius: 10px; flex: 0 0 36px; }
+.actuator-row { padding: 12px 8px; margin: 0; gap: 12px; align-items: center; }
+.actuator-row + .actuator-row { border-top: 1px solid #16242c; }
+
+/* ── Cartão sensor: ícone da gota centralizado ── */
+.water-icon { display: grid; place-items: center; }
+
+/* ── Alerta e alarmes: cores explícitas ── */
+.alarm-icon-critical { color: #f06565; background: rgba(240,101,101,.14); }
+.alarm-icon-warning { color: #f0a145; background: rgba(240,161,69,.14); }
+.alarm-icon-info { color: #5aa9ff; background: rgba(90,169,255,.12); }
+
+/* Modo automático: cartão claramente azul */
+.mode-card-auto .mode-graphic { background: rgba(90,169,255,.14); color: #5aa9ff; border-color: rgba(90,169,255,.3); }
+.mode-card-manual .mode-graphic { background: rgba(139,155,165,.1); color: #8b9ba5; }
+
+/* ── WiFi: formulário mais organizado ── */
+.wifi-add-form { display: flex; flex-direction: column; gap: 14px; padding: 18px; margin-top: 14px; background: rgba(20,221,214,.03); border: 1px solid #1a2a33; border-radius: 12px; }
+.wifi-add-form .field-label { display: flex; flex-direction: column; gap: 8px; font-size: 11px; color: #7e909c; letter-spacing: .04em; text-transform: uppercase; font-weight: 700; }
+.wifi-add-form input { padding: 12px 14px; border: 1px solid #263943; border-radius: 10px; background: #0b171d; color: #dce5e8; font-size: 14px; font-family: inherit; letter-spacing: normal; text-transform: none; font-weight: 400; outline: none; transition: .2s; }
+.wifi-add-form input:focus { border-color: #12bcb6; box-shadow: 0 0 0 3px rgba(18,188,182,.1); }
+.wifi-scan-results { display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow-y: auto; }
+.wifi-scan-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border: 1px solid #1a2a33; border-radius: 10px; background: #0b171d; color: #dce5e8; text-align: left; cursor: pointer; transition: .15s; }
+.wifi-scan-item:hover { border-color: #12bcb6; background: rgba(18,188,182,.05); }
+.wifi-scan-item-left { display: flex; align-items: center; gap: 10px; }
+.wifi-scan-item-left svg { color: #5a6f7a; }
+.wifi-scan-item strong { color: #dce5e8; font-size: 13px; }
+.wifi-network-item { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-bottom: 1px solid #16242c; }
+.wifi-network-item:last-child { border-bottom: 0; }
+.wifi-network-icon { width: 36px; height: 36px; border-radius: 10px; background: rgba(90,169,255,.12); color: #5aa9ff; flex: 0 0 36px; }
+.wifi-network-info { flex: 1; min-width: 0; }
+.wifi-network-info strong { display: block; color: #dce5e8; font-size: 13px; }
+.wifi-network-info span { display: block; margin-top: 3px; color: #7e909c; font-size: 11px; font-family: 'DM Mono', monospace; }
+.wifi-networks-list { display: flex; flex-direction: column; margin-top: 14px; border: 1px solid #16242c; border-radius: 12px; overflow: hidden; }
+.wifi-networks-list .empty-state { padding: 32px 20px; text-align: center; color: #7e909c; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+
+/* ── Empty state genérico ── */
+.empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 40px 20px; color: #7e909c; text-align: center; }
+.empty-state svg { color: #3a4d57; }
+.empty-state span { font-size: 12px; max-width: 320px; line-height: 1.5; }
