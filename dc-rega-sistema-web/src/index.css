@@ -53,8 +53,8 @@ textarea:focus-visible {
 .nav-item.active { color: #16dfd7; background: linear-gradient(90deg, rgba(0, 198, 193, .22), rgba(0, 198, 193, .04)); box-shadow: inset 2px 0 #12d8d1; }
 .nav-count { margin-left: auto; min-width: 20px; padding: 2px 5px; border-radius: 5px; color: #ffca72; background: rgba(249, 178, 71, .12); text-align: center; font-size: 10px; }
 .sidebar-footer { margin-top: auto; border: 1px solid #192831; border-radius: 11px; padding: 14px; background: #0a131a; }
-.status-badge { display: inline-flex; align-items: center; gap: 7px; width: fit-content; border-radius: 99px; padding: 5px 9px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
-.status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 7px currentColor; }
+.status-badge { display: inline-flex; align-items: center; gap: 7px; width: fit-content; border-radius: 99px; padding: 5px 9px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; line-height: 1; }
+.status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 7px currentColor; flex-shrink: 0; }
 .status-success { color: #5ee58a; background: rgba(69, 207, 111, .12); border: 1px solid rgba(69, 207, 111, .22); }
 .status-warning { color: #f6be69; background: rgba(246, 190, 105, .12); border: 1px solid rgba(246, 190, 105, .22); }
 .status-error { color: #f06565; background: rgba(240, 101, 101, .14); border: 1px solid rgba(240, 101, 101, .25); }
