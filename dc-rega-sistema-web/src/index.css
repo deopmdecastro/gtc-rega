@@ -1776,3 +1776,483 @@ select:focus-visible, [role="button"]:focus-visible {
 .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 40px 20px; color: #7e909c; text-align: center; }
 .empty-state svg { color: #3a4d57; }
 .empty-state span { font-size: 12px; max-width: 320px; line-height: 1.5; }
+
+/* ==========================================================================
+   REFINAMENTO UI/UX v2.17 — Polimento final
+   Foco: alinhamento perfeito, margens, foco visível, cores semânticas de
+   alarmes (verde ok · vermelho crítico · laranja offline · azul auto).
+   Mantém o tema dark/teal existente — apenas ajustes de layout.
+   ========================================================================== */
+
+/* ── Ícones dentro de qualquer container: sempre centro perfeito ── */
+.alert-icon,
+.alarm-banner-icon,
+.alarm-item-icon,
+.alarm-summary-icon,
+.actuator-icon,
+.metric-icon,
+.state-icon,
+.command-icon,
+.mode-graphic,
+.orbit-core,
+.brand-mark,
+.login-brand-mark,
+.wifi-network-icon,
+.history-icon,
+.history-stat-icon,
+.error-icon,
+.save-all-banner-icon,
+.settings-btn,
+.lang-toggle-btn,
+.mobile-menu,
+.close-menu,
+.refresh-btn,
+.login-kb-toggle,
+.marker-edit-btn,
+.remove-sensor-btn,
+.sp2-remove-btn,
+.sp2-dur-btn,
+.btn-step,
+.hw3-block-label,
+.hw3-chip-icon,
+.footer-reading > svg { display: inline-grid; place-items: center; place-content: center; line-height: 0; }
+
+.alert-icon > *,
+.alarm-banner-icon > *,
+.alarm-item-icon > *,
+.alarm-summary-icon > *,
+.actuator-icon > *,
+.metric-icon > *,
+.state-icon > *,
+.command-icon > *,
+.mode-graphic > *,
+.brand-mark > *,
+.login-brand-mark > *,
+.wifi-network-icon > *,
+.history-icon > *,
+.history-stat-icon > *,
+.error-icon > *,
+.remove-sensor-btn > *,
+.sp2-remove-btn > *,
+.sp2-dur-btn > *,
+.btn-step > *,
+.hw3-block-label > *,
+.hw3-chip-icon > * { display: block; margin: 0; }
+
+/* ── Foco visível consistente em botões, inputs e teclas ── */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid rgba(26, 219, 212, .85);
+  outline-offset: 2px;
+  border-radius: 10px;
+}
+.kb-key:focus-visible,
+.text-kb-actions button:focus-visible {
+  outline: 2px solid #1adbd4;
+  outline-offset: -2px;
+  box-shadow: 0 0 0 3px rgba(26, 219, 212, .18);
+  border-color: #12bcb6 !important;
+  color: #1adbd4;
+}
+.kb-key:active { transform: scale(.94); background: rgba(20, 221, 214, .18); border-color: #12bcb6; }
+.login-input-group:focus-within { border-color: #14ddd6; box-shadow: 0 0 0 3px rgba(20, 221, 214, .14); background: #0c1a20; }
+.login-field:focus-within { border-color: #14ddd6; box-shadow: 0 0 0 3px rgba(20, 221, 214, .14); }
+
+/* ── Painéis: raio de borda, sombra e divisores padronizados ── */
+.panel { border-radius: 14px; border-color: #1a2a34; box-shadow: 0 10px 28px rgba(0,0,0,.18); }
+.two-column > .panel,
+.commands-layout > .panel { padding: 26px 26px; }
+@media (max-width: 720px) {
+  .two-column > .panel,
+  .commands-layout > .panel { padding: 20px 18px; }
+}
+
+/* ══════════════════════════════════════════════════════════
+   LOGIN + TECLADO VIRTUAL
+   ══════════════════════════════════════════════════════════ */
+.login-screen { padding: 24px; }
+.login-screen-card { padding: 44px 42px 34px; border-radius: 22px; }
+.login-form { gap: 14px; }
+.login-input-group { padding: 15px 18px; gap: 14px; border-radius: 12px; }
+.login-input-group input { font-size: 15px; color: #eaf3f4; letter-spacing: .12em; }
+.login-input-group input::placeholder { color: #4a5c66; }
+.login-input-active { border-color: #14ddd6 !important; background: #0c1a20 !important; box-shadow: 0 0 0 3px rgba(20, 221, 214, .18) !important; }
+
+/* Teclado virtual — centro do ecrã, keys uniformes, foco visível */
+.login-screen .keyboard-overlay {
+  display: grid;
+  place-items: center;
+  align-items: center;
+  padding: 24px;
+  background: rgba(3, 7, 11, .68);
+  backdrop-filter: blur(6px);
+}
+.login-screen .keyboard {
+  animation: kb-slide-up .28s cubic-bezier(.22, .61, .36, 1);
+  border: 1px solid rgba(20, 221, 214, .35);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, .55), 0 0 0 1px rgba(20, 221, 214, .06);
+  border-radius: 20px;
+}
+.login-screen .keyboard-display {
+  padding: 24px 22px;
+  font-size: 34px;
+  letter-spacing: .1em;
+  background: linear-gradient(180deg, #091319, #0a141a);
+  color: #1adbd4;
+}
+.login-screen .full-keyboard { width: min(560px, calc(100vw - 32px)); max-width: 560px; }
+
+.keyboard-header { padding: 16px 22px; }
+.keyboard-hint { padding: 8px 20px 4px; font-style: italic; color: #6b8390; }
+.keyboard-keys { gap: 10px; padding: 18px 20px 10px; }
+.text-kb-nums { gap: 8px; padding: 12px 18px 6px; }
+.text-kb-rows { gap: 8px; padding: 6px 18px; }
+.text-kb-row { gap: 8px; }
+.text-kb-actions { gap: 10px; padding: 10px 18px 8px; }
+.keyboard-actions { gap: 10px; padding: 10px 20px 20px; }
+
+.kb-key {
+  min-height: 54px;
+  font-size: 20px;
+  border-radius: 12px;
+  border-color: #263b46;
+  background: #0d171e;
+  transition: transform .12s, background .18s, border-color .18s, color .18s, box-shadow .18s;
+}
+.kb-key:hover { border-color: #14ddd6; background: rgba(20, 221, 214, .12); color: #1adbd4; }
+.kb-key-sm { min-height: 44px; font-size: 15px; border-radius: 10px; }
+
+/* ══════════════════════════════════════════════════════════
+   ALARMES ATIVOS
+   ══════════════════════════════════════════════════════════ */
+.alarm-list { padding: 4px 6px; }
+.alarm-item {
+  align-items: center;
+  gap: 18px;
+  padding: 20px 22px;
+  border-bottom: 1px solid #17232c;
+  border-radius: 12px;
+  margin: 0;
+}
+.alarm-item + .alarm-item { margin-top: 4px; }
+.alarm-item:hover { background: rgba(20, 221, 214, .04); }
+.alarm-item:first-child { padding-top: 22px; }
+.alarm-item:last-child { padding-bottom: 22px; border-bottom: 0; }
+.alarm-item-icon {
+  width: 42px; height: 42px; flex: 0 0 42px;
+  border-radius: 12px;
+}
+.alarm-item-icon > svg { display: block; }
+.alarm-item-body { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.alarm-item-top { align-items: center; gap: 10px; margin-bottom: 2px; }
+.alarm-item-top strong { font-size: 13px; }
+.alarm-item-msg { font-size: 11.5px; color: #9aacb5; line-height: 1.5; margin-bottom: 4px; }
+.alarm-meta { align-items: center; gap: 12px; margin-top: 4px; }
+.alarm-meta small { color: #7c929c; }
+
+/* Badges por severidade — cores semânticas explícitas */
+.alarm-item-badge {
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+}
+.alarm-badge-critical { color: #f06565; background: rgba(240, 101, 101, .14); border-color: rgba(240, 101, 101, .28); }
+.alarm-badge-warning  { color: #f0a145; background: rgba(240, 161, 69, .14); border-color: rgba(240, 161, 69, .30); }
+.alarm-badge-info     { color: #5aa9ff; background: rgba(90, 169, 255, .12); border-color: rgba(90, 169, 255, .28); }
+
+/* Ícones do alarme por severidade */
+.alarm-icon-critical { color: #f06565; background: rgba(240, 101, 101, .14); }
+.alarm-icon-warning  { color: #f0a145; background: rgba(240, 161, 69, .14); }
+.alarm-icon-info     { color: #5aa9ff; background: rgba(90, 169, 255, .12); }
+
+/* Botão Resolver: alinhado à direita, centrado vertical */
+.resolve-btn {
+  align-self: center;
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 8px 14px;
+  border-radius: 9px;
+  gap: 6px;
+  color: #5ee58a;
+  background: rgba(94, 229, 138, .1);
+  border: 1px solid rgba(94, 229, 138, .32);
+}
+.resolve-btn:hover { background: rgba(94, 229, 138, .2); border-color: rgba(94, 229, 138, .55); }
+.resolve-btn > svg { display: block; }
+
+/* Cartões de resumo de alarmes: ícone perfeitamente centrado */
+.alarm-summary-card { padding: 26px 28px; gap: 18px; border-radius: 14px; }
+.alarm-summary-icon { width: 52px; height: 52px; flex: 0 0 52px; border-radius: 13px; }
+
+/* Banner "sistema em alerta" */
+.alarm-banner { align-items: center; padding: 22px 26px; border-radius: 14px; gap: 16px; }
+.alarm-banner-icon { width: 46px; height: 46px; flex: 0 0 46px; border-radius: 12px; }
+.alarm-banner-icon > svg { display: block; }
+
+/* ══════════════════════════════════════════════════════════
+   CONTROLO MANUAL · Atuadores + Comandos
+   ══════════════════════════════════════════════════════════ */
+.actuator-list { padding: 4px 2px; }
+.actuator-row {
+  padding: 16px 12px;
+  gap: 14px;
+  min-height: 60px;
+  align-items: center;
+  border-radius: 10px;
+  margin: 0;
+}
+.actuator-row + .actuator-row { border-top: 1px solid #17232c; }
+.actuator-row:hover { background: rgba(20, 221, 214, .03); }
+.actuator-icon {
+  width: 40px; height: 40px; flex: 0 0 40px;
+  border-radius: 11px;
+  color: #1adbd4;
+  background: rgba(20, 221, 214, .08);
+  border: 1px solid rgba(20, 221, 214, .18);
+}
+.actuator-icon > svg { display: block; width: 20px; height: 20px; }
+.actuator-row strong { flex: 1; font-size: 13px; }
+.actuator-row .switch { margin-left: auto; flex: 0 0 auto; }
+.actuator-state { margin-left: 4px; flex: 0 0 auto; min-width: 66px; text-align: center; }
+
+/* Botões grandes de comando (Start / Stop / Reset) */
+.command-actions { gap: 16px; padding: 12px 0 4px; }
+.cmd-btn { padding: 24px 18px; border-radius: 15px; gap: 12px; align-items: center; justify-content: center; }
+.cmd-btn > svg { display: block; margin: 0 auto; }
+
+/* Linhas de comando */
+.command-row {
+  padding: 18px 12px;
+  gap: 14px;
+  align-items: center;
+  border-radius: 10px;
+  border-bottom: 1px solid #17232c;
+  margin: 0;
+}
+.command-row + .command-row { }
+.command-row:last-child { border-bottom: 0; }
+.command-icon { width: 42px; height: 42px; flex: 0 0 42px; border-radius: 11px; }
+.command-icon > svg { display: block; }
+.command-row .switch { margin-left: auto; flex: 0 0 auto; }
+
+/* ══════════════════════════════════════════════════════════
+   REGISTO DE ATIVIDADE (event log / history)
+   ══════════════════════════════════════════════════════════ */
+.history-list { padding: 4px 6px; }
+.history-item {
+  padding: 16px 12px;
+  gap: 14px;
+  border-bottom: 1px solid #17232c;
+  border-radius: 10px;
+  align-items: flex-start;
+  margin: 0;
+}
+.history-item + .history-item { margin-top: 3px; }
+.history-item:hover { background: rgba(20, 221, 214, .03); }
+.history-item:last-child { border-bottom: 0; }
+.history-icon {
+  width: 38px; height: 38px; flex: 0 0 38px;
+  border-radius: 10px;
+  margin-top: 1px;
+}
+.history-icon > svg { display: block; }
+.history-body { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
+.history-top-row { align-items: center; gap: 10px; }
+.history-top-row strong { font-size: 12.5px; }
+.history-top-row small { color: #7c929c; font-size: 10px; }
+.history-msg { color: #9aacb5; font-size: 11.5px; line-height: 1.5; }
+.history-meta { align-items: center; gap: 10px; margin-top: 6px; }
+
+/* Badges MODO / INFO com contraste melhorado */
+.history-tag {
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  background: rgba(90, 169, 255, .12);
+  color: #7fb8ff;
+  border: 1px solid rgba(90, 169, 255, .22);
+}
+.history-severity {
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  font-size: 9.5px;
+  border: 1px solid transparent;
+}
+.hist-sev-info     { color: #5aa9ff; background: rgba(90, 169, 255, .12); border-color: rgba(90, 169, 255, .22); }
+.hist-sev-warning  { color: #f0a145; background: rgba(240, 161, 69, .12); border-color: rgba(240, 161, 69, .26); }
+.hist-sev-critical { color: #f06565; background: rgba(240, 101, 101, .12); border-color: rgba(240, 101, 101, .26); }
+
+.hist-info     { color: #5aa9ff; background: rgba(90, 169, 255, .12); }
+.hist-warning  { color: #f0a145; background: rgba(240, 161, 69, .12); }
+.hist-critical { color: #f06565; background: rgba(240, 101, 101, .12); }
+
+/* ══════════════════════════════════════════════════════════
+   CONFIGURAÇÃO — Delay bomba, Sensores, Zona (setpoints)
+   ══════════════════════════════════════════════════════════ */
+
+/* Delay da bomba: botões -/+ perfeitamente alinhados com o valor central */
+.time-input { align-items: center; justify-content: center; gap: 16px; }
+.btn-step {
+  width: 44px; height: 44px;
+  border-radius: 11px;
+  font-size: 22px;
+  line-height: 1;
+  border-color: #263b46;
+  color: #1adbd4;
+  background: #0c161d;
+}
+.btn-step:hover { background: rgba(20, 221, 214, .12); border-color: #14ddd6; }
+.time-display {
+  align-items: center;
+  justify-content: center;
+  min-width: 128px;
+  min-height: 60px;
+  padding: 12px 22px;
+  border-radius: 12px;
+}
+
+/* Cartões de config (Configuração + Gestão de Sensores) com padding uniforme */
+.pump-panel { padding: 24px 26px; }
+.add-sensor-panel { padding: 24px 26px; }
+.add-sensor-info { padding: 18px 0; }
+.add-sensor-btn { padding: 15px; border-radius: 12px; }
+
+/* Ícone de eliminar (lixo) — perfeitamente centrado */
+.sp2-remove-btn {
+  width: 38px; height: 38px;
+  border-radius: 10px;
+  padding: 0;
+  color: #b26e6e;
+  background: rgba(240, 101, 101, .06);
+  border: 1px solid rgba(240, 101, 101, .18);
+}
+.sp2-remove-btn:hover { color: #f06565; background: rgba(240, 101, 101, .16); border-color: rgba(240, 101, 101, .35); }
+.sp2-remove-btn > svg { display: block; margin: 0; }
+
+.remove-sensor-btn { width: 36px; height: 36px; }
+.remove-sensor-btn > svg { display: block; }
+
+/* Botões +/- da zona (duração de rega) */
+.sp2-duration-row { align-items: center; justify-content: center; gap: 12px; }
+.sp2-dur-btn { width: 40px; height: 40px; border-radius: 10px; }
+.sp2-dur-btn > svg { display: block; }
+.sp2-dur-value { min-height: 48px; align-items: center; justify-content: center; padding: 10px; border-radius: 11px; }
+
+/* Cabeçalho do card de setpoint */
+.sp2-header { padding: 24px 26px 0; align-items: center; }
+.sp2-header h3 { line-height: 1.15; }
+.sp2-tags { padding: 12px 26px 0; }
+.sp2-metrics-row { padding: 18px 26px 16px; }
+.sp2-status-row { padding: 14px 26px; }
+.sp2-duration-section { padding: 18px 26px; }
+.sp2-schedule-section { padding: 20px 26px 22px; }
+
+/* Slider de humidade — marcadores 20% / 90% com destaque */
+.sp2-range { height: 8px; border-radius: 4px; }
+.sp2-range::-webkit-slider-thumb { width: 22px; height: 22px; border-width: 3px; box-shadow: 0 3px 10px rgba(20, 221, 214, .35), 0 2px 6px rgba(0, 0, 0, .3); }
+.sp2-range::-moz-range-thumb { width: 22px; height: 22px; border-width: 3px; box-shadow: 0 3px 10px rgba(20, 221, 214, .35); }
+.sp2-range-labels { margin-top: 8px; padding: 0 2px; }
+.sp2-range-labels span {
+  padding: 3px 9px;
+  border-radius: 6px;
+  font: 700 10px 'DM Mono', monospace;
+  letter-spacing: .04em;
+  color: #cfe3e6;
+  background: rgba(20, 221, 214, .08);
+  border: 1px solid rgba(20, 221, 214, .2);
+}
+.sp2-range-labels span:first-child { color: #f0c78a; background: rgba(240, 161, 69, .1); border-color: rgba(240, 161, 69, .25); }
+.sp2-range-labels span:last-child { color: #a5e6b6; background: rgba(94, 229, 138, .1); border-color: rgba(94, 229, 138, .28); }
+
+/* Grelha dos cartões de setpoint com respiro extra */
+.setpoint-grid-v2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 24px; margin-top: 20px; }
+.setpoint-card-v2 { border-radius: 14px; }
+
+/* ══════════════════════════════════════════════════════════
+   TABELAS — padding/margens internos e externos consistentes
+   ══════════════════════════════════════════════════════════ */
+.gpio-edit-table-scroll,
+.pinout-table-wrap,
+.table-scroll { margin: 6px 0 18px; padding: 0; border-radius: 12px; }
+.gpio-edit-table { border-collapse: separate; border-spacing: 0; }
+.gpio-edit-table th,
+.gpio-edit-table td { padding: 13px 18px; }
+.gpio-edit-table th:first-child,
+.gpio-edit-table td:first-child { padding-left: 22px; }
+.gpio-edit-table th:last-child,
+.gpio-edit-table td:last-child { padding-right: 22px; }
+.gpio-edit-table tr td { border-bottom: 1px solid #17232c; }
+.gpio-edit-table tbody tr:last-child td { border-bottom: 0; }
+
+/* ══════════════════════════════════════════════════════════
+   MISC — divisores, badges e mode toggle
+   ══════════════════════════════════════════════════════════ */
+
+/* Divisores padronizados */
+.actuator-row,
+.command-row,
+.state-row,
+.alarm-item,
+.history-item,
+.error-item,
+.wifi-network-item { border-bottom-color: #17232c; }
+
+/* Mode toggle: azul quando automático */
+.mode-toggle-btn.mode-auto { color: #5aa9ff; background: rgba(90, 169, 255, .12); border-color: rgba(90, 169, 255, .3); }
+.mode-toggle-btn.mode-auto:hover { background: rgba(90, 169, 255, .2); }
+.mode-toggle-btn.mode-manual { color: #f0a145; background: rgba(240, 161, 69, .1); border-color: rgba(240, 161, 69, .3); }
+.mode-toggle-btn.mode-manual:hover { background: rgba(240, 161, 69, .2); }
+
+/* Cartão modo automático — realce azul */
+.mode-card-auto { border-color: rgba(90, 169, 255, .28); }
+.mode-card-auto .mode-graphic { color: #5aa9ff; background: rgba(90, 169, 255, .12); border-color: rgba(90, 169, 255, .28); }
+.mode-card-auto strong { color: #5aa9ff; }
+
+/* Status badges — cor de acordo com o significado semântico */
+.status-warning { color: #f0a145; background: rgba(240, 161, 69, .12); border-color: rgba(240, 161, 69, .28); }
+.status-blue    { color: #5aa9ff; background: rgba(90, 169, 255, .12); border-color: rgba(90, 169, 255, .28); }
+
+/* Espaçamento entre secções: mais respiro entre cabeçalhos e conteúdo */
+.page-heading { margin: 40px 0 18px; }
+.content-stack,
+.two-column,
+.commands-layout,
+.alarms-layout { gap: 24px; }
+.sensor-grid,
+.quick-grid { gap: 24px; }
+
+/* Consistência de radius — cards internos */
+.metric-icon,
+.state-icon,
+.command-icon { border-radius: 11px; }
+
+/* Responsivo: manter tudo alinhado em mobile */
+@media (max-width: 720px) {
+  .alarm-item { padding: 16px 14px; gap: 12px; }
+  .alarm-item-icon { width: 38px; height: 38px; flex-basis: 38px; }
+  .resolve-btn { width: 100%; justify-content: center; }
+  .alarm-item { flex-wrap: wrap; }
+  .alarm-item > .resolve-btn { margin-left: 54px; }
+  .actuator-row { padding: 14px 10px; gap: 12px; }
+  .actuator-icon { width: 36px; height: 36px; flex-basis: 36px; }
+  .history-item { padding: 14px 10px; gap: 12px; }
+  .history-icon { width: 34px; height: 34px; flex-basis: 34px; }
+  .sp2-header, .sp2-tags, .sp2-metrics-row, .sp2-status-row,
+  .sp2-duration-section, .sp2-schedule-section { padding-left: 18px; padding-right: 18px; }
+  .command-actions { grid-template-columns: 1fr; }
+  .setpoint-grid-v2 { grid-template-columns: 1fr; gap: 18px; }
+}
