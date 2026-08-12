@@ -55,6 +55,10 @@ engine.onSensorHealthChange = (health) => {
 let deviceOnline = false;
 let lastDeviceContact = 0;
 let deviceInfo = null; // info from /api/device/hello
+let everConnected = false;       // já houve alguma vez um handshake válido
+let neverConnectedWarned = false; // já foi emitido o alarme de "nunca reconhecido"
+const SERVER_BOOT_TIME = Date.now();
+const NEVER_CONNECTED_GRACE_MS = 45000; // dá tempo ao ESP32 arrancar/ligar ao Wi-Fi
 
 function broadcastDeviceStatus() {
   io.emit('controller:device', { online: deviceOnline, info: deviceInfo });
@@ -80,6 +84,14 @@ function startMonitor() {
 
     // Sensores sem reporte → alarme real (warning)
     engine.checkSensorHealth(15000);
+
+    // ESP32 nunca reconhecido desde o arranque do backend → alarme único
+    if (!everConnected && !neverConnectedWarned && (Date.now() - SERVER_BOOT_TIME) > NEVER_CONNECTED_GRACE_MS) {
+      neverConnectedWarned = true;
+      engine._log('device_never_connected', 'ESP32-S3',
+        'Nenhum controlador ESP32-S3 reconhecido desde o arranque do sistema — verifique a alimentação, a rede Wi-Fi e o token do dispositivo',
+        'critical');
+    }
 
     // Horários de rega correm sempre
     engine.checkAutoCycle();
@@ -127,10 +139,23 @@ function saveLayoutToFile(layout) {
 }
 
 // ── Device token middleware ──
+let lastUnauthorizedWarnAt = 0;
+const UNAUTHORIZED_WARN_THROTTLE_MS = 30000; // evita inundar o log de alarmes
+
 function checkDeviceToken(req, res, next) {
   if (!DEVICE_TOKEN) return next(); // no token configured → allow all
   const token = req.headers['x-device-token'];
   if (token === DEVICE_TOKEN) return next();
+
+  // Dispositivo não reconhecido (token inválido/ausente) → alarme (com
+  // throttle, para não encher o histórico se alguém insistir em ligar).
+  const now = Date.now();
+  if (now - lastUnauthorizedWarnAt > UNAUTHORIZED_WARN_THROTTLE_MS) {
+    lastUnauthorizedWarnAt = now;
+    engine._log('device_unauthorized', 'ESP32-S3',
+      `Dispositivo não reconhecido — pedido a ${req.path} com token inválido ou em falta`,
+      'critical', { path: req.path, ip: req.ip });
+  }
   return res.status(401).json({ error: 'Invalid or missing device token' });
 }
 
@@ -231,6 +256,7 @@ app.post('/api/device/hello', checkDeviceToken, (req, res) => {
   
   const wasOnline = deviceOnline;
   deviceOnline = true;
+  everConnected = true;
   lastDeviceContact = Date.now();
   deviceInfo = { deviceId, firmware, ip, rssi, connectedAt: new Date().toISOString() };
   
@@ -254,6 +280,7 @@ app.post('/api/device/telemetry', checkDeviceToken, (req, res) => {
   
   const wasOnline = deviceOnline;
   deviceOnline = true;
+  everConnected = true;
   lastDeviceContact = Date.now();
   deviceInfo = { ...deviceInfo, deviceId, firmware, ip, rssi, uptime, lastTelemetry: new Date().toISOString() };
 
@@ -318,6 +345,7 @@ app.get('/api/device/outputs', checkDeviceToken, (req, res) => {
   const wasOnline = deviceOnline;
   lastDeviceContact = Date.now();
   deviceOnline = true;
+  everConnected = true;
   if (!wasOnline) broadcastDeviceStatus();
   
   res.json({

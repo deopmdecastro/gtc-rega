@@ -764,7 +764,7 @@ function App() {
 
   const renderPage = () => {
     if (activePage === 'Resumo') {
-      return <Overview zones={zones} pumpOn={pumpOn} autoMode={autoMode} activeZones={activeZones} onToggleZone={toggleZone} onTogglePump={togglePump} onToggleMode={toggleAutoMode} onOpenMap={() => requireAuth('Mapa')} weather={weather} language={language} deviceOnline={deviceOnline} deviceInfo={deviceInfo} sensorHealth={sensorHealth} clock={clock} dateStr={dateStr} latestAlert={errors[0]} />;
+      return <Overview zones={zones} pumpOn={pumpOn} autoMode={autoMode} activeZones={activeZones} onToggleZone={toggleZone} onTogglePump={togglePump} onToggleMode={toggleAutoMode} onOpenMap={() => requireAuth('Mapa')} weather={weather} language={language} deviceOnline={deviceOnline} deviceInfo={deviceInfo} sensorHealth={sensorHealth} clock={clock} dateStr={dateStr} latestAlert={errors[0]} systemRunning={systemRunning} starting={starting} startStep={startStep} onStart={handleStart} onStop={handleStop} onReset={handleReset} />;
     }
     if (activePage === 'Estado') return <StateView zones={zones} pumpOn={pumpOn} autoMode={autoMode} onToggleMode={toggleAutoMode} language={language} gpioConfig={gpioConfig} editingGpio={editingGpio} setEditingGpio={setEditingGpio} handleGpioUpdate={handleGpioUpdate} saveGpioConfig={saveGpioConfig} deviceOnline={deviceOnline} deviceInfo={deviceInfo} sensorHealth={sensorHealth} engineState={engineState} gpioLive={gpioLive} systemRunning={systemRunning} alarmCount={alarmCount} />;
     if (activePage === 'Setpoints') return <SetpointsView zones={zones} pumpDelay={pumpDelay} setPumpDelay={setPumpDelay} onChange={(id, target) => { setZones((cur) => { const next = cur.map((z) => (z.id === id ? { ...z, target } : z)); setTimeout(() => getControllerClient().updateZones(next), 200); return next; }); }} onUpdateZone={(id, patch) => { setZones((cur) => { const next = cur.map((z) => (z.id === id ? { ...z, ...patch } : z)); setTimeout(() => getControllerClient().updateZones(next), 200); return next; }); }} onAddZone={addZone} onRemoveZone={(z) => setZoneToDelete(z)} language={language} />;
@@ -844,7 +844,7 @@ function App() {
 }
 
 /* ---------- Overview ---------- */
-function Overview({ zones, pumpOn, autoMode, activeZones, onToggleZone, onTogglePump, onToggleMode, onOpenMap, weather, language, deviceOnline, deviceInfo, sensorHealth, clock, dateStr, latestAlert }: {
+function Overview({ zones, pumpOn, autoMode, activeZones, onToggleZone, onTogglePump, onToggleMode, onOpenMap, weather, language, deviceOnline, deviceInfo, sensorHealth, clock, dateStr, latestAlert, systemRunning, starting, startStep, onStart, onStop, onReset }: {
   zones: Zone[]; pumpOn: boolean; autoMode: boolean; activeZones: number; onToggleZone: (id: string) => void; onTogglePump: () => void; onToggleMode: () => void; onOpenMap: () => void; weather: { temp: number; desc: string; city: string; country: string; icon: string }; language: Language;
   deviceOnline: boolean;
   deviceInfo: { deviceId?: string; firmware?: string; ip?: string; rssi?: number; uptime?: number } | null;
@@ -852,6 +852,12 @@ function Overview({ zones, pumpOn, autoMode, activeZones, onToggleZone, onToggle
   clock: string;
   dateStr: string;
   latestAlert?: ErrorEvent;
+  systemRunning: boolean;
+  starting: boolean;
+  startStep: string;
+  onStart: () => void;
+  onStop: () => void;
+  onReset: () => void;
 }) {
   const staleSensorCount = zones.filter((z) => sensorHealth[z.sensorId]?.stale).length;
   return (
@@ -882,6 +888,23 @@ function Overview({ zones, pumpOn, autoMode, activeZones, onToggleZone, onToggle
               </span>
             );
           })}
+        </div>
+      </Panel>
+      <Panel className="summary-actions-panel">
+        <PanelHeader eyebrow={language === 'PT' ? 'RESUMO' : 'SUMMARY'} title={language === 'PT' ? 'Comandos rápidos' : 'Quick commands'} />
+        <div className="command-actions">
+          <button className={`cmd-btn cmd-start ${systemRunning ? 'active' : ''}`} onClick={onStart} disabled={starting}>
+            <Play size={24} />
+            <span><strong>Start</strong><small>{starting ? startStep : (language === 'PT' ? 'Inicia o sistema de rega' : 'Starts the irrigation system')}</small></span>
+          </button>
+          <button className="cmd-btn cmd-stop" onClick={onStop}>
+            <Square size={24} />
+            <span><strong>Stop</strong><small>{language === 'PT' ? 'Para todos os atuadores' : 'Stops all actuators'}</small></span>
+          </button>
+          <button className="cmd-btn cmd-reset" onClick={onReset}>
+            <RotateCcw size={24} />
+            <span><strong>Reset</strong><small>{language === 'PT' ? 'Reinicia o sistema' : 'Resets the system'}</small></span>
+          </button>
         </div>
       </Panel>
       <Panel className="hero-panel">
@@ -2314,9 +2337,10 @@ function HistoryView({ errors, eventLog, eventLogLoading, onRefresh, language }:
   const allEvents = [...eventLog].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   const irrigationEvents = allEvents.filter((e) =>
     ['zone_toggle', 'system_start', 'system_stop', 'system_reset', 'emergency_stop', 'test_cycle', 'mode_change', 'pump_toggle',
-     'device_connected', 'device_disconnected', 'device_reconnected', 'device_offline',
-     'sensor_stale', 'sensor_recovered', 'schedule_trigger', 'cycle_complete',
-     'watchdog_triggered', 'zone_add', 'zone_remove', 'zone_rename', 'layout_save', 'cycle_continue'].includes(e.event_type)
+     'device_connected', 'device_disconnected', 'device_reconnected', 'device_offline', 'device_unauthorized', 'device_never_connected',
+     'sensor_stale', 'sensor_recovered', 'sensor_unrecognized', 'schedule_trigger', 'cycle_complete',
+     'watchdog_triggered', 'timer_relay_trip', 'watering_all_start', 'watering_skip', 'watering_start',
+     'zone_add', 'zone_remove', 'zone_rename', 'layout_save', 'cycle_continue'].includes(e.event_type)
   );
   return (
     <div className="two-column">
@@ -2416,12 +2440,19 @@ function HistoryItem({ event, language }: { event: EventLogEntry; language: Lang
     device_disconnected: language === 'PT' ? 'ESP32' : 'ESP32',
     device_reconnected: language === 'PT' ? 'ESP32' : 'ESP32',
     device_offline: language === 'PT' ? 'ESP32' : 'ESP32',
+    device_unauthorized: language === 'PT' ? 'ESP32 não reconhecido' : 'ESP32 unrecognized',
+    device_never_connected: language === 'PT' ? 'ESP32 não reconhecido' : 'ESP32 unrecognized',
     sensor_stale: language === 'PT' ? 'Sensor' : 'Sensor',
     sensor_recovered: language === 'PT' ? 'Sensor' : 'Sensor',
+    sensor_unrecognized: language === 'PT' ? 'Sensor não reconhecido' : 'Sensor unrecognized',
     schedule_trigger: language === 'PT' ? 'Horário' : 'Schedule',
     cycle_complete: language === 'PT' ? 'Ciclo' : 'Cycle',
     cycle_continue: language === 'PT' ? 'Ciclo' : 'Cycle',
     watchdog_triggered: language === 'PT' ? 'Watchdog' : 'Watchdog',
+    timer_relay_trip: language === 'PT' ? 'Relé temporizador' : 'Timer relay',
+    watering_all_start: language === 'PT' ? 'Rega' : 'Watering',
+    watering_start: language === 'PT' ? 'Rega' : 'Watering',
+    watering_skip: language === 'PT' ? 'Rega' : 'Watering',
     zone_add: language === 'PT' ? 'Zona' : 'Zone',
     zone_remove: language === 'PT' ? 'Zona' : 'Zone',
     zone_rename: language === 'PT' ? 'Zona' : 'Zone',

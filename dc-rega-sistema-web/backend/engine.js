@@ -75,6 +75,15 @@ class ControlEngine {
     // Saúde dos sensores reais (telemetria do ESP32)
     this.sensorLastSeen = {};    // sensorId -> timestamp (ms)
     this.sensorStale = {};       // sensorId -> bool
+    this.unknownSensorsWarned = new Set(); // sensorIds não associados a nenhuma zona já alarmados
+
+    // Watchdog / relé temporizador atualmente armado (K3 ou K4), para
+    // identificar no alarme qual temporizador disparou.
+    this.watchdogRelayPin = null;
+
+    // Zonas ainda a regar no ciclo paralelo atual (todas as válvulas abrem
+    // em simultâneo depois do delay da bomba)
+    this.pendingZones = 0;
   }
 
   // ── Inicialização ──
@@ -174,16 +183,18 @@ class ControlEngine {
     this.startTime = Date.now();
     this._setPump(true);
     this._setGpio(GPIO.RELAY_K7_AUTO, true);
-    this._log('system_start', 'Sistema', 'Sistema iniciado — bomba ligada', 'info', { pumpDelay: pumpDelaySec });
+    // K3 — relé temporizador do delay de arranque da bomba
+    this._setGpio(GPIO.RELAY_K3_TIMER1, true);
+    this._log('system_start', 'Sistema', `Sistema iniciado — bomba ligada, a aguardar ${pumpDelaySec}s (K3) antes de abrir as válvulas`, 'info', { pumpDelay: pumpDelaySec });
 
-    // Fase 1: delay da bomba
-    this._startWatchdog(pumpDelaySec + 15);
+    // Fase 1: delay da bomba (temporizado pelo relé K3)
+    this._startWatchdog(pumpDelaySec + 15, GPIO.RELAY_K3_TIMER1);
     this._addTimer(setTimeout(() => {
+      this._setGpio(GPIO.RELAY_K3_TIMER1, false);
       this.state = STATES.WATERING;
-      this.currentZoneIndex = 0;
       this.cycleActive = true;
-      this._log('watering_start', 'Sistema', 'Ciclo de rega iniciado', 'info');
-      this._waterNextZone();
+      this._log('watering_start', 'Sistema', 'Delay da bomba concluído — todas as válvulas abrem em simultâneo', 'info');
+      this._waterAllZones();
     }, pumpDelaySec * 1000));
 
     this._broadcast();
@@ -199,9 +210,12 @@ class ControlEngine {
     this._closeAllValves();
     this._setPump(false);
     this._setGpio(GPIO.RELAY_K7_AUTO, false);
+    this._setGpio(GPIO.RELAY_K3_TIMER1, false);
+    this._setGpio(GPIO.RELAY_K4_TIMER2, false);
     this.cycleActive = false;
     this.testCycleActive = false;
     this.currentZoneIndex = -1;
+    this.pendingZones = 0;
 
     this._log('system_stop', 'Sistema', 'Sistema parado — todos os atuadores desligados', 'warning');
     
@@ -230,6 +244,7 @@ class ControlEngine {
     this.cycleActive = false;
     this.testCycleActive = false;
     this.currentZoneIndex = -1;
+    this.pendingZones = 0;
     
     this._log('emergency_stop', 'Paragem de emergência', 'Todos os atuadores desligados por emergência', 'critical');
     this._broadcast();
@@ -242,9 +257,12 @@ class ControlEngine {
     this.state = STATES.IDLE;
     this._closeAllValves();
     this._setPump(false);
+    this._setGpio(GPIO.RELAY_K3_TIMER1, false);
+    this._setGpio(GPIO.RELAY_K4_TIMER2, false);
     this.cycleActive = false;
     this.testCycleActive = false;
     this.currentZoneIndex = -1;
+    this.pendingZones = 0;
     
     // Reset moisture to realistic values
     this.zones.forEach(z => {
@@ -331,7 +349,21 @@ class ControlEngine {
     }
 
     const zone = this.zones.find(z => z.sensorId === sensorId);
-    if (!zone) return;
+    if (!zone) {
+      // Sensor a reportar telemetria mas não associado a nenhuma zona
+      // configurada — alarme (uma vez por sensorId, até ser reconhecido).
+      if (!this.unknownSensorsWarned.has(sensorId)) {
+        this.unknownSensorsWarned.add(sensorId);
+        this._log('sensor_unrecognized', `Sensor ${sensorId}`,
+          `Sensor ${sensorId} não reconhecido — a reportar dados mas não está associado a nenhuma zona configurada`,
+          'warning', { sensorId });
+        if (this.onSensorHealthChange) {
+          this.onSensorHealthChange({ sensorId, stale: false, unrecognized: true, lastSeen: this.sensorLastSeen[sensorId] });
+        }
+      }
+      return;
+    }
+    this.unknownSensorsWarned.delete(sensorId);
     zone.moisture = moisture;
     // Update virtual GPIO
     const sensorGpio = sensorId === 'B1' ? GPIO.SENSOR_B1 :
@@ -386,29 +418,10 @@ class ControlEngine {
       return;
     }
 
-    // A partir daqui só nos interessa continuar/terminar um ciclo já em curso
-    if (!this.cycleActive || this.state !== STATES.WATERING) return;
-    
-    // Cycle complete — check if we should continue or stop
-    const allDone = this.currentZoneIndex >= this.zones.length;
-    if (allDone) {
-      // Check if any zone still needs watering based on moisture vs target
-      const needsWater = this.zones.some(z => z.moisture < z.target);
-      if (needsWater) {
-        this.currentZoneIndex = 0;
-        this._log('cycle_continue', 'Sistema', 'Ciclo de rega — algumas zonas ainda abaixo do setpoint', 'info');
-        this._waterNextZone();
-      } else {
-        // All zones satisfied — stop the cycle
-        this.cycleActive = false;
-        this.state = STATES.IDLE;
-        this._closeAllValves();
-        this._setPump(false);
-        this._setGpio(GPIO.RELAY_K7_AUTO, false);
-        this._log('cycle_complete', 'Sistema', 'Ciclo de rega completo — todas as zonas no setpoint', 'info');
-        this._broadcast();
-      }
-    }
+    // A partir daqui, um ciclo já em curso (todas as válvulas a regar em
+    // simultâneo) termina e decide continuar/parar sozinho em
+    // _onAllZonesDone() assim que a última válvula fecha — não há nada a
+    // verificar aqui a cada tick.
   }
 
   // Check if any schedule says "water now"
@@ -467,48 +480,85 @@ class ControlEngine {
   }
 
   // ── Internals ──
-  _waterNextZone() {
-    if (this.currentZoneIndex >= this.zones.length) {
-      this.currentZoneIndex = 0;
+  // Abre TODAS as válvulas em simultâneo (depois do delay da bomba) — cada
+  // uma fecha sozinha quando o seu próprio temporizador de duração termina.
+  _waterAllZones() {
+    if (this.zones.length === 0) {
+      this._log('watering_skip', 'Sistema', 'Sem zonas configuradas — ciclo terminado', 'warning');
+      this.cycleActive = false;
+      this.state = STATES.IDLE;
+      this._setPump(false);
+      this._setGpio(GPIO.RELAY_K7_AUTO, false);
+      this._broadcast();
+      return;
     }
 
-    const zone = this.zones[this.currentZoneIndex];
-    if (!zone) return;
+    this.currentZoneIndex = 0;
+    this.pendingZones = this.zones.length;
 
-    // Abrir válvula da zona
-    zone.on = true;
+    // K4 — relé temporizador da duração de rega (armado enquanto houver
+    // pelo menos uma válvula aberta)
+    this._setGpio(GPIO.RELAY_K4_TIMER2, true);
     this._setGpio(GPIO.RELAY_K5_START, true);
-    const duration = zone.waterDuration || 30;
-    
-    this._log('zone_watering', `${zone.name} · Válvula ${zone.id}`, 
-      `A regar ${zone.name} durante ${duration}s`, 'info', { zone_id: zone.id, duration });
+
+    const maxDuration = Math.max(...this.zones.map(z => z.waterDuration || 30));
+    this._startWatchdog(maxDuration + 10, GPIO.RELAY_K4_TIMER2);
+
+    this._log('watering_all_start', 'Sistema',
+      `${this.zones.length} válvula(s) aberta(s) em simultâneo`, 'info',
+      { zones: this.zones.map(z => z.id) });
+
+    this.zones.forEach((zone) => {
+      zone.on = true;
+      const duration = zone.waterDuration || 30;
+
+      this._log('zone_watering', `${zone.name} · Válvula ${zone.id}`,
+        `A regar ${zone.name} durante ${duration}s`, 'info', { zone_id: zone.id, duration });
+
+      this._addTimer(setTimeout(() => {
+        zone.on = false;
+        zone.lastWatered = new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
+
+        this._log('zone_done', `${zone.name} · Válvula ${zone.id}`,
+          `Rega de ${zone.name} concluída`, 'info', { zone_id: zone.id });
+
+        this.pendingZones = Math.max(0, this.pendingZones - 1);
+        this.currentZoneIndex = this.zones.length - this.pendingZones;
+        this._broadcast();
+
+        if (this.pendingZones === 0) {
+          this._onAllZonesDone();
+        }
+      }, duration * 1000));
+    });
 
     this._broadcast();
+  }
 
-    // Temporizador da válvula
-    // Start watchdog for this zone
-    this._startWatchdog(duration + 10);
+  // Chamado quando a última válvula do ciclo paralelo fecha — decide se o
+  // ciclo continua (alguma zona ainda abaixo do setpoint) ou termina.
+  _onAllZonesDone() {
+    this._setGpio(GPIO.RELAY_K4_TIMER2, false);
+    this._setGpio(GPIO.RELAY_K5_START, false);
 
-    this._addTimer(setTimeout(() => {
-      zone.on = false;
-      this._setGpio(GPIO.RELAY_K5_START, false);
-      zone.lastWatered = new Date().toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
-      
-      this._log('zone_done', `${zone.name} · Válvula ${zone.id}`, 
-        `Rega de ${zone.name} concluída`, 'info', { zone_id: zone.id });
+    if (this.testCycleActive) return; // ciclo de teste tem o seu próprio fluxo
 
-      this.currentZoneIndex++;
-      this._broadcast();
-
-      // Esperar 2s entre zonas
+    const needsWater = this.cycleActive && this.zones.some(z => z.moisture < z.target);
+    if (needsWater) {
+      this._log('cycle_continue', 'Sistema', 'Ciclo de rega — algumas zonas ainda abaixo do setpoint', 'info');
       this._addTimer(setTimeout(() => {
-        if (this.testCycleActive) {
-          this._runTestSequence(this.currentZoneIndex);
-        } else if (this.cycleActive) {
-          this._waterNextZone();
-        }
+        if (this.cycleActive) this._waterAllZones();
       }, 2000));
-    }, duration * 1000));
+    } else {
+      this.cycleActive = false;
+      this.state = STATES.IDLE;
+      this._closeAllValves();
+      this._setPump(false);
+      this._setGpio(GPIO.RELAY_K7_AUTO, false);
+      this.currentZoneIndex = -1;
+      this._log('cycle_complete', 'Sistema', 'Ciclo de rega completo — todas as zonas no setpoint', 'info');
+      this._broadcast();
+    }
   }
 
   _runTestSequence(index) {
@@ -583,18 +633,32 @@ class ControlEngine {
     this._clearWatchdog();
   }
 
-  _startWatchdog(extraSeconds = 10) {
+  // relayPin (opcional): GPIO.RELAY_K3_TIMER1 ou GPIO.RELAY_K4_TIMER2 —
+  // identifica qual relé temporizador está armado nesta fase, para que o
+  // alarme de disparo diga exatamente qual temporizador falhou.
+  _startWatchdog(extraSeconds = 10, relayPin = null) {
     this._clearWatchdog();
+    this.watchdogRelayPin = relayPin;
     const timeout = (this.watchdogTimeout + extraSeconds * 1000);
     this.watchdogTimer = setTimeout(() => {
-      this._log('watchdog_triggered', 'Watchdog', 
-        `Timeout de segurança excedido — a forçar paragem`, 'critical');
+      const relayLabel = relayPin === GPIO.RELAY_K3_TIMER1 ? 'K3 (delay da bomba)'
+        : relayPin === GPIO.RELAY_K4_TIMER2 ? 'K4 (duração da rega)'
+        : null;
+      this._log('timer_relay_trip', 'Relé temporizador',
+        relayLabel
+          ? `Relé temporizador ${relayLabel} disparou — tempo máximo excedido, paragem de segurança forçada`
+          : 'Temporizador de segurança excedido — a forçar paragem',
+        'critical', { relay: relayLabel, relayPin });
       this._closeAllValves();
       this._setPump(false);
+      this._setGpio(GPIO.RELAY_K3_TIMER1, false);
+      this._setGpio(GPIO.RELAY_K4_TIMER2, false);
+      this._setGpio(GPIO.RELAY_K7_AUTO, false);
       this.state = STATES.IDLE;
       this.cycleActive = false;
       this.testCycleActive = false;
       this.currentZoneIndex = -1;
+      this.pendingZones = 0;
       this._clearTimers();
       this._broadcast();
     }, timeout);
@@ -605,6 +669,7 @@ class ControlEngine {
       clearTimeout(this.watchdogTimer);
       this.watchdogTimer = null;
     }
+    this.watchdogRelayPin = null;
   }
 
   _broadcast() {
