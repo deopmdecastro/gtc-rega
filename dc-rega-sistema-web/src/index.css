@@ -2469,3 +2469,29 @@ textarea:focus-visible {
 @media (max-width: 1000px) {
   .hw3-wire { width: 34px; }
 }
+
+/* ══════════════════════════════════════════════════════════
+   FIX DEFINITIVO — Topbar mobile (largura total do ecrã)
+   Este bloco fica de propósito no FIM do ficheiro para vencer
+   qualquer regra legada anterior com a mesma especificidade
+   que ainda esteja a limitar a largura/posição da topbar.
+   ══════════════════════════════════════════════════════════ */
+@media (max-width: 900px) {
+  header.topbar {
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+  }
+  .topbar-inner {
+    box-sizing: border-box;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    display: grid !important;
+    grid-template-columns: auto 1fr auto !important;
+    align-items: center !important;
+  }
+  .topbar-title.compact { grid-column: 2; justify-self: center; min-width: 0; }
+  .topbar-right { grid-column: 3; justify-self: end; }
+  .mobile-menu { grid-column: 1; justify-self: start; }
+}
