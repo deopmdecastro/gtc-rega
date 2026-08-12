@@ -2091,71 +2091,107 @@ function NumericKeyboard({ value, onChange, onSubmit, onClose }: { value: string
   );
 }
 
-/* ---------- Full Keyboard (numbers, letters, accents) ---------- */
-const KB_NUMS = ['1','2','3','4','5','6','7','8','9','0'];
-const KB_ROWS = [
-  ['Q','W','E','R','T','Y','U','I','O','P'],
-  ['A','S','D','F','G','H','J','K','L','Ç'],
-  ['@','Z','X','C','V','B','N','M','.','-'],
-];
-const KB_ACCENTS = ['á','à','ã','â','é','ê','í','ó','õ','ô','ú','ü'];
+/* ---------- Full Keyboard (layout tipo teclado físico completo) ---------- */
+const PK_ROW_TOP = ['`', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '='];
+const PK_ROW_2 = ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '[', ']', '\\'];
+const PK_ROW_3 = ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ';', "'"];
+const PK_ROW_4 = ['Z', 'X', 'C', 'V', 'B', 'N', 'M', ',', '.', '/'];
+const isLetterKey = (k: string) => /^[A-Z]$/.test(k);
 
 function FullKeyboard({ value, onChange, onSubmit, onClose, title, language, hint }: { value: string; onChange: (v: string) => void; onSubmit: () => void; onClose: () => void; title?: string; language?: Language; hint?: string }) {
-  const [showAccents, setShowAccents] = useState(false);
-  const [caps, setCaps] = useState(false);
+  const [shift, setShift] = useState(false);
+  const [capsLock, setCapsLock] = useState(false);
   useCloseOnEscape(onClose);
 
-  // Letras minúsculas por defeito (como num teclado de telemóvel); Shift alterna para maiúsculas.
+  // Shift e Caps Lock funcionam como num teclado físico: Shift é de disparo único,
+  // Caps Lock mantém-se ativo até ser desligado. Os dois combinados anulam-se (XOR).
+  const upper = shift !== capsLock;
+  const caseChar = (k: string) => (upper ? k.toUpperCase() : k.toLowerCase());
+
   const insertLetter = (k: string) => {
-    onChange(value + (caps ? k : k.toLowerCase()));
-    setCaps(false); // shift de disparo único: volta a minúsculas após uma letra
+    onChange(value + caseChar(k));
+    if (shift) setShift(false);
   };
+  const insertChar = (c: string) => onChange(value + c);
+  const backspace = () => onChange(value.slice(0, -1));
+
+  const renderKey = (k: string) => (
+    <button
+      key={k}
+      className="pk-key"
+      onMouseDown={preventFocusSteal}
+      onClick={() => (isLetterKey(k) ? insertLetter(k) : insertChar(k))}
+    >
+      {isLetterKey(k) ? caseChar(k) : k}
+    </button>
+  );
 
   return (
     <div className="keyboard-overlay" onClick={onClose}>
       <div className="keyboard full-keyboard" onClick={(e) => e.stopPropagation()}>
         <div className="keyboard-header">
-          <span>{title || 'Editar texto'}</span>
-          <button onClick={onClose} aria-label="Fechar"><X size={18} /></button>
+          <span>{title || (language === 'PT' ? 'Editar texto' : 'Edit text')}</span>
+          <button onClick={onClose} aria-label={language === 'PT' ? 'Fechar' : 'Close'}><X size={18} /></button>
         </div>
         <div className="keyboard-display text-display">{value || ' '}</div>
         {hint && <div className="keyboard-hint">{hint}</div>}
-        <div className="text-kb-nums">{KB_NUMS.map(n => <button key={n} className="kb-key kb-key-sm" onMouseDown={preventFocusSteal} onClick={() => onChange(value + n)}>{n}</button>)}</div>
-        <div className="text-kb-rows">
-          {KB_ROWS.map((row, i) => (
-            <div key={i} className="text-kb-row">
-              {i === 1 && (
-                <button
-                  className={`kb-key kb-key-sm kb-shift ${caps ? 'active' : ''}`}
-                  onMouseDown={preventFocusSteal}
-                  onClick={() => setCaps((c) => !c)}
-                  aria-label={language === 'PT' ? 'Maiúsculas' : 'Shift'}
-                  aria-pressed={caps}
-                >
-                  <ArrowUp size={16} />
-                </button>
-              )}
-              {row.map((k) => (
-                <button key={k} className="kb-key kb-key-sm" onMouseDown={preventFocusSteal} onClick={() => insertLetter(k)}>
-                  {caps ? k : k.toLowerCase()}
-                </button>
-              ))}
-              {i === 1 && (
-                <button className="kb-key kb-key-sm kb-backspace" onMouseDown={preventFocusSteal} onClick={() => onChange(value.slice(0, -1))} aria-label={language === 'PT' ? 'Apagar' : 'Backspace'}>
-                  <Delete size={16} />
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-        <div className="text-kb-actions">
-          <button className="kb-key kb-key-sm kb-accent-toggle" onMouseDown={preventFocusSteal} onClick={() => setShowAccents(!showAccents)}>{showAccents ? 'ABC' : 'áéí'}</button>
-          <button className="kb-key kb-key-sm kb-space" onMouseDown={preventFocusSteal} onClick={() => onChange(value + ' ')}>{language === 'PT' ? 'Espaço' : 'Space'}</button>
-        </div>
-        {showAccents && <div className="text-kb-nums text-kb-accents">{KB_ACCENTS.map(a => <button key={a} className="kb-key kb-key-sm kb-accent" onMouseDown={preventFocusSteal} onClick={() => { onChange(value + (caps ? a.toUpperCase() : a)); setShowAccents(false); }}>{a}</button>)}</div>}
-        <div className="keyboard-actions">
-          <button className="kb-clear" onClick={onClose}>{language === 'PT' ? 'Cancelar' : 'Cancel'}</button>
-          <button className="kb-confirm" onClick={onSubmit}>{language === 'PT' ? 'Confirmar' : 'Confirm'}</button>
+
+        <div className="pk-body">
+          <div className="pk-row">
+            {PK_ROW_TOP.map((k) => renderKey(k))}
+            <button className="pk-key pk-backspace" onMouseDown={preventFocusSteal} onClick={backspace} aria-label={language === 'PT' ? 'Apagar' : 'Backspace'}>
+              <Delete size={16} />
+            </button>
+          </div>
+          <div className="pk-row">
+            <button className="pk-key pk-tab" disabled aria-disabled="true" title={language === 'PT' ? 'Não aplicável neste campo' : 'Not applicable in this field'}>Tab</button>
+            {PK_ROW_2.map((k) => renderKey(k))}
+          </div>
+          <div className="pk-row">
+            <button
+              className={`pk-key pk-caps ${capsLock ? 'active' : ''}`}
+              onMouseDown={preventFocusSteal}
+              onClick={() => setCapsLock((c) => !c)}
+              aria-label={language === 'PT' ? 'Bloqueio de maiúsculas' : 'Caps Lock'}
+              aria-pressed={capsLock}
+            >
+              {language === 'PT' ? 'Maiús' : 'Caps'}
+            </button>
+            {PK_ROW_3.map((k) => renderKey(k))}
+            <button className="pk-key pk-enter" onMouseDown={preventFocusSteal} onClick={onSubmit}>
+              {language === 'PT' ? 'Entrar' : 'Enter'}
+            </button>
+          </div>
+          <div className="pk-row">
+            <button
+              className={`pk-key pk-shift ${shift ? 'active' : ''}`}
+              onMouseDown={preventFocusSteal}
+              onClick={() => setShift((s) => !s)}
+              aria-label={language === 'PT' ? 'Maiúscula' : 'Shift'}
+              aria-pressed={shift}
+            >
+              <ArrowUp size={14} /> Shift
+            </button>
+            {PK_ROW_4.map((k) => renderKey(k))}
+            <button
+              className={`pk-key pk-shift ${shift ? 'active' : ''}`}
+              onMouseDown={preventFocusSteal}
+              onClick={() => setShift((s) => !s)}
+              aria-label={language === 'PT' ? 'Maiúscula' : 'Shift'}
+              aria-pressed={shift}
+            >
+              Shift <ArrowUp size={14} />
+            </button>
+          </div>
+          <div className="pk-row">
+            <button className="pk-key pk-ctrl" disabled aria-disabled="true" title={language === 'PT' ? 'Não aplicável neste campo' : 'Not applicable in this field'}>Ctrl</button>
+            <button className="pk-key pk-alt" disabled aria-disabled="true" title={language === 'PT' ? 'Não aplicável neste campo' : 'Not applicable in this field'}>Alt</button>
+            <button className="pk-key pk-space" onMouseDown={preventFocusSteal} onClick={() => insertChar(' ')}>
+              {language === 'PT' ? 'Espaço' : 'Space'}
+            </button>
+            <button className="pk-key pk-alt" disabled aria-disabled="true" title={language === 'PT' ? 'Não aplicável neste campo' : 'Not applicable in this field'}>Alt</button>
+            <button className="pk-key pk-ctrl" disabled aria-disabled="true" title={language === 'PT' ? 'Não aplicável neste campo' : 'Not applicable in this field'}>Ctrl</button>
+          </div>
         </div>
       </div>
     </div>
