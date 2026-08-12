@@ -47,6 +47,12 @@ import {
   Spline,
   Minus,
   Eraser,
+  Check,
+  CornerDownLeft,
+  ArrowBigUp,
+  ArrowUpToLine,
+  Space as SpaceIcon,
+  Search,
   CircuitBoard,
   Zap,
 } from 'lucide-react';
@@ -2363,8 +2369,8 @@ function NumericKeyboard({ value, onChange, onSubmit, onClose }: { value: string
           <button className="kb-key kb-backspace" onMouseDown={preventFocusSteal} onClick={() => onChange(value.slice(0, -1))} aria-label="Apagar"><Delete size={18} /></button>
         </div>
         <div className="keyboard-actions">
-          <button className="kb-clear" onClick={() => onChange('')}>Limpar</button>
-          <button className="kb-confirm" onClick={onSubmit}>Confirmar</button>
+          <button className="kb-clear" onClick={() => onChange('')} aria-label="Limpar" title="Limpar"><Eraser size={16} /></button>
+          <button className="kb-confirm" onClick={onSubmit} aria-label="Confirmar" title="Confirmar"><Check size={18} /></button>
         </div>
       </div>
     </div>
@@ -2424,7 +2430,7 @@ function FullKeyboard({ value, onChange, onSubmit, onClose, title, language, hin
             </button>
           </div>
           <div className="pk-row">
-            <button className="pk-key pk-tab" disabled aria-disabled="true" title={language === 'PT' ? 'Não aplicável neste campo' : 'Not applicable in this field'}>Tab</button>
+            <button className="pk-key pk-tab" disabled aria-disabled="true" title="Tab"><CornerDownLeft size={13} style={{ transform: 'scaleX(-1)' }} /></button>
             {PK_ROW_2.map((k) => renderKey(k))}
           </div>
           <div className="pk-row">
@@ -2435,11 +2441,11 @@ function FullKeyboard({ value, onChange, onSubmit, onClose, title, language, hin
               aria-label={language === 'PT' ? 'Bloqueio de maiúsculas' : 'Caps Lock'}
               aria-pressed={capsLock}
             >
-              {language === 'PT' ? 'Maiús' : 'Caps'}
+              <ArrowUpToLine size={14} />
             </button>
             {PK_ROW_3.map((k) => renderKey(k))}
-            <button className="pk-key pk-enter" onMouseDown={preventFocusSteal} onClick={onSubmit}>
-              {language === 'PT' ? 'Entrar' : 'Enter'}
+            <button className="pk-key pk-enter" onMouseDown={preventFocusSteal} onClick={onSubmit} aria-label={language === 'PT' ? 'Entrar' : 'Enter'} title={language === 'PT' ? 'Entrar' : 'Enter'}>
+              <CornerDownLeft size={15} />
             </button>
           </div>
           <div className="pk-row">
@@ -2450,7 +2456,7 @@ function FullKeyboard({ value, onChange, onSubmit, onClose, title, language, hin
               aria-label={language === 'PT' ? 'Maiúscula' : 'Shift'}
               aria-pressed={shift}
             >
-              <ArrowUp size={14} /> Shift
+              <ArrowBigUp size={16} />
             </button>
             {PK_ROW_4.map((k) => renderKey(k))}
             <button
@@ -2460,17 +2466,17 @@ function FullKeyboard({ value, onChange, onSubmit, onClose, title, language, hin
               aria-label={language === 'PT' ? 'Maiúscula' : 'Shift'}
               aria-pressed={shift}
             >
-              Shift <ArrowUp size={14} />
+              <ArrowBigUp size={16} />
             </button>
           </div>
           <div className="pk-row">
-            <button className="pk-key pk-ctrl" disabled aria-disabled="true" title={language === 'PT' ? 'Não aplicável neste campo' : 'Not applicable in this field'}>Ctrl</button>
-            <button className="pk-key pk-alt" disabled aria-disabled="true" title={language === 'PT' ? 'Não aplicável neste campo' : 'Not applicable in this field'}>Alt</button>
-            <button className="pk-key pk-space" onMouseDown={preventFocusSteal} onClick={() => insertChar(' ')}>
-              {language === 'PT' ? 'Espaço' : 'Space'}
+            <button className="pk-key pk-ctrl" disabled aria-disabled="true" title={language === 'PT' ? 'Não aplicável neste campo' : 'Not applicable in this field'}><span className="pk-mod">^</span></button>
+            <button className="pk-key pk-alt" disabled aria-disabled="true" title={language === 'PT' ? 'Não aplicável neste campo' : 'Not applicable in this field'}><span className="pk-mod">⌥</span></button>
+            <button className="pk-key pk-space" onMouseDown={preventFocusSteal} onClick={() => insertChar(' ')} aria-label={language === 'PT' ? 'Espaço' : 'Space'} title={language === 'PT' ? 'Espaço' : 'Space'}>
+              <SpaceIcon size={16} />
             </button>
-            <button className="pk-key pk-alt" disabled aria-disabled="true" title={language === 'PT' ? 'Não aplicável neste campo' : 'Not applicable in this field'}>Alt</button>
-            <button className="pk-key pk-ctrl" disabled aria-disabled="true" title={language === 'PT' ? 'Não aplicável neste campo' : 'Not applicable in this field'}>Ctrl</button>
+            <button className="pk-key pk-alt" disabled aria-disabled="true" title={language === 'PT' ? 'Não aplicável neste campo' : 'Not applicable in this field'}><span className="pk-mod">⌥</span></button>
+            <button className="pk-key pk-ctrl" disabled aria-disabled="true" title={language === 'PT' ? 'Não aplicável neste campo' : 'Not applicable in this field'}><span className="pk-mod">^</span></button>
           </div>
         </div>
       </div>
@@ -3500,7 +3506,7 @@ function ConnectionView({ language, deviceOnline, deviceInfo }: { language: Lang
         <div className="panel-heading" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div><span className="section-kicker">{language === 'PT' ? 'CONFIGURAR WI-FI' : 'CONFIGURE WI-FI'}</span><h3>{language === 'PT' ? 'Redes guardadas' : 'Saved networks'}</h3></div>
           <button className="gpio-edit-btn" onClick={() => setShowAddForm(!showAddForm)}>
-            <Plus size={15} /> {showAddForm ? (language === 'PT' ? 'Fechar' : 'Close') : (language === 'PT' ? 'Adicionar rede' : 'Add network')}
+            {showAddForm ? <X size={15} /> : <Plus size={15} />} <span className="btn-label">{showAddForm ? (language === 'PT' ? 'Fechar' : 'Close') : (language === 'PT' ? 'Adicionar rede' : 'Add network')}</span>
           </button>
         </div>
 
@@ -3527,7 +3533,7 @@ function ConnectionView({ language, deviceOnline, deviceInfo }: { language: Lang
                   </button>
                 </div>
                 <button className="gpio-edit-btn" onClick={handleScan} disabled={scanning}>
-                  <Wifi size={14} /> {scanning ? (language === 'PT' ? 'A procurar...' : 'Scanning...') : (language === 'PT' ? 'Procurar' : 'Scan')}
+                  <Search size={14} className={scanning ? 'spin' : ''} /> <span className="btn-label">{scanning ? (language === 'PT' ? 'A procurar...' : 'Scanning...') : (language === 'PT' ? 'Procurar' : 'Scan')}</span>
                 </button>
               </div>
             </label>
@@ -3671,7 +3677,7 @@ function ConnectionView({ language, deviceOnline, deviceInfo }: { language: Lang
         <div className="panel-heading" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div><span className="section-kicker">{language === 'PT' ? 'CONFIGURAR BLUETOOTH' : 'CONFIGURE BLUETOOTH'}</span><h3>{language === 'PT' ? 'Dispositivos emparelhados' : 'Paired devices'}</h3></div>
           <button className="gpio-edit-btn" onClick={() => setShowBtAddForm(!showBtAddForm)}>
-            <Plus size={15} /> {showBtAddForm ? (language === 'PT' ? 'Fechar' : 'Close') : (language === 'PT' ? 'Adicionar dispositivo' : 'Add device')}
+            {showBtAddForm ? <X size={15} /> : <Plus size={15} />} <span className="btn-label">{showBtAddForm ? (language === 'PT' ? 'Fechar' : 'Close') : (language === 'PT' ? 'Adicionar dispositivo' : 'Add device')}</span>
           </button>
         </div>
 
@@ -3688,7 +3694,7 @@ function ConnectionView({ language, deviceOnline, deviceInfo }: { language: Lang
                   />
                 </div>
                 <button className="gpio-edit-btn" onClick={handleBtScan} disabled={btScanning}>
-                  <Bluetooth size={14} /> {btScanning ? (language === 'PT' ? 'A procurar...' : 'Scanning...') : (language === 'PT' ? 'Procurar' : 'Scan')}
+                  <Search size={14} className={btScanning ? 'spin' : ''} /> <span className="btn-label">{btScanning ? (language === 'PT' ? 'A procurar...' : 'Scanning...') : (language === 'PT' ? 'Procurar' : 'Scan')}</span>
                 </button>
               </div>
             </label>
