@@ -1706,25 +1706,9 @@ input:focus-visible { outline: none; }
 
 /* ══════════════════════════════════════════════════════════
    WIFI CONFIGURATION PANEL
+   (regras consolidadas mais abaixo, secao "WiFi: formulario
+   mais organizado" - evita duplicados/estilos conflituosos)
    ══════════════════════════════════════════════════════════ */
-.wifi-add-form { padding: 16px 20px; border-bottom: 1px solid #1c2b33; }
-.wifi-add-form .field-label { margin-top: 10px; color: #7e909c; font-size: 11px; font-weight: 600; letter-spacing: .06em; }
-.wifi-add-form .field-label input { margin-top: 6px; }
-.wifi-scan-results { margin: 10px 0 4px; padding: 10px 12px; border: 1px solid #1c2b33; border-radius: 10px; background: #0b151b; max-height: 180px; overflow-y: auto; }
-.wifi-scan-results .section-kicker { display: block; margin-bottom: 8px; font-size: 9px; }
-.wifi-scan-item { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 9px 10px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: #dce5e8; cursor: pointer; transition: .15s; text-align: left; }
-.wifi-scan-item:hover { border-color: #14ddd6; background: rgba(20,221,214,.06); }
-.wifi-scan-item-left { display: flex; align-items: center; gap: 8px; color: #14ddd6; }
-.wifi-scan-item-left strong { font-size: 13px; font-weight: 600; color: #dce5e8; }
-.wifi-scan-item-left svg:last-child { color: #5a6f7a; }
-.wifi-networks-list { padding: 8px 0; }
-.wifi-network-item { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-bottom: 1px solid #1b2a32; transition: background .15s; }
-.wifi-network-item:hover { background: rgba(20,221,214,.03); }
-.wifi-network-item:last-child { border-bottom: 0; }
-.wifi-network-icon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: rgba(20,221,214,.08); color: #14ddd6; flex-shrink: 0; }
-.wifi-network-info { flex: 1; min-width: 0; }
-.wifi-network-info strong { display: block; font-size: 13px; color: #dce5e8; }
-.wifi-network-info span { display: block; margin-top: 3px; font-size: 10px; color: #6e858f; }
 .empty-state { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 40px 20px; color: #5a6f7a; font-size: 12px; text-align: center; line-height: 1.5; }
 
 /* ══════════════════════════════════════════════════════════
@@ -1959,7 +1943,7 @@ input:focus-visible { outline: none; }
 .wifi-scan-item strong { color: #dce5e8; font-size: 13px; }
 .wifi-network-item { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-bottom: 1px solid #16242c; }
 .wifi-network-item:last-child { border-bottom: 0; }
-.wifi-network-icon { width: 36px; height: 36px; border-radius: 10px; background: rgba(90,169,255,.12); color: #5aa9ff; flex: 0 0 36px; }
+.wifi-network-icon { width: 36px; height: 36px; border-radius: 10px; background: rgba(20,221,214,.1); color: #14ddd6; flex: 0 0 36px; }
 .wifi-network-info { flex: 1; min-width: 0; }
 .wifi-network-info strong { display: block; color: #dce5e8; font-size: 13px; }
 .wifi-network-info span { display: block; margin-top: 3px; color: #7e909c; font-size: 11px; font-family: 'DM Mono', monospace; }
@@ -2887,7 +2871,24 @@ textarea:focus-visible {
   /* ── Pinout ESP32 table ── */
   .gpio-edit-table { min-width: 0 !important; }
   .gpio-edit-table th, .gpio-edit-table td { padding: 6px 8px !important; font-size: 9px !important; }
-  .gpio-edit-btn { width: 24px !important; height: 24px !important; }
+  .gpio-edit-table .gpio-edit-btn { width: 24px !important; height: 24px !important; padding: 0 !important; justify-content: center !important; }
+
+  /* Botoes icon-only (ex.: Adicionar rede/Fechar no painel Wi-Fi, Procurar):
+     quando o texto (.btn-label) fica escondido, o botao tem de encolher para um
+     quadrado com o icone perfeitamente centrado - nunca cortar o SVG. */
+  .gpio-edit-btn {
+    width: auto !important;
+    min-width: 32px !important;
+    height: 32px !important;
+    padding: 0 8px !important;
+    justify-content: center !important;
+    gap: 4px !important;
+  }
+  .panel-heading .gpio-edit-btn,
+  .wifi-add-form .gpio-edit-btn {
+    width: 32px !important;
+    padding: 0 !important;
+  }
 
   /* ── Setpoint floating bar ── */
   .setpoint-floating-bar { padding: 8px 10px !important; border-radius: 10px; }

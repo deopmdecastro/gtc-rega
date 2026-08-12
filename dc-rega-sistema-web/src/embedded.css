@@ -488,7 +488,10 @@
   .sidebar-footer { display: none; } /* poupa altura */
 
   .main-content { margin-left: 0; }
-  .topbar { position: static; }
+  /* O menu (topbar/hamburger) tem de se manter fixo no topo mesmo neste
+     ecra baixo (240px de altura) - sem isto o botao de menu desaparecia
+     ao fazer scroll no ecra do ESP32/mobile em landscape. */
+  .topbar { position: fixed; top: 0; left: 0; right: 0; }
   .topbar-inner { padding: 4px 8px !important; min-height: 36px; }
   .topbar h1 { font-size: 13px !important; }
   .topbar h1 span { display: none; }
