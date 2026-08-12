@@ -171,7 +171,7 @@ textarea:focus-visible {
 .device-status-panel { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; padding: 16px 22px; }
 .device-status-main { display: flex; align-items: center; gap: 12px; }
 .device-status-main strong { display: block; font-size: 13px; color: #e2ebed; }
-.device-status-main span { display: block; margin-top: 2px; font-size: 11px; color: #7f949e; font-family: 'DM Mono', monospace; }
+.device-status-info span { display: block; margin-top: 2px; font-size: 11px; color: #7f949e; font-family: 'DM Mono', monospace; }
 .device-status-info { min-width: 0; flex: 1 1 auto; }
 .device-status-main > .status-badge { flex-shrink: 0; }
 .device-status-dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
@@ -190,7 +190,7 @@ textarea:focus-visible {
   .device-status-main { gap: 10px; }
   .device-status-dot { width: 8px; height: 8px; margin-top: 3px; align-self: flex-start; }
   .device-status-main strong { font-size: 12.5px; }
-  .device-status-main span { font-size: 10.5px; line-height: 1.45; }
+  .device-status-info span { font-size: 10.5px; line-height: 1.45; }
   .device-status-main .status-badge { align-self: center; margin-top: 0; flex-shrink: 0; }
   .device-status-sensors { gap: 6px; margin-top: 2px; }
   .device-status-sensors-label { flex: 1 1 100%; margin-bottom: 2px; }
