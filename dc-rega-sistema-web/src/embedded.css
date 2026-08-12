@@ -920,3 +920,20 @@
   .alarm-item-top > strong { flex: 1 1 auto; }
   .alarm-item-actions { width: auto; margin-left: auto; }
 }
+
+/* ---------- Teclado e botões com ícones (ecrãs pequenos) ---------- */
+.pk-key svg, .kb-key svg, .kb-clear svg, .kb-confirm svg { display: block; margin: 0 auto; }
+.pk-mod { font-size: 11px; line-height: 1; opacity: .8; }
+.spin { animation: kb-spin 1s linear infinite; }
+@keyframes kb-spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 340px), (max-height: 260px) {
+  .btn-label { display: none !important; }
+  .pk-key, .kb-clear, .kb-confirm {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0 !important;
+  }
+  .kb-clear, .kb-confirm { min-width: 44px !important; padding: 4px 8px !important; }
+}
