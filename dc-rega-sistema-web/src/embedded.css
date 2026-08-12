@@ -351,8 +351,8 @@
   .alarm-item div span { font-size: 9px; }
   .alarm-meta { gap: 6px; margin-top: 6px; }
   .alarm-meta small { font-size: 9px; }
-  .resolve-btn { padding: 7px 12px; font-size: 10px; min-height: 32px; }
-  .resolved-badge { padding: 6px 11px; font-size: 9px; min-height: 28px; }
+  .resolve-btn { padding: 6px 10px; font-size: 9px; min-height: 26px; }
+  .resolved-badge { padding: 3px 9px; font-size: 8px; min-height: 22px; }
 
   /* Comandos — cmd-btn --------------------------------------------- */
   .cmd-btn { padding: 14px 8px; gap: 6px; min-height: 68px; }
@@ -947,16 +947,20 @@
   }
   .resolve-btn {
     margin-left: auto;
-    min-height: 28px;
-    font-size: 9px !important;
-    padding: 5px 10px !important;
+    min-height: 24px;
+    font-size: 8px !important;
+    padding: 3px 8px !important;
+    gap: 4px !important;
   }
+  .resolve-btn svg { width: 10px; height: 10px; }
   .resolved-badge {
     margin-left: auto;
-    min-height: 28px;
-    font-size: 8px !important;
-    padding: 4px 9px !important;
+    min-height: 20px;
+    font-size: 7.5px !important;
+    padding: 2px 8px !important;
+    gap: 3px !important;
   }
+  .resolved-badge svg { width: 9px; height: 9px; }
   .alarm-item-msg { font-size: 9px !important; line-height: 1.35; }
   .alarm-meta { gap: 6px; flex-wrap: wrap; }
   .alarm-meta small, .alarm-id { font-size: 8px !important; }
