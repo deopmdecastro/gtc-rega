@@ -2246,9 +2246,10 @@ textarea:focus-visible,
 @media (max-width: 720px) {
   .alarm-item { padding: 16px 14px; gap: 12px; }
   .alarm-item-icon { width: 38px; height: 38px; flex-basis: 38px; }
-  .resolve-btn { width: 100%; justify-content: center; }
-  .alarm-item { flex-wrap: wrap; }
-  .alarm-item > .resolve-btn { margin-left: 54px; }
+  .alarm-item-top { flex-wrap: wrap; row-gap: 8px; }
+  .alarm-item-top strong { white-space: normal; flex: 1 1 100%; }
+  .alarm-item-actions { margin-left: auto; }
+  .resolve-btn { padding: 7px 12px; font-size: 10.5px; }
   .actuator-row { padding: 14px 10px; gap: 12px; }
   .actuator-icon { width: 36px; height: 36px; flex-basis: 36px; }
   .history-item { padding: 14px 10px; gap: 12px; }
@@ -2272,15 +2273,15 @@ textarea:focus-visible,
 .topbar-inner { align-items: center; }
 
 /* ── 2. LEITURA EM TEMPO REAL: respiração entre kicker/título e conteúdo ── */
-.panel-heading { padding: 18px 22px 16px; }
+.panel-heading { padding: 18px 28px 16px; }
 .panel-heading h3 { margin: 7px 0 0; line-height: 1.25; }
 .panel-heading .section-kicker { line-height: 1.2; }
 .panel-heading + .state-list,
 .panel-heading + .alarm-list { padding-top: 6px; }
 
 /* ── 3. Estado dos equipamentos: cards alinhados e compactos ── */
-.state-list { padding: 0 22px 8px; }
-.state-row { padding: 12px 6px; margin: 0 -6px; gap: 12px; align-items: center; }
+.state-list { padding: 0 28px 10px; }
+.state-row { padding: 13px 8px; margin: 0 -8px; gap: 12px; align-items: center; }
 .state-icon { flex: 0 0 34px; width: 34px; height: 34px; align-self: center; }
 .state-icon > svg { width: 17px; height: 17px; }
 .state-row > div { display: flex; flex-direction: column; justify-content: center; gap: 3px; }
@@ -2288,24 +2289,25 @@ textarea:focus-visible,
 .state-row > .status-badge { margin-left: auto; align-self: center; flex: 0 0 auto; min-width: 104px; justify-content: center; }
 
 /* ── 4. ALARMES ATIVOS: banner e itens perfeitamente alinhados ── */
-.alarm-banner { padding: 16px 22px; gap: 14px; align-items: center; }
+.alarm-banner { padding: 16px 28px; gap: 14px; align-items: center; }
 .alarm-banner-icon { width: 38px; height: 38px; flex: 0 0 38px; align-self: center; }
 .alarm-banner h3 { margin: 6px 0 4px; line-height: 1.25; }
 .alarm-banner > .status-badge { align-self: center; }
 
-.alarm-list { padding: 0 22px 8px; }
-.alarm-item { padding: 14px 6px; margin: 0 -6px; gap: 14px; align-items: flex-start; }
-.alarm-item:first-child { padding-top: 14px; }
-.alarm-item:last-child { padding-bottom: 14px; }
+.alarm-list { padding: 0 28px 10px; }
+.alarm-item { padding: 16px 8px; margin: 0 -8px; gap: 14px; align-items: flex-start; }
+.alarm-item:first-child { padding-top: 16px; }
+.alarm-item:last-child { padding-bottom: 16px; }
 .alarm-item-icon { width: 36px; height: 36px; flex: 0 0 36px; margin-top: 1px; }
 .alarm-item-icon > svg { width: 16px; height: 16px; }
-.alarm-item-body { gap: 3px; }
-.alarm-item-top { margin-bottom: 0; }
-.alarm-item-top strong { line-height: 1.3; }
+.alarm-item-body { gap: 5px; min-width: 0; }
+.alarm-item-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 0; }
+.alarm-item-top strong { line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.alarm-item-actions { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
 .alarm-item-badge { flex: 0 0 auto; align-self: center; min-width: 76px; text-align: center; }
 .alarm-item-msg { margin-bottom: 2px; }
 .alarm-meta { margin-top: 2px; }
-.alarm-item > .resolve-btn { align-self: center; margin-left: 4px; }
+.resolve-btn { align-self: center; }
 
 /* ── 5. Requerem atenção: hierarquia e consistência com ALARMES ATIVOS ── */
 .alarm-item + .alarm-item { border-top: 0; }
