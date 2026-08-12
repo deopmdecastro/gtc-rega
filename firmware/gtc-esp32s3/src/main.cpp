@@ -1,11 +1,12 @@
 /**
  * GTC Rega — Firmware ESP32-S3
  * ---------------------------------------------------------------
- * Liga-se ao WiFi (portal de configuração via WiFiManager), sincroniza
- * com o backend GTC Rega e:
+ * Liga-se ao WiFi (portal de configuração via WiFiManager) e anuncia um
+ * serviço Bluetooth Low Energy (BLE) para monitorização/comando local,
+ * sincroniza com o backend GTC Rega e:
  *   - lê sensores capacitivos de humidade (B1/B2) e envia telemetria
  *   - aplica as saídas desejadas (bomba + válvulas por zona) nos relés
- *   - envia paragem de emergência quando o botão é premido
+ *   - envia paragem de emergência quando o botão é premido (ou via BLE)
  *   - protege-se com watchdog de hardware e fail-safe em perda de rede
  */
 
@@ -15,19 +16,26 @@
 #include <ArduinoJson.h>
 #include <WiFiManager.h>
 #include <esp_task_wdt.h>
+#include <NimBLEDevice.h>
 
 #include "config.h"
 #include "webui.h"
 
 // ── Estado ──
 static String baseUrl;
-static uint32_t lastPoll = 0, lastTelemetry = 0, lastSample = 0, lastOkContact = 0;
+static uint32_t lastPoll = 0, lastTelemetry = 0, lastSample = 0, lastOkContact = 0, lastBleNotify = 0;
 static bool pumpOn = false;
 static bool autoModeOn = false;
 static bool zoneOn[ZONE_COUNT] = { false };
 static float moistureB1 = 0, moistureB2 = 0;
 static bool emergencyLatched = false;
 static bool serverOnline = false;
+
+// ── Bluetooth (BLE) ──
+static NimBLEServer* bleServer = nullptr;
+static NimBLECharacteristic* bleStatusChar = nullptr;
+static NimBLECharacteristic* bleCommandChar = nullptr;
+static bool blePeerConnected = false;
 
 // ── Relés ──
 static inline void writeRelay(int pin, bool on) {
@@ -113,6 +121,94 @@ void gtcLocalEmergency() {
   emergencyLatched = true;
   allOutputsOff();
   Serial.println("[EMERGENCY] paragem pela interface local");
+}
+
+// ── Bluetooth (BLE) ──
+static bool httpJson(const char* method, const String& path, const String& body, JsonDocument& out); // fwd decl
+
+// Serviço BLE simples de provisionamento/monitorização local:
+//   - Característica de ESTADO (notify): replica o JSON de gtcStatusJson()
+//   - Característica de COMANDO (write): aceita comandos de texto simples
+//       "STOP"  -> paragem de emergência local (mesmo caminho do botão físico)
+//       "RESET" -> limpa o latch de emergência
+class GtcBleServerCallbacks : public NimBLEServerCallbacks {
+  void onConnect(NimBLEServer* server, NimBLEConnInfo& connInfo) override {
+    blePeerConnected = true;
+    String addr = connInfo.getAddress().toString().c_str();
+    Serial.printf("[BLE] dispositivo ligado: %s\n", addr.c_str());
+    JsonDocument body, res;
+    body["address"] = addr;
+    body["paired"] = true;
+    String payload;
+    serializeJson(body, payload);
+    httpJson("POST", "/api/device/bluetooth-status", payload, res); // best-effort
+  }
+
+  void onDisconnect(NimBLEServer* server, NimBLEConnInfo& connInfo, int reason) override {
+    blePeerConnected = false;
+    String addr = connInfo.getAddress().toString().c_str();
+    Serial.println("[BLE] dispositivo desligado — a reiniciar advertising");
+    JsonDocument body, res;
+    body["address"] = addr;
+    body["paired"] = false;
+    String payload;
+    serializeJson(body, payload);
+    httpJson("POST", "/api/device/bluetooth-status", payload, res); // best-effort
+    NimBLEDevice::startAdvertising();
+  }
+};
+
+class GtcBleCommandCallbacks : public NimBLECharacteristicCallbacks {
+  void onWrite(NimBLECharacteristic* characteristic, NimBLEConnInfo& connInfo) override {
+    String cmd = characteristic->getValue().c_str();
+    cmd.trim();
+    cmd.toUpperCase();
+    Serial.printf("[BLE] comando recebido: %s\n", cmd.c_str());
+    if (cmd == "STOP") {
+      gtcLocalEmergency();
+    } else if (cmd == "RESET") {
+      emergencyLatched = false;
+      Serial.println("[BLE] latch de emergência limpo");
+    }
+  }
+};
+
+static GtcBleServerCallbacks bleServerCallbacks;
+static GtcBleCommandCallbacks bleCommandCallbacks;
+
+static void bleBegin() {
+  NimBLEDevice::init(GTC_BLE_NAME);
+#if defined(GTC_BLE_PIN) && (GTC_BLE_PIN > 0)
+  // Exige "Passkey Entry" — a app introduz o PIN definido em config.h
+  NimBLEDevice::setSecurityAuth(true, true, true);
+  NimBLEDevice::setSecurityPasskey(GTC_BLE_PIN);
+  NimBLEDevice::setSecurityIOCap(BLE_HS_IO_DISPLAY_ONLY);
+#endif
+
+  bleServer = NimBLEDevice::createServer();
+  bleServer->setCallbacks(&bleServerCallbacks);
+
+  NimBLEService* service = bleServer->createService(GTC_BLE_SERVICE_UUID);
+
+  bleStatusChar = service->createCharacteristic(
+    GTC_BLE_STATUS_CHAR_UUID,
+    NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::NOTIFY
+  );
+
+  bleCommandChar = service->createCharacteristic(
+    GTC_BLE_COMMAND_CHAR_UUID,
+    NIMBLE_PROPERTY::WRITE
+  );
+  bleCommandChar->setCallbacks(&bleCommandCallbacks);
+
+  service->start();
+
+  NimBLEAdvertising* advertising = NimBLEDevice::getAdvertising();
+  advertising->addServiceUUID(GTC_BLE_SERVICE_UUID);
+  advertising->setName(GTC_BLE_NAME);
+  advertising->start();
+
+  Serial.printf("[BLE] a anunciar como \"%s\"\n", GTC_BLE_NAME);
 }
 
 // ── HTTP ──
@@ -252,6 +348,7 @@ void setup() {
   Serial.printf("[WIFI] ligado: %s\n", WiFi.localIP().toString().c_str());
 
   webuiBegin();
+  bleBegin();
 
   baseUrl = String("http://") + GTC_SERVER_HOST + ":" + GTC_SERVER_PORT;
 
@@ -290,6 +387,13 @@ void loop() {
       Serial.println("[EMERGENCY] paragem local");
       sendTelemetry();
     }
+  }
+
+  // Notifica o estado via BLE a quem estiver ligado (independente do Wi-Fi)
+  if (blePeerConnected && bleStatusChar && now - lastBleNotify >= TELEMETRY_INTERVAL_MS) {
+    lastBleNotify = now;
+    bleStatusChar->setValue(gtcStatusJson());
+    bleStatusChar->notify();
   }
 
   if (WiFi.status() != WL_CONNECTED) {

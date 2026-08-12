@@ -522,6 +522,102 @@ app.post('/api/device/wifi-scan-results', checkDeviceToken, (req, res) => {
   }
 });
 
+// ── Bluetooth Configuration ──
+const BLUETOOTH_CONFIG_FILE = path.join(DATA_DIR, 'gtc-bluetooth-config.json');
+
+function loadBluetoothConfig() {
+  try {
+    if (fs.existsSync(BLUETOOTH_CONFIG_FILE)) return JSON.parse(fs.readFileSync(BLUETOOTH_CONFIG_FILE, 'utf-8'));
+  } catch (e) { /* ignore */ }
+  return { devices: [] };
+}
+
+function saveBluetoothConfig(config) {
+  try {
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(BLUETOOTH_CONFIG_FILE, JSON.stringify({ ...config, savedAt: new Date().toISOString() }, null, 2), 'utf-8');
+  } catch (e) { console.error('Failed to save Bluetooth config:', e.message); }
+}
+
+app.get('/api/bluetooth/config', (_req, res) => {
+  res.json(loadBluetoothConfig());
+});
+
+app.post('/api/bluetooth/config', (req, res) => {
+  const { address, name, pin } = req.body || {};
+  const cfg = loadBluetoothConfig();
+  if (address) {
+    const existing = cfg.devices.find(d => d.address === address);
+    if (existing) {
+      existing.name = name || existing.name;
+      existing.pin = pin !== undefined ? pin : existing.pin;
+      existing.updatedAt = new Date().toISOString();
+    } else {
+      cfg.devices.push({ address, name: name || address, pin: pin || '', paired: false, createdAt: new Date().toISOString() });
+    }
+  }
+  saveBluetoothConfig(cfg);
+  io.emit('bluetooth:config', cfg);
+  // If device is online, forward pairing request to ESP32
+  if (deviceOnline) {
+    io.emit('bluetooth:apply', { address, pin });
+  }
+  res.json({ ok: true, config: cfg });
+});
+
+app.delete('/api/bluetooth/config', (req, res) => {
+  const { address } = req.body || {};
+  const cfg = loadBluetoothConfig();
+  if (address) {
+    cfg.devices = cfg.devices.filter(d => d.address !== address);
+    saveBluetoothConfig(cfg);
+    io.emit('bluetooth:config', cfg);
+    if (deviceOnline) {
+      io.emit('bluetooth:forget', { address });
+    }
+  }
+  res.json({ ok: true, config: cfg });
+});
+
+// Bluetooth scan (ask ESP32 to scan nearby BLE devices)
+app.post('/api/bluetooth/scan', (_req, res) => {
+  if (deviceOnline) {
+    io.emit('bluetooth:scan-request', { timestamp: Date.now() });
+    res.json({ ok: true, message: 'Scan request sent to ESP32' });
+  } else {
+    res.json({ ok: false, message: 'ESP32 offline — cannot scan' });
+  }
+});
+
+// Receive Bluetooth scan results from ESP32
+app.post('/api/device/bluetooth-scan-results', checkDeviceToken, (req, res) => {
+  const { devices } = req.body || {};
+  if (devices && Array.isArray(devices)) {
+    io.emit('bluetooth:scan-results', { devices, timestamp: Date.now() });
+    res.json({ ok: true });
+  } else {
+    res.status(400).json({ error: 'Missing devices array' });
+  }
+});
+
+// Receive Bluetooth pairing confirmation from ESP32
+app.post('/api/device/bluetooth-status', checkDeviceToken, (req, res) => {
+  const { address, paired } = req.body || {};
+  if (address) {
+    const cfg = loadBluetoothConfig();
+    const existing = cfg.devices.find(d => d.address === address);
+    if (existing) {
+      existing.paired = !!paired;
+      existing.updatedAt = new Date().toISOString();
+      saveBluetoothConfig(cfg);
+      io.emit('bluetooth:config', cfg);
+    }
+    res.json({ ok: true });
+  } else {
+    res.status(400).json({ error: 'Missing address' });
+  }
+});
+
 // ── WebSocket ──
 io.on('connection', (socket) => {
   console.log(`Client connected: ${socket.id}`);
