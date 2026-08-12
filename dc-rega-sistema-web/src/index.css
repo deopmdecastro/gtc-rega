@@ -719,6 +719,27 @@ textarea:focus-visible {
   .pk-body { padding: 10px 10px 14px; gap: 4px; }
 }
 
+/* Ecrãs grandes (desktop): teclado maior e mais confortável de usar com rato,
+   em vez de ficar minúsculo a flutuar no centro de um monitor grande. */
+@media (min-width: 1200px) {
+  .full-keyboard { max-width: 920px; border-radius: 22px; }
+  .keyboard-header { padding: 20px 26px; font-size: 13px; }
+  .full-keyboard .keyboard-display { font-size: 30px; padding: 22px 26px; }
+  .keyboard-hint { font-size: 12.5px; padding: 6px 20px 0; }
+  .pk-body { padding: 20px 24px 26px; gap: 9px; }
+  .pk-row { gap: 8px; }
+  .pk-key { height: 54px; font-size: 16px; border-radius: 10px; }
+  .pk-key svg { width: 18px; height: 18px; }
+  .pk-tab, .pk-caps, .pk-shift, .pk-ctrl, .pk-alt { font-size: 13px; }
+  .pk-enter { font-size: 14px; }
+
+  /* O ecrã de login define a sua própria largura fixa (760px); em ecrãs
+     grandes seguimos a mesma escala do teclado geral acima. */
+  .login-screen .full-keyboard { width: min(920px, calc(100vw - 48px)); max-width: 920px; }
+  .login-screen .pk-key { height: 54px; font-size: 16px; }
+  .login-screen .pk-enter { font-size: 14px; }
+}
+
 @media (max-width: 1000px) {
   .content-wrap { padding: 0 22px 40px; }
   .topbar-inner { padding: 18px 22px 16px; }
