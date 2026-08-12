@@ -2,7 +2,8 @@
 <html lang="pt-PT">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#060b10" />
     <meta name="description" content="GTC — Sistema de Rega Automatizada para ESP32-S3" />
@@ -24,12 +25,9 @@
       .splash-logo {
         width: 64px; height: 64px;
         display: grid; place-items: center;
-        border: 1px solid rgba(20,221,214,.42);
-        border-radius: 18px;
-        background: rgba(20,221,214,.1);
         animation: splash-pulse 1.8s ease-in-out infinite;
       }
-      .splash-logo svg { width: 32px; height: 32px; color: #14ddd6; }
+      .splash-logo img { width: 100%; height: 100%; object-fit: contain; display: block; }
       .splash-title { font-family: 'Manrope', system-ui, sans-serif; font-weight: 800; font-size: 20px; letter-spacing: .12em; color: #eef3f4; }
       .splash-sub { font-family: 'Manrope', system-ui, sans-serif; font-size: 9px; letter-spacing: .22em; color: #526875; text-transform: uppercase; }
       .splash-bar { width: 140px; height: 3px; border-radius: 99px; background: #17232c; overflow: hidden; }
@@ -39,16 +37,14 @@
       /* Splash ainda mais compacto no target HMI 320×240 */
       @media (max-height: 260px) and (orientation: landscape) {
         #splash { gap: 10px; }
-        .splash-logo { width: 44px; height: 44px; border-radius: 12px; }
-        .splash-logo svg { width: 22px; height: 22px; }
+        .splash-logo { width: 44px; height: 44px; }
         .splash-title { font-size: 15px; letter-spacing: .1em; }
         .splash-sub { font-size: 8px; letter-spacing: .18em; }
         .splash-bar { width: 110px; height: 2px; }
       }
       @media (max-width: 260px) {
         #splash { gap: 12px; }
-        .splash-logo { width: 48px; height: 48px; border-radius: 14px; }
-        .splash-logo svg { width: 24px; height: 24px; }
+        .splash-logo { width: 48px; height: 48px; }
         .splash-title { font-size: 17px; }
         .splash-sub { font-size: 8px; }
         .splash-bar { width: 120px; }
@@ -58,7 +54,7 @@
   <body>
     <div id="splash">
       <div class="splash-logo">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6"/></svg>
+        <img src="/apple-touch-icon.png" alt="GTC Rega" width="180" height="170" />
       </div>
       <div style="text-align:center">
         <div class="splash-title">GTC REGA</div>

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import gtcIcon from './assets/gtc-icon.png';
 import {
   Activity,
   AlertTriangle,
@@ -864,7 +865,7 @@ function App() {
     <div className="app-shell">
       <aside className={`sidebar ${mobileOpen ? 'sidebar-open' : ''}`}>
         <div className="brand">
-          <div className="brand-mark"><Leaf size={22} /></div>
+          <div className="brand-mark"><img src={gtcIcon} alt="GTC Rega" /></div>
           <div><strong>GTC</strong><span>REGA</span></div>
           <button className="close-menu" onClick={() => setMobileOpen(false)} aria-label="Fechar menu"><X size={18} /></button>
         </div>
@@ -890,7 +891,7 @@ function App() {
           <div className="topbar-inner">
             <button className="mobile-menu" onClick={() => setMobileOpen(true)} aria-label="Abrir menu"><Menu size={22} /></button>
             <div className="topbar-title compact">
-              <div className="topbar-logo-mark" aria-hidden="true"><Leaf size={18} /></div>
+              <div className="topbar-logo-mark" aria-hidden="true"><img src={gtcIcon} alt="" /></div>
               <h1 className="topbar-h1-full">GTC <span>—</span> {t('topbar.title', language)}</h1>
               <h1 className="topbar-h1-short">GTC</h1>
             </div>
@@ -2952,7 +2953,7 @@ function LoginScreen({ language, onSubmit }: { language: Language; onSubmit: (us
       <div className="login-screen-bg" />
       <div className="login-screen-card">
         <div className="login-brand">
-          <div className="login-brand-mark"><Leaf size={36} /></div>
+          <div className="login-brand-mark"><img src={gtcIcon} alt="GTC Rega" /></div>
           <div className="login-brand-text"><strong>GTC</strong><span>REGA</span></div>
         </div>
         <h2>{t('login.welcome', language)}</h2>

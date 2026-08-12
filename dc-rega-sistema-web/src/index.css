@@ -40,7 +40,8 @@ textarea:focus-visible {
 /* ---------- Sidebar (fixed, no collapse) ---------- */
 .sidebar { width: 236px; min-height: 100vh; border-right: 1px solid #17232c; padding: 30px 18px 22px; padding-left: max(18px, env(safe-area-inset-left)); display: flex; flex-direction: column; background: rgba(6, 12, 17, .95); z-index: 5; position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; }
 .brand { display: flex; align-items: center; gap: 11px; padding: 2px 8px 38px; color: #14ddd6; }
-.brand-mark { width: 32px; height: 32px; display: grid; place-items: center; border: 1px solid rgba(20, 221, 214, .42); border-radius: 9px; background: rgba(20, 221, 214, .1); }
+.brand-mark { width: 32px; height: 32px; display: grid; place-items: center; }
+.brand-mark img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .brand strong { display: block; letter-spacing: .08em; font-size: 18px; line-height: 1; }
 .brand span { display: block; margin-top: 4px; font-size: 9px; letter-spacing: .2em; color: #758997; }
 .close-menu { display: none; margin-left: auto; border: 0; background: none; color: #8a9aa5; }
@@ -73,7 +74,8 @@ textarea:focus-visible {
 .topbar-title.compact { display: flex; align-items: center; gap: 10px; min-height: 42px; min-width: 0; }
 .topbar h1 { margin: 0; color: #f1f5f6; font-size: clamp(21px, 2vw, 28px); letter-spacing: -.045em; line-height: 1.08; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .topbar h1 span { color: #58717b; font-weight: 400; }
-.topbar-logo-mark { display: none; flex-shrink: 0; width: 34px; height: 34px; border-radius: 9px; align-items: center; justify-content: center; color: #18d6d0; background: #0b171d; border: 1px solid #263943; }
+.topbar-logo-mark { display: none; flex-shrink: 0; width: 34px; height: 34px; align-items: center; justify-content: center; }
+.topbar-logo-mark img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .topbar-h1-short { display: none; }
 .topbar p { margin: 0; color: #869aa5; font-size: 13px; }
 .eyebrow span { color: #18cbc7; margin: 0 4px; }
@@ -483,7 +485,8 @@ textarea:focus-visible {
 .login-screen-bg { position: absolute; inset: 0; background: radial-gradient(ellipse at 30% 50%, #0d1f2b 0%, #060e14 70%); }
 .login-screen-card { position: relative; width: 420px; max-width: calc(100vw - 40px); padding: 44px 40px 32px; background: linear-gradient(145deg, #0e1a22, #09131a); border: 1px solid #1a2a33; border-radius: 20px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
 .login-brand { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 28px; }
-.login-brand-mark { width: 60px; height: 60px; display: grid; place-items: center; background: linear-gradient(135deg, #12bcb6, #0d8a85); border-radius: 16px; color: #fff; }
+.login-brand-mark { width: 60px; height: 60px; display: grid; place-items: center; }
+.login-brand-mark img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .login-brand-text { font-size: 22px; letter-spacing: .02em; }
 .login-brand-text strong { color: #1ad5d0; }
 .login-brand-text span { color: #7e909c; font-weight: 300; margin-left: 2px; }
@@ -2766,7 +2769,6 @@ textarea:focus-visible {
   }
   .login-brand { margin-bottom: 12px !important; gap: 7px; }
   .login-brand-mark { width: 36px !important; height: 36px !important; border-radius: 10px; }
-  .login-brand-mark svg { width: 20px !important; height: 20px !important; }
   .login-brand-text { font-size: 15px !important; }
   .login-screen-card h2 { font-size: 14px !important; margin: 0 0 4px; }
   .login-desc { font-size: 10px !important; margin: 0 0 14px; }
