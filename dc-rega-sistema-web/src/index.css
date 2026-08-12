@@ -2280,8 +2280,8 @@ textarea:focus-visible,
 .panel-heading + .alarm-list { padding-top: 6px; }
 
 /* ── 3. Estado dos equipamentos: cards alinhados e compactos ── */
-.state-list { padding: 0 28px 10px; }
-.state-row { padding: 13px 8px; margin: 0 -8px; gap: 12px; align-items: center; }
+.state-list { padding: 0 28px 10px; gap: 10px; }
+.state-row { padding: 13px 12px; margin: 0; border-bottom: 0; gap: 12px; align-items: center; background: rgba(255,255,255,.015); }
 .state-icon { flex: 0 0 34px; width: 34px; height: 34px; align-self: center; }
 .state-icon > svg { width: 17px; height: 17px; }
 .state-row > div { display: flex; flex-direction: column; justify-content: center; gap: 3px; }
