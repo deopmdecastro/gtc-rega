@@ -287,36 +287,32 @@
   .setpoint-save-btn { padding: 12px; min-height: 44px; font-size: 11px; }
   .remove-sensor-btn { width: 32px; height: 32px; top: 10px; right: 10px; }
 
-  /* Semana de rega — 7 dias não cabem lado a lado nos ~240px de largura;
-   * em vez de espremer, vira uma faixa com scroll horizontal (swipe),
-   * cada dia mantém uma largura tocável confortável. ------------------ */
+  /* Semana de rega — 7 dias em 3 colunas (portrait 240px de largura).
+   * Grid 3 colunas: 4 dias na 1ª linha, 3 na 2ª — nenhum corte. */
   .schedule-grid,
   .sched2-grid {
-    display: flex !important;
-    flex-wrap: nowrap !important;
-    grid-template-columns: none !important;
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
-    -webkit-overflow-scrolling: touch;
-    scroll-snap-type: x proximity;
-    gap: 6px !important;
-    padding: 2px 2px 8px !important;
-    margin: 0 -2px;
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    flex-wrap: initial !important;
+    overflow-x: hidden !important;
+    gap: 5px !important;
+    padding: 2px 0 6px !important;
+    margin: 0;
   }
   .schedule-day,
   .sched2-day {
-    flex: 0 0 76px !important;
-    scroll-snap-align: start;
+    flex: none !important;
+    min-width: 0 !important;
   }
   .setpoint-schedule { margin-top: 14px; padding-top: 12px; }
   .setpoint-schedule > label { font-size: 9px; margin-bottom: 8px; }
-  .schedule-day { padding: 8px 4px 6px; gap: 6px; }
+  .schedule-day { padding: 7px 4px 6px; gap: 4px; }
   .schedule-day-label { font-size: 9px; }
   .schedule-time-btn { width: 26px; height: 26px; }
   .schedule-time-display { font-size: 10px; padding: 4px 5px; }
-  .sched2-day { padding: 8px 6px 7px; gap: 5px; }
-  .sched2-day-label { font-size: 9px; }
-  .sched2-time-btn { font-size: 10px; padding: 4px 5px; }
+  .sched2-day { padding: 7px 4px 6px !important; gap: 4px; }
+  .sched2-day-label { font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sched2-time-btn { font-size: 10px !important; padding: 3px 4px !important; width: 100%; }
   .sched2-hint { font-size: 7px; }
   .sched2-actions { flex-wrap: wrap; gap: 6px; }
   .sched2-action-btn { font-size: 10px; padding: 8px 10px; }
@@ -426,13 +422,17 @@
   .pk-tab, .pk-caps, .pk-shift, .pk-ctrl, .pk-alt, .pk-enter, .pk-backspace { font-size: 9px; }
 
   /* Mapa — canvas mais curto -------------------------------------- */
-  .map-canvas { min-height: 200px !important; max-height: 240px !important; height: 220px !important; aspect-ratio: auto; }
-  .map-panel { padding: 12px; }
-  .map-legend { gap: 6px; font-size: 8px; }
-  .map-toolbar { gap: 4px; flex-wrap: wrap; }
-  .map-tool-btn { padding: 8px 10px; font-size: 9px; min-height: 40px; }
-  .map-hint { font-size: 9px; }
-  .map-hint svg { width: 12px; height: 12px; }
+  .map-canvas { min-height: 130px !important; max-height: 170px !important; height: 150px !important; aspect-ratio: auto; }
+  .map-panel { padding: 8px; }
+  .map-panel .panel-heading { padding: 6px 8px 4px !important; }
+  .map-panel .panel-heading h3 { font-size: 10px !important; }
+  .map-legend { gap: 4px; font-size: 7px; flex-wrap: wrap; }
+  .map-toolbar { gap: 3px; flex-wrap: wrap; }
+  .map-primary-btns { flex-direction: column !important; gap: 3px !important; }
+  .map-primary-btns .map-tool-btn { width: 100% !important; justify-content: flex-start; }
+  .map-tool-btn { padding: 6px 8px; font-size: 8px; min-height: 30px; }
+  .map-hint { font-size: 8px; margin-top: 4px; }
+  .map-hint svg { width: 10px; height: 10px; }
 
   /* Footer -------------------------------------------------------- */
   .app-footer {
@@ -512,10 +512,15 @@
   .quick-grid,
   .sensor-grid,
   .setpoint-grid,
-  .setpoint-grid-v2,
   .alarm-summary-grid {
     display: grid !important;
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+  /* Setpoints V2: sempre coluna única (cards muito altos para ficar lado a lado) */
+  .setpoint-grid-v2 {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
     gap: 8px !important;
   }
   .content-stack,
@@ -565,53 +570,118 @@
   .state-row strong, .command-row strong { font-size: 11px; }
   .state-row div span, .command-row div span { font-size: 9px; }
 
+  /* Setpoint cards (sp2-*) — compacto para landscape 320×240 */
+  .sp2-header { padding: 8px 10px 0 !important; }
+  .sp2-header h3 { font-size: 12px !important; }
+  .sp2-tags { padding: 5px 10px 0 !important; gap: 4px; }
+  .sp2-tag { font-size: 8px !important; padding: 2px 6px !important; }
+  .sp2-metrics-row { padding: 7px 10px 5px !important; flex-direction: row !important; align-items: center !important; gap: 10px !important; }
+  .sp2-current strong { font-size: 28px !important; }
+  .sp2-current strong small { font-size: 13px !important; }
+  .sp2-current span { font-size: 8px !important; }
+  .sp2-slider-label { font-size: 8px !important; }
+  .sp2-slider-value { font-size: 10px !important; }
+  .sp2-status-row { padding: 5px 10px !important; }
+  .sp2-status-note { font-size: 8px !important; }
+  .sp2-save-btn { font-size: 9px !important; padding: 4px 8px !important; }
+  .sp2-duration-section { padding: 6px 10px !important; }
+  .sp2-section-label { font-size: 8px !important; margin-bottom: 4px; }
+  .sp2-dur-btn { width: 26px !important; height: 26px !important; }
+  .sp2-dur-value { font-size: 14px !important; padding: 4px !important; }
+  .sp2-schedule-section { padding: 6px 10px 8px !important; }
+  .save-all-banner-left strong { font-size: 10px !important; }
+  .save-all-banner-left span { font-size: 8px !important; }
+  .save-all-banner-btn { font-size: 10px !important; padding: 6px 12px !important; }
+  .setpoint-save-all-banner { padding: 8px 10px !important; margin-bottom: 8px !important; }
+
   .cmd-btn { padding: 10px 6px; min-height: 56px; gap: 4px; }
   .cmd-btn svg { width: 18px; height: 18px; }
   .cmd-btn strong { font-size: 11px; }
   .cmd-btn small { font-size: 9px; }
 
-  /* Semana de rega — em landscape (240px de altura) empilhar os 7 dias
-   * verticalmente ocuparia demasiada altura; faz mais sentido manter
-   * a faixa horizontal com scroll/swipe (largura de 320-480px ajuda). */
+  /* Semana de rega — em landscape 320×240: 4 colunas + scroll horizontal
+   * suave para os 7 dias. Cada dia com largura mínima confortável. */
   .schedule-grid,
   .sched2-grid {
-    display: flex !important;
-    flex-wrap: nowrap !important;
-    grid-template-columns: none !important;
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
-    -webkit-overflow-scrolling: touch;
-    scroll-snap-type: x proximity;
-    gap: 6px !important;
-    padding: 2px 2px 6px !important;
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    overflow-x: hidden !important;
+    gap: 4px !important;
+    padding: 2px 0 4px !important;
   }
   .schedule-day,
   .sched2-day {
-    flex: 0 0 72px !important;
-    scroll-snap-align: start;
-    padding: 6px 4px !important;
+    padding: 5px 3px 6px !important;
+    min-width: 0 !important;
   }
-  .schedule-day-label, .sched2-day-label { font-size: 9px; }
-  .sched2-time-btn { font-size: 10px; padding: 3px 4px; }
-  .sched2-hint { font-size: 7px; }
-  .sched2-actions { flex-wrap: wrap; gap: 6px; }
-  .sched2-action-btn { font-size: 10px; padding: 6px 9px; }
+  .schedule-day-label, .sched2-day-label { font-size: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sched2-time-btn { font-size: 9px !important; padding: 2px 3px !important; width: 100%; }
+  .sched2-hint { font-size: 6px; }
+  .sched2-actions { flex-wrap: wrap; gap: 4px; }
+  .sched2-action-btn { font-size: 9px; padding: 5px 7px; }
 
   .alarm-summary-card { padding: 8px 10px; min-height: 46px; }
   .alarm-summary-card strong { font-size: 18px; }
   .alarm-summary-card span { font-size: 9px; }
   .alarm-summary-icon { width: 30px; height: 30px; flex-basis: 30px; }
 
-  .hw3-diagram { grid-template-columns: 1fr auto 1fr !important; gap: 8px !important; --hw-row: 34px; --hw-gap: 4px; }
-  .hw3-chip-frame { max-width: 200px; min-width: 0; }
-  .hw3-block { padding: 4px 6px; }
-  .hw3-block-label { width: 24px; height: 24px; font-size: 10px; }
-  .hw3-block-info strong { font-size: 10px; }
-  .hw3-block-info span { font-size: 8px; }
-  .hw3-wire { width: 14px !important; }
+  /* GPIO diagram em landscape 320×240: 3 colunas compactas */
+  .hw3-diagram { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) !important; gap: 4px !important; --hw-row: 32px; --hw-gap: 3px; }
+  .hw3-chip-frame { max-width: 140px; min-width: 0; }
+  .hw3-chip-header { height: 32px !important; padding: 0 6px !important; gap: 5px; }
+  .hw3-chip-icon { width: 18px !important; height: 18px !important; }
+  .hw3-chip-titles strong { font-size: 9px !important; }
+  .hw3-chip-titles span { font-size: 7px !important; }
+  .hw3-pin-group { padding: 4px 4px !important; gap: 2px; }
+  .hw3-pin { padding: 0 4px !important; font-size: 8px !important; height: 28px; }
+  .hw3-pin-num { font-size: 8px !important; }
+  .hw3-pin-dir { font-size: 6px !important; }
+  .hw3-block { padding: 3px 5px; gap: 4px; }
+  .hw3-block-label { width: 20px !important; height: 20px !important; font-size: 9px; border-radius: 5px; }
+  .hw3-block-info strong { font-size: 8px !important; }
+  .hw3-block-info span { font-size: 7px !important; }
+  .hw3-signal { font-size: 7px !important; padding: 2px 4px !important; display: none; }
+  .hw3-wire { width: 10px !important; }
+  .hw3-legend { display: none; }
+  .hw3-header { margin-bottom: 6px !important; padding-bottom: 4px !important; }
+  .hw3-header h3 { font-size: 11px !important; }
+  .hw3-subtitle { font-size: 8px !important; }
+  .hw3-col-caption { font-size: 7px !important; }
 
   .footer-reading { display: none; }
   .app-footer { margin-top: 10px; padding-top: 6px; font-size: 8px; }
+
+  /* Login screen — landscape 320×240 */
+  .login-screen { align-items: flex-start; justify-content: center; padding: 4px 8px; overflow-y: auto; }
+  .login-screen-card {
+    width: 100% !important;
+    max-width: 300px !important;
+    padding: 12px 14px 10px !important;
+    border-radius: 10px !important;
+    max-height: calc(100vh - 8px);
+    overflow-y: auto;
+  }
+  .login-brand { margin-bottom: 8px !important; gap: 6px; }
+  .login-brand-mark { width: 28px !important; height: 28px !important; border-radius: 8px; }
+  .login-brand-mark svg { width: 16px !important; height: 16px !important; }
+  .login-brand-text { font-size: 13px !important; }
+  .login-screen-card h2 { font-size: 12px !important; margin: 0 0 3px; }
+  .login-desc { font-size: 9px !important; margin: 0 0 8px; }
+  .login-form { gap: 6px !important; }
+  .login-input-group { padding: 7px 9px !important; border-radius: 7px; min-height: 34px; gap: 6px; }
+  .login-input-group input { font-size: 11px !important; }
+  .login-kb-toggle { width: 26px !important; height: 26px !important; }
+  .login-submit-btn { padding: 8px !important; font-size: 11px !important; min-height: 34px; margin-top: 1px; }
+  .login-footer { margin-top: 8px !important; font-size: 8px !important; }
+
+  /* Teclado virtual — landscape: fica na parte inferior da tela */
+  .full-keyboard { width: 100vw !important; border-radius: 8px 8px 0 0 !important; }
+  .keyboard-display { font-size: 18px !important; padding: 8px 10px !important; }
+  .kb-key { height: 30px !important; font-size: 11px !important; }
+  .keyboard-keys { gap: 3px !important; padding: 6px 6px 3px !important; }
+  .keyboard-actions { padding: 3px 6px 8px !important; }
+  .pk-key { height: 24px !important; font-size: 8px !important; }
+  .pk-body { padding: 4px 5px 6px !important; gap: 2px !important; }
 }
 
 /* ================================================================
