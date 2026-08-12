@@ -2480,18 +2480,20 @@ function AlarmItem({ event, onResolve, language }: { event: ErrorEvent; onResolv
       <div className="alarm-item-body">
         <div className="alarm-item-top">
           <strong>{event.source}</strong>
-          <span className={`alarm-item-badge alarm-badge-${event.severity}`}>
-            {isCritical ? (language === 'PT' ? 'CRÍTICO' : 'CRITICAL') : isWarning ? (language === 'PT' ? 'AVISO' : 'WARNING') : 'INFO'}
-          </span>
+          <div className="alarm-item-actions">
+            <span className={`alarm-item-badge alarm-badge-${event.severity}`}>
+              {isCritical ? (language === 'PT' ? 'CRÍTICO' : 'CRITICAL') : isWarning ? (language === 'PT' ? 'AVISO' : 'WARNING') : 'INFO'}
+            </span>
+            {!event.resolved && onResolve ? (
+              <button className="resolve-btn" onClick={onResolve}><CheckCircle2 size={15} />{language === 'PT' ? 'Resolver' : 'Resolve'}</button>
+            ) : event.resolved ? (
+              <StatusBadge tone="success">{language === 'PT' ? 'Resolvido' : 'Resolved'}</StatusBadge>
+            ) : null}
+          </div>
         </div>
         <span className="alarm-item-msg">{event.message}</span>
         <div className="alarm-meta"><small>{event.time}</small><span className="alarm-id">{event.id}</span></div>
       </div>
-      {!event.resolved && onResolve ? (
-        <button className="resolve-btn" onClick={onResolve}><CheckCircle2 size={15} />{language === 'PT' ? 'Resolver' : 'Resolve'}</button>
-      ) : event.resolved ? (
-        <StatusBadge tone="success">{language === 'PT' ? 'Resolvido' : 'Resolved'}</StatusBadge>
-      ) : null}
     </div>
   );
 }
