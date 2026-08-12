@@ -16,6 +16,7 @@ import {
   History,
   Home,
   Keyboard,
+  ArrowUp,
   Leaf,
   LockKeyhole,
   Map as MapIcon,
@@ -2101,7 +2102,15 @@ const KB_ACCENTS = ['á','à','ã','â','é','ê','í','ó','õ','ô','ú','ü']
 
 function FullKeyboard({ value, onChange, onSubmit, onClose, title, language, hint }: { value: string; onChange: (v: string) => void; onSubmit: () => void; onClose: () => void; title?: string; language?: Language; hint?: string }) {
   const [showAccents, setShowAccents] = useState(false);
+  const [caps, setCaps] = useState(false);
   useCloseOnEscape(onClose);
+
+  // Letras minúsculas por defeito (como num teclado de telemóvel); Shift alterna para maiúsculas.
+  const insertLetter = (k: string) => {
+    onChange(value + (caps ? k : k.toLowerCase()));
+    setCaps(false); // shift de disparo único: volta a minúsculas após uma letra
+  };
+
   return (
     <div className="keyboard-overlay" onClick={onClose}>
       <div className="keyboard full-keyboard" onClick={(e) => e.stopPropagation()}>
@@ -2112,13 +2121,38 @@ function FullKeyboard({ value, onChange, onSubmit, onClose, title, language, hin
         <div className="keyboard-display text-display">{value || ' '}</div>
         {hint && <div className="keyboard-hint">{hint}</div>}
         <div className="text-kb-nums">{KB_NUMS.map(n => <button key={n} className="kb-key kb-key-sm" onMouseDown={preventFocusSteal} onClick={() => onChange(value + n)}>{n}</button>)}</div>
-        <div className="text-kb-rows">{KB_ROWS.map((row, i) => <div key={i} className="text-kb-row">{row.map(k => <button key={k} className="kb-key kb-key-sm" onMouseDown={preventFocusSteal} onClick={() => onChange(value + k)}>{k}</button>)}</div>)}</div>
+        <div className="text-kb-rows">
+          {KB_ROWS.map((row, i) => (
+            <div key={i} className="text-kb-row">
+              {i === 1 && (
+                <button
+                  className={`kb-key kb-key-sm kb-shift ${caps ? 'active' : ''}`}
+                  onMouseDown={preventFocusSteal}
+                  onClick={() => setCaps((c) => !c)}
+                  aria-label={language === 'PT' ? 'Maiúsculas' : 'Shift'}
+                  aria-pressed={caps}
+                >
+                  <ArrowUp size={16} />
+                </button>
+              )}
+              {row.map((k) => (
+                <button key={k} className="kb-key kb-key-sm" onMouseDown={preventFocusSteal} onClick={() => insertLetter(k)}>
+                  {caps ? k : k.toLowerCase()}
+                </button>
+              ))}
+              {i === 1 && (
+                <button className="kb-key kb-key-sm kb-backspace" onMouseDown={preventFocusSteal} onClick={() => onChange(value.slice(0, -1))} aria-label={language === 'PT' ? 'Apagar' : 'Backspace'}>
+                  <Delete size={16} />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
         <div className="text-kb-actions">
           <button className="kb-key kb-key-sm kb-accent-toggle" onMouseDown={preventFocusSteal} onClick={() => setShowAccents(!showAccents)}>{showAccents ? 'ABC' : 'áéí'}</button>
           <button className="kb-key kb-key-sm kb-space" onMouseDown={preventFocusSteal} onClick={() => onChange(value + ' ')}>{language === 'PT' ? 'Espaço' : 'Space'}</button>
-          <button className="kb-key kb-key-sm kb-backspace" onMouseDown={preventFocusSteal} onClick={() => onChange(value.slice(0, -1))}><Delete size={16} /></button>
         </div>
-        {showAccents && <div className="text-kb-nums text-kb-accents">{KB_ACCENTS.map(a => <button key={a} className="kb-key kb-key-sm kb-accent" onMouseDown={preventFocusSteal} onClick={() => { onChange(value + a); setShowAccents(false); }}>{a}</button>)}</div>}
+        {showAccents && <div className="text-kb-nums text-kb-accents">{KB_ACCENTS.map(a => <button key={a} className="kb-key kb-key-sm kb-accent" onMouseDown={preventFocusSteal} onClick={() => { onChange(value + (caps ? a.toUpperCase() : a)); setShowAccents(false); }}>{a}</button>)}</div>}
         <div className="keyboard-actions">
           <button className="kb-clear" onClick={onClose}>{language === 'PT' ? 'Cancelar' : 'Cancel'}</button>
           <button className="kb-confirm" onClick={onSubmit}>{language === 'PT' ? 'Confirmar' : 'Confirm'}</button>
@@ -2146,7 +2180,17 @@ function SettingsPanel({ language, setLanguage, username, setUsername, password,
   onLogout: () => void;
   authenticated: boolean;
 }) {
+  // Teclado virtual para os campos de utilizador e senha
+  const [kbTarget, setKbTarget] = useState<'username' | 'password' | null>(null);
+  const openKb = (field: 'username' | 'password') => setKbTarget((prev) => (prev === field ? null : field));
+  const kbValue = kbTarget === 'username' ? username : kbTarget === 'password' ? password : '';
+  const handleKbChange = (v: string) => {
+    if (kbTarget === 'username') setUsername(v);
+    else if (kbTarget === 'password') setPassword(v);
+  };
+
   return (
+    <>
     <div className="modal-overlay" onClick={onClose}>
       <aside className="settings-drawer" onClick={(e) => e.stopPropagation()}>
         <div className="drawer-header">
@@ -2162,8 +2206,36 @@ function SettingsPanel({ language, setLanguage, username, setUsername, password,
         </div>
         <div className="settings-section">
           <div className="settings-label"><UserRound size={18} /><div><strong>{t('settings.account', language)}</strong><span>{t('settings.accountDesc', language)}</span></div></div>
-          <label className="field-label">{t('settings.username', language)}<input value={username} onChange={(e) => setUsername(e.target.value)} /></label>
-          <label className="field-label">{t('settings.password', language)}<input type="password" placeholder={t('settings.passwordPlaceholder', language)} value={password} onChange={(e) => setPassword(e.target.value)} /></label>
+          <label className="field-label">
+            {t('settings.username', language)}
+            <div className="field-input-group">
+              <input value={username} onChange={(e) => setUsername(e.target.value)} />
+              <button
+                type="button"
+                className={`field-kb-toggle ${kbTarget === 'username' ? 'active' : ''}`}
+                onClick={() => openKb('username')}
+                aria-label={language === 'PT' ? 'Abrir teclado virtual' : 'Open virtual keyboard'}
+                aria-pressed={kbTarget === 'username'}
+              >
+                <Keyboard size={16} />
+              </button>
+            </div>
+          </label>
+          <label className="field-label">
+            {t('settings.password', language)}
+            <div className="field-input-group">
+              <input type="password" placeholder={t('settings.passwordPlaceholder', language)} value={password} onChange={(e) => setPassword(e.target.value)} />
+              <button
+                type="button"
+                className={`field-kb-toggle ${kbTarget === 'password' ? 'active' : ''}`}
+                onClick={() => openKb('password')}
+                aria-label={language === 'PT' ? 'Abrir teclado virtual' : 'Open virtual keyboard'}
+                aria-pressed={kbTarget === 'password'}
+              >
+                <Keyboard size={16} />
+              </button>
+            </div>
+          </label>
           <div className="security-note"><LockKeyhole size={15} /> {t('settings.securityNote', language)}</div>
         </div>
         {authenticated && (
@@ -2177,6 +2249,18 @@ function SettingsPanel({ language, setLanguage, username, setUsername, password,
         </div>
       </aside>
     </div>
+    {kbTarget && (
+      <FullKeyboard
+        value={kbValue}
+        onChange={handleKbChange}
+        onSubmit={() => setKbTarget(null)}
+        onClose={() => setKbTarget(null)}
+        title={kbTarget === 'username' ? t('settings.username', language) : t('settings.password', language)}
+        hint={language === 'PT' ? 'Também pode escrever com o teclado físico' : 'You can also type using your physical keyboard'}
+        language={language}
+      />
+    )}
+    </>
   );
 }
 
@@ -2838,6 +2922,16 @@ function WiFiView({ language, deviceOnline, deviceInfo }: { language: Language; 
   const [formHostname, setFormHostname] = useState('gtc-esp32s3');
   const [notice, setNotice] = useState('');
   const [saved, setSaved] = useState(false);
+  const [kbTarget, setKbTarget] = useState<'ssid' | 'password' | 'hostname' | null>(null);
+
+  const openKb = (field: 'ssid' | 'password' | 'hostname') => setKbTarget((prev) => (prev === field ? null : field));
+  const kbValue = kbTarget === 'ssid' ? formSsid : kbTarget === 'password' ? formPassword : kbTarget === 'hostname' ? formHostname : '';
+  const handleKbChange = (v: string) => {
+    if (kbTarget === 'ssid') setFormSsid(v);
+    else if (kbTarget === 'password') setFormPassword(v);
+    else if (kbTarget === 'hostname') setFormHostname(v);
+  };
+  const kbTitle = kbTarget === 'ssid' ? 'SSID' : kbTarget === 'password' ? (language === 'PT' ? 'Senha' : 'Password') : (language === 'PT' ? 'Hostname' : 'Hostname');
 
   useEffect(() => {
     loadWifiConfig();
@@ -2930,6 +3024,7 @@ function WiFiView({ language, deviceOnline, deviceInfo }: { language: Language; 
   };
 
   return (
+    <>
     <div className="two-column">
       {/* Current connection status */}
       <Panel>
@@ -2969,12 +3064,22 @@ function WiFiView({ language, deviceOnline, deviceInfo }: { language: Language; 
             <label className="field-label">
               SSID
               <div style={{ display: 'flex', gap: 8 }}>
-                <input
-                  value={formSsid}
-                  onChange={(e) => setFormSsid(e.target.value)}
-                  placeholder={language === 'PT' ? 'Nome da rede' : 'Network name'}
-                  style={{ flex: 1 }}
-                />
+                <div className="field-input-group" style={{ flex: 1 }}>
+                  <input
+                    value={formSsid}
+                    onChange={(e) => setFormSsid(e.target.value)}
+                    placeholder={language === 'PT' ? 'Nome da rede' : 'Network name'}
+                  />
+                  <button
+                    type="button"
+                    className={`field-kb-toggle ${kbTarget === 'ssid' ? 'active' : ''}`}
+                    onClick={() => openKb('ssid')}
+                    aria-label={language === 'PT' ? 'Abrir teclado virtual' : 'Open virtual keyboard'}
+                    aria-pressed={kbTarget === 'ssid'}
+                  >
+                    <Keyboard size={16} />
+                  </button>
+                </div>
                 <button className="gpio-edit-btn" onClick={handleScan} disabled={scanning}>
                   <Wifi size={14} /> {scanning ? (language === 'PT' ? 'A procurar...' : 'Scanning...') : (language === 'PT' ? 'Procurar' : 'Scan')}
                 </button>
@@ -2999,20 +3104,42 @@ function WiFiView({ language, deviceOnline, deviceInfo }: { language: Language; 
             )}
             <label className="field-label">
               {language === 'PT' ? 'Senha' : 'Password'}
-              <input
-                type="password"
-                value={formPassword}
-                onChange={(e) => setFormPassword(e.target.value)}
-                placeholder={language === 'PT' ? 'Senha da rede Wi-Fi' : 'Wi-Fi password'}
-              />
+              <div className="field-input-group">
+                <input
+                  type="password"
+                  value={formPassword}
+                  onChange={(e) => setFormPassword(e.target.value)}
+                  placeholder={language === 'PT' ? 'Senha da rede Wi-Fi' : 'Wi-Fi password'}
+                />
+                <button
+                  type="button"
+                  className={`field-kb-toggle ${kbTarget === 'password' ? 'active' : ''}`}
+                  onClick={() => openKb('password')}
+                  aria-label={language === 'PT' ? 'Abrir teclado virtual' : 'Open virtual keyboard'}
+                  aria-pressed={kbTarget === 'password'}
+                >
+                  <Keyboard size={16} />
+                </button>
+              </div>
             </label>
             <label className="field-label">
               {language === 'PT' ? 'Hostname' : 'Hostname'}
-              <input
-                value={formHostname}
-                onChange={(e) => setFormHostname(e.target.value)}
-                placeholder="gtc-esp32s3"
-              />
+              <div className="field-input-group">
+                <input
+                  value={formHostname}
+                  onChange={(e) => setFormHostname(e.target.value)}
+                  placeholder="gtc-esp32s3"
+                />
+                <button
+                  type="button"
+                  className={`field-kb-toggle ${kbTarget === 'hostname' ? 'active' : ''}`}
+                  onClick={() => openKb('hostname')}
+                  aria-label={language === 'PT' ? 'Abrir teclado virtual' : 'Open virtual keyboard'}
+                  aria-pressed={kbTarget === 'hostname'}
+                >
+                  <Keyboard size={16} />
+                </button>
+              </div>
             </label>
             <button className="save-btn" onClick={handleSaveNetwork} style={{ marginTop: 12 }}>
               <Save size={15} /> {language === 'PT' ? 'Guardar rede' : 'Save network'}
@@ -3071,6 +3198,18 @@ function WiFiView({ language, deviceOnline, deviceInfo }: { language: Language; 
         </div>
       )}
     </div>
+    {kbTarget && (
+      <FullKeyboard
+        value={kbValue}
+        onChange={handleKbChange}
+        onSubmit={() => setKbTarget(null)}
+        onClose={() => setKbTarget(null)}
+        title={kbTitle}
+        hint={language === 'PT' ? 'Também pode escrever com o teclado físico' : 'You can also type using your physical keyboard'}
+        language={language}
+      />
+    )}
+    </>
   );
 }
 

@@ -12,14 +12,20 @@ button { cursor: pointer; }
 
 /* ---------- Accessibility: visible focus ring for keyboard users ---------- */
 button:focus-visible,
-input:focus-visible,
 a:focus-visible,
 [tabindex]:focus-visible {
   outline: 2px solid #1adbd4;
   outline-offset: 2px;
   border-radius: 6px;
 }
-input:focus-visible { border-radius: inherit; }
+/* Text inputs get their focus feedback from their own container (border-color/box-shadow),
+   so the raw browser outline is removed to avoid a double/floating outline around the field. */
+input:focus,
+input:focus-visible,
+textarea:focus,
+textarea:focus-visible {
+  outline: none;
+}
 
 .app-shell { min-height: 100vh; display: flex; background: radial-gradient(circle at 72% -10%, rgba(0, 190, 190, .08), transparent 34%), #060b10; }
 
@@ -707,6 +713,9 @@ input:focus-visible { border-radius: inherit; }
 .text-kb-nums { display: grid; grid-template-columns: repeat(10, 1fr); gap: 6px; padding: 10px 16px 4px; }
 .text-kb-rows { display: grid; gap: 6px; padding: 4px 16px; }
 .text-kb-row { display: flex; gap: 6px; justify-content: center; }
+.text-kb-row .kb-key:not(.kb-shift):not(.kb-backspace) { flex: 1; min-width: 0; }
+.kb-shift, .text-kb-row .kb-backspace { flex: 0 0 40px; padding: 0; }
+.kb-shift.active { background: rgba(20,221,214,.2); border-color: #12bcb6; color: #1adbd4; }
 .text-kb-actions { display: flex; gap: 8px; padding: 8px 16px 4px; }
 .kb-key-sm { height: 40px; font-size: 14px; min-width: 36px; }
 .kb-space { flex: 1; }
@@ -941,6 +950,25 @@ input:focus-visible { border-radius: inherit; }
 .field-label { display: grid; gap: 8px; margin-top: 18px; color: #7e909c; font-size: 11px; font-weight: 600; letter-spacing: .06em; }
 .field-label input { width: 100%; padding: 12px 14px; border: 1px solid #263943; border-radius: 10px; color: #dce5e8; background: #0b171d; font-size: 13px; font-family: inherit; outline: none; transition: .2s; }
 .field-label input:focus { border-color: #12bcb6; background: rgba(20,221,214,.04); }
+
+/* Campo de texto + botão para abrir o teclado virtual (usado nas Definições, Wi-Fi, etc.) */
+.field-input-group { position: relative; display: flex; align-items: center; }
+.field-input-group input { flex: 1; padding-right: 44px; }
+.field-kb-toggle {
+  position: absolute;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: none;
+  color: #5a6f7a;
+  transition: .2s;
+}
+.field-kb-toggle:hover { background: rgba(20,221,214,.1); color: #1adbd4; }
+.field-kb-toggle.active { background: rgba(20,221,214,.16); border-color: #12bcb6; color: #1adbd4; }
 .security-note { display: flex; align-items: center; gap: 8px; margin-top: 18px; padding: 12px 14px; border-radius: 9px; color: #6a8a82; background: #0c1f1c; font-size: 11px; }
 .security-note svg { color: #5ee58a; flex: 0 0 auto; }
 .drawer-footer { padding-top: 24px; }
@@ -1323,12 +1351,15 @@ input:focus-visible { border-radius: inherit; }
    ══════════════════════════════════════════════════════════ */
 
 /* ── Foco visível e consistente em todos os elementos interactivos ── */
-:where(button, a, input, select, textarea, [tabindex]):focus { outline: none; }
-:where(button, a, input, select, textarea, [tabindex]):focus-visible {
+:where(button, a, select, [tabindex]):focus { outline: none; }
+:where(button, a, select, [tabindex]):focus-visible {
   outline: 2px solid rgba(26,213,208,.75);
   outline-offset: 2px;
   border-radius: 8px;
 }
+/* Campos de texto: sem contorno do browser — o contentor do campo já mostra o foco */
+:where(input, textarea):focus,
+:where(input, textarea):focus-visible { outline: none; }
 .sp2-range:focus-visible { outline-offset: 6px; }
 
 /* ── Ícones sempre centrados dentro do seu contentor ── */
@@ -1504,11 +1535,12 @@ table th:last-child, table td:last-child { padding-right: 16px; }
 table { border-collapse: collapse; }
 
 /* ── Foco visível e consistente em todos os controlos ── */
-button:focus-visible, a:focus-visible, input:focus-visible,
+button:focus-visible, a:focus-visible,
 select:focus-visible, [role="button"]:focus-visible {
   outline: 2px solid rgba(26,213,208,.8);
   outline-offset: 2px;
 }
+input:focus-visible { outline: none; }
 
 @media (max-width: 900px) {
   .hw3-signal { margin-left: 0; }
@@ -1841,17 +1873,19 @@ select:focus-visible, [role="button"]:focus-visible {
 .hw3-block-label > *,
 .hw3-chip-icon > * { display: block; margin: 0; }
 
-/* ── Foco visível consistente em botões, inputs e teclas ── */
+/* ── Foco visível consistente em botões e teclas (não em inputs — esses usam o contorno do próprio campo) ── */
 button:focus-visible,
 a:focus-visible,
-input:focus-visible,
 select:focus-visible,
-textarea:focus-visible,
 [role="button"]:focus-visible,
 [tabindex]:focus-visible {
   outline: 2px solid rgba(26, 219, 212, .85);
   outline-offset: 2px;
   border-radius: 10px;
+}
+input:focus-visible,
+textarea:focus-visible {
+  outline: none;
 }
 .kb-key:focus-visible,
 .text-kb-actions button:focus-visible {
