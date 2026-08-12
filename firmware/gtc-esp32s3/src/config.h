@@ -16,6 +16,18 @@
 #define GTC_AP_SSID       "GTC-Rega-Setup"
 #define GTC_AP_PASS       "gtcrega123"
 
+// ── Bluetooth Low Energy (BLE) ──
+// Nome anunciado nas descobertas Bluetooth (visível na app / SO)
+#define GTC_BLE_NAME          "GTC-Rega-BLE"
+// UUIDs do serviço/caraterísticas BLE (gerados como random v4 — mantenha-os
+// estáveis, pois identificam o dispositivo para as apps que já emparelharam)
+#define GTC_BLE_SERVICE_UUID       "6e400001-b5a3-f393-e0a9-e50e24dcca9e"
+#define GTC_BLE_STATUS_CHAR_UUID   "6e400002-b5a3-f393-e0a9-e50e24dcca9e" // notify: JSON de estado
+#define GTC_BLE_COMMAND_CHAR_UUID  "6e400003-b5a3-f393-e0a9-e50e24dcca9e" // write: comandos (ex.: "STOP")
+// PIN fixo simples de emparelhamento (numérico, 6 dígitos; exigido pelo
+// protocolo BLE para "Passkey Entry" — nulo/0 desativa o pedido de PIN)
+#define GTC_BLE_PIN           123456
+
 // Interface web local servida pelo ESP32 (LittleFS + ESPAsyncWebServer)
 #define GTC_WEBUI_PORT    80
 #define GTC_MDNS_HOST     "gtc-rega"

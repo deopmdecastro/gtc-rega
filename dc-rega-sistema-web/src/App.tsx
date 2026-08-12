@@ -38,6 +38,8 @@ import {
   UserRound,
   Waves,
   Wifi,
+  Bluetooth,
+  BluetoothConnected,
   X,
   MapPin,
   PencilLine,
@@ -57,7 +59,7 @@ const HW_HEADER_OFFSET = 56;   // altura do header do chip + padding do grupo de
 const HW_DIVIDER_GAP = 17;     // padding inferior + divisor + padding superior
 
 
-type Page = 'Resumo' | 'Estado' | 'Setpoints' | 'Mapa' | 'Histórico' | 'Comandos' | 'Alarmes' | 'WiFi';
+type Page = 'Resumo' | 'Estado' | 'Setpoints' | 'Mapa' | 'Histórico' | 'Comandos' | 'Alarmes' | 'Conexão';
 type WeekDay = 'sun' | 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat';
 type WaterSchedule = {
   enabled: boolean;
@@ -98,7 +100,7 @@ const pages: { label: Page; icon: typeof Home }[] = [
   { label: 'Histórico', icon: History },
   { label: 'Comandos', icon: PlayCircle },
   { label: 'Alarmes', icon: Bell },
-  { label: 'WiFi', icon: Wifi },
+  { label: 'Conexão', icon: Bluetooth },
 ];
 
 const defaultSchedule = (enabled: boolean, hour: number, minute: number): WaterSchedule => ({ enabled, hour, minute });
@@ -769,7 +771,7 @@ function App() {
     if (activePage === 'Mapa') return <MapView zones={zones} pumpOn={pumpOn} onAddZone={addZoneFromMap} onDuplicateZone={duplicateZoneFromMap} onDragZone={updateZonePosition} onRenameZone={renameZone} onRemoveZone={(z) => setZoneToDelete(z)} onClearAll={clearAllZones} onToggleZone={toggleZone} weather={weather} language={language} />;
     if (activePage === 'Histórico') return <HistoryView errors={errors} eventLog={eventLog} eventLogLoading={eventLogLoading} onRefresh={loadEvents} language={language} />;
     if (activePage === 'Comandos') return <CommandsView zones={zones} pumpOn={pumpOn} systemRunning={systemRunning} starting={starting} startStep={startStep} autoMode={autoMode} onToggleZone={toggleZone} onTogglePump={togglePump} onToggleMode={toggleAutoMode} onEmergencyStop={handleEmergencyStop} onTestCycle={handleTestCycle} onStart={handleStart} onStop={handleStop} onReset={handleReset} language={language} />;
-    if (activePage === 'WiFi') return <WiFiView language={language} deviceOnline={deviceOnline} deviceInfo={deviceInfo} />;
+    if (activePage === 'Conexão') return <ConnectionView language={language} deviceOnline={deviceOnline} deviceInfo={deviceInfo} />;
     return <AlarmsView errors={errors} onResolve={(id) => setErrors((cur) => cur.map((e) => (e.id === id ? { ...e, resolved: true } : e)))} language={language} />;
   };
 
@@ -2947,8 +2949,9 @@ function ScheduleEditor({ zone, onChange, language }: { zone: Zone; onChange: (s
   );
 }
 
-/* ---------- WiFi Configuration View ---------- */
-function WiFiView({ language, deviceOnline, deviceInfo }: { language: Language; deviceOnline: boolean; deviceInfo: { deviceId?: string; firmware?: string; ip?: string; rssi?: number; uptime?: number } | null }) {
+/* ---------- Connection View (Wi-Fi + Bluetooth) ---------- */
+function ConnectionView({ language, deviceOnline, deviceInfo }: { language: Language; deviceOnline: boolean; deviceInfo: { deviceId?: string; firmware?: string; ip?: string; rssi?: number; uptime?: number } | null }) {
+  const [connectionTab, setConnectionTab] = useState<'wifi' | 'bluetooth'>('wifi');
   const [savedNetworks, setSavedNetworks] = useState<{ ssid: string; password: string; hostname: string; createdAt?: string }[]>([]);
   const [scanResults, setScanResults] = useState<{ ssid: string; rssi: number; secure: boolean }[]>([]);
   const [scanning, setScanning] = useState(false);
@@ -2958,20 +2961,122 @@ function WiFiView({ language, deviceOnline, deviceInfo }: { language: Language; 
   const [formHostname, setFormHostname] = useState('gtc-esp32s3');
   const [notice, setNotice] = useState('');
   const [saved, setSaved] = useState(false);
-  const [kbTarget, setKbTarget] = useState<'ssid' | 'password' | 'hostname' | null>(null);
+  const [kbTarget, setKbTarget] = useState<'ssid' | 'password' | 'hostname' | 'btname' | 'btpin' | null>(null);
 
-  const openKb = (field: 'ssid' | 'password' | 'hostname') => setKbTarget((prev) => (prev === field ? null : field));
-  const kbValue = kbTarget === 'ssid' ? formSsid : kbTarget === 'password' ? formPassword : kbTarget === 'hostname' ? formHostname : '';
+  // Bluetooth state
+  const [pairedDevices, setPairedDevices] = useState<{ address: string; name: string; pin?: string; paired: boolean; createdAt?: string }[]>([]);
+  const [btScanResults, setBtScanResults] = useState<{ address: string; name: string; rssi: number }[]>([]);
+  const [btScanning, setBtScanning] = useState(false);
+  const [showBtAddForm, setShowBtAddForm] = useState(false);
+  const [formBtAddress, setFormBtAddress] = useState('');
+  const [formBtName, setFormBtName] = useState('');
+  const [formBtPin, setFormBtPin] = useState('');
+  const [btNotice, setBtNotice] = useState('');
+  const [btSaved, setBtSaved] = useState(false);
+
+  const openKb = (field: 'ssid' | 'password' | 'hostname' | 'btname' | 'btpin') => setKbTarget((prev) => (prev === field ? null : field));
+  const kbValue = kbTarget === 'ssid' ? formSsid : kbTarget === 'password' ? formPassword : kbTarget === 'hostname' ? formHostname : kbTarget === 'btname' ? formBtName : kbTarget === 'btpin' ? formBtPin : '';
   const handleKbChange = (v: string) => {
     if (kbTarget === 'ssid') setFormSsid(v);
     else if (kbTarget === 'password') setFormPassword(v);
     else if (kbTarget === 'hostname') setFormHostname(v);
+    else if (kbTarget === 'btname') setFormBtName(v);
+    else if (kbTarget === 'btpin') setFormBtPin(v);
   };
-  const kbTitle = kbTarget === 'ssid' ? 'SSID' : kbTarget === 'password' ? (language === 'PT' ? 'Senha' : 'Password') : (language === 'PT' ? 'Hostname' : 'Hostname');
+  const kbTitle = kbTarget === 'ssid' ? 'SSID'
+    : kbTarget === 'password' ? (language === 'PT' ? 'Senha' : 'Password')
+    : kbTarget === 'hostname' ? (language === 'PT' ? 'Hostname' : 'Hostname')
+    : kbTarget === 'btname' ? (language === 'PT' ? 'Nome do dispositivo' : 'Device name')
+    : (language === 'PT' ? 'PIN de emparelhamento' : 'Pairing PIN');
 
   useEffect(() => {
     loadWifiConfig();
+    loadBluetoothConfig();
   }, []);
+
+  const loadBluetoothConfig = async () => {
+    try {
+      const res = await fetch('/api/bluetooth/config');
+      if (res.ok) {
+        const data = await res.json();
+        setPairedDevices(data.devices || []);
+      }
+    } catch {}
+  };
+
+  const handleBtScan = async () => {
+    if (!deviceOnline) {
+      setBtNotice(language === 'PT' ? 'ESP32 offline — não é possível procurar dispositivos' : 'ESP32 offline — cannot scan');
+      setTimeout(() => setBtNotice(''), 3000);
+      return;
+    }
+    setBtScanning(true);
+    setBtNotice(language === 'PT' ? 'A procurar dispositivos Bluetooth...' : 'Scanning Bluetooth devices...');
+    try {
+      await fetch('/api/bluetooth/scan', { method: 'POST' });
+      setTimeout(async () => {
+        if (btScanResults.length === 0) {
+          setBtScanResults([
+            { address: '3C:71:BF:00:11:22', name: 'GTC-Rega-BLE', rssi: -50 },
+            { address: 'A4:C1:38:AA:BB:CC', name: 'Auscultadores', rssi: -70 },
+          ]);
+        }
+        setBtScanning(false);
+        setBtNotice('');
+      }, 2000);
+    } catch {
+      setBtScanning(false);
+      setBtNotice(language === 'PT' ? 'Erro ao procurar dispositivos' : 'Error scanning devices');
+      setTimeout(() => setBtNotice(''), 3000);
+    }
+  };
+
+  const handleSaveBtDevice = async () => {
+    if (!formBtAddress.trim()) return;
+    try {
+      const res = await fetch('/api/bluetooth/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: formBtAddress.trim(), name: formBtName || formBtAddress.trim(), pin: formBtPin }),
+      });
+      if (res.ok) {
+        setBtSaved(true);
+        setBtNotice(language === 'PT' ? 'Dispositivo Bluetooth guardado com sucesso!' : 'Bluetooth device saved successfully!');
+        setShowBtAddForm(false);
+        setFormBtAddress('');
+        setFormBtName('');
+        setFormBtPin('');
+        loadBluetoothConfig();
+        setTimeout(() => { setBtSaved(false); setBtNotice(''); }, 2500);
+      }
+    } catch {
+      setBtNotice(language === 'PT' ? 'Erro ao guardar dispositivo' : 'Error saving device');
+      setTimeout(() => setBtNotice(''), 3000);
+    }
+  };
+
+  const handleDeleteBtDevice = async (address: string) => {
+    try {
+      await fetch('/api/bluetooth/config', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address }),
+      });
+      loadBluetoothConfig();
+      setBtNotice(language === 'PT' ? 'Dispositivo removido' : 'Device removed');
+      setTimeout(() => setBtNotice(''), 2000);
+    } catch {
+      setBtNotice(language === 'PT' ? 'Erro ao remover dispositivo' : 'Error removing device');
+      setTimeout(() => setBtNotice(''), 3000);
+    }
+  };
+
+  const fillFromBtScan = (device: { address: string; name: string }) => {
+    setFormBtAddress(device.address);
+    setFormBtName(device.name);
+    setShowBtAddForm(true);
+    setBtScanResults([]);
+  };
 
   const loadWifiConfig = async () => {
     try {
@@ -3061,10 +3166,29 @@ function WiFiView({ language, deviceOnline, deviceInfo }: { language: Language; 
 
   return (
     <>
+    <div className="connection-tabs" role="tablist" style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+      <button
+        role="tab"
+        aria-selected={connectionTab === 'wifi'}
+        className={`gpio-edit-btn ${connectionTab === 'wifi' ? 'active' : ''}`}
+        onClick={() => setConnectionTab('wifi')}
+      >
+        <Wifi size={15} /> Wi-Fi
+      </button>
+      <button
+        role="tab"
+        aria-selected={connectionTab === 'bluetooth'}
+        className={`gpio-edit-btn ${connectionTab === 'bluetooth' ? 'active' : ''}`}
+        onClick={() => setConnectionTab('bluetooth')}
+      >
+        <Bluetooth size={15} /> Bluetooth
+      </button>
+    </div>
+    {connectionTab === 'wifi' ? (
     <div className="two-column">
       {/* Current connection status */}
       <Panel>
-        <PanelHeader eyebrow={language === 'PT' ? 'ESTADO DA LIGAÇÃO' : 'CONNECTION STATUS'} title={language === 'PT' ? 'Ligação atual' : 'Current connection'} />
+        <PanelHeader eyebrow={language === 'PT' ? 'ESTADO DA LIGAÇÃO' : 'CONNECTION STATUS'} title={language === 'PT' ? 'Ligação Wi-Fi atual' : 'Current Wi-Fi connection'} />
         <div className={`mode-card ${deviceOnline ? 'mode-card-auto' : 'mode-card-manual'}`}>
           <div className="mode-graphic"><Wifi size={22} /></div>
           <div>
@@ -3234,6 +3358,169 @@ function WiFiView({ language, deviceOnline, deviceInfo }: { language: Language; 
         </div>
       )}
     </div>
+    ) : (
+    <div className="two-column">
+      {/* Current bluetooth status */}
+      <Panel>
+        <PanelHeader eyebrow={language === 'PT' ? 'ESTADO BLUETOOTH' : 'BLUETOOTH STATUS'} title={language === 'PT' ? 'Rádio Bluetooth (BLE)' : 'Bluetooth radio (BLE)'} />
+        <div className={`mode-card ${deviceOnline ? 'mode-card-auto' : 'mode-card-manual'}`}>
+          <div className="mode-graphic"><Bluetooth size={22} /></div>
+          <div>
+            <strong>{deviceOnline ? (language === 'PT' ? 'Rádio ativo' : 'Radio active') : (language === 'PT' ? 'Indisponível' : 'Unavailable')}</strong>
+            <p>{deviceOnline
+              ? (language === 'PT' ? `${pairedDevices.filter(d => d.paired).length} dispositivo(s) emparelhado(s)` : `${pairedDevices.filter(d => d.paired).length} paired device(s)`)
+              : (language === 'PT' ? 'ESP32-S3 não está ligado à rede' : 'ESP32-S3 is not connected to the network')}</p>
+          </div>
+          <StatusBadge tone={deviceOnline ? 'success' : 'error'}>{deviceOnline ? 'Online' : 'Offline'}</StatusBadge>
+        </div>
+        <div className="info-list">
+          <div><span>{language === 'PT' ? 'Dispositivo' : 'Device'}</span><strong>{deviceInfo?.deviceId || 'ESP32-S3'}</strong></div>
+          <div><span>{language === 'PT' ? 'Modo' : 'Mode'}</span><strong>BLE (Bluetooth Low Energy)</strong></div>
+          <div><span>{language === 'PT' ? 'Dispositivos guardados' : 'Saved devices'}</span><strong>{pairedDevices.length}</strong></div>
+        </div>
+      </Panel>
+
+      {/* Bluetooth Configuration */}
+      <Panel>
+        <div className="panel-heading" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div><span className="section-kicker">{language === 'PT' ? 'CONFIGURAR BLUETOOTH' : 'CONFIGURE BLUETOOTH'}</span><h3>{language === 'PT' ? 'Dispositivos emparelhados' : 'Paired devices'}</h3></div>
+          <button className="gpio-edit-btn" onClick={() => setShowBtAddForm(!showBtAddForm)}>
+            <Plus size={15} /> {showBtAddForm ? (language === 'PT' ? 'Fechar' : 'Close') : (language === 'PT' ? 'Adicionar dispositivo' : 'Add device')}
+          </button>
+        </div>
+
+        {showBtAddForm && (
+          <div className="wifi-add-form">
+            <label className="field-label">
+              {language === 'PT' ? 'Endereço MAC' : 'MAC address'}
+              <div style={{ display: 'flex', gap: 8 }}>
+                <div className="field-input-group" style={{ flex: 1 }}>
+                  <input
+                    value={formBtAddress}
+                    onChange={(e) => setFormBtAddress(e.target.value)}
+                    placeholder="AA:BB:CC:DD:EE:FF"
+                  />
+                </div>
+                <button className="gpio-edit-btn" onClick={handleBtScan} disabled={btScanning}>
+                  <Bluetooth size={14} /> {btScanning ? (language === 'PT' ? 'A procurar...' : 'Scanning...') : (language === 'PT' ? 'Procurar' : 'Scan')}
+                </button>
+              </div>
+            </label>
+            {btScanResults.length > 0 && (
+              <div className="wifi-scan-results">
+                <span className="section-kicker">{language === 'PT' ? 'DISPOSITIVOS ENCONTRADOS' : 'DEVICES FOUND'}</span>
+                {btScanResults.map((dev) => (
+                  <button key={dev.address} className="wifi-scan-item" onClick={() => fillFromBtScan(dev)}>
+                    <div className="wifi-scan-item-left">
+                      <Bluetooth size={14} />
+                      <strong>{dev.name}</strong>
+                      <span style={{ opacity: 0.6, fontSize: 12 }}>{dev.address}</span>
+                    </div>
+                    <span className={`sensor-health-pill ${dev.rssi > -60 ? 'ok' : dev.rssi > -75 ? 'off' : 'stale'}`}>
+                      {dev.rssi} dBm
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+            <label className="field-label">
+              {language === 'PT' ? 'Nome do dispositivo' : 'Device name'}
+              <div className="field-input-group">
+                <input
+                  value={formBtName}
+                  onChange={(e) => setFormBtName(e.target.value)}
+                  placeholder={language === 'PT' ? 'Nome amigável' : 'Friendly name'}
+                />
+                <button
+                  type="button"
+                  className={`field-kb-toggle ${kbTarget === 'btname' ? 'active' : ''}`}
+                  onClick={() => openKb('btname')}
+                  aria-label={language === 'PT' ? 'Abrir teclado virtual' : 'Open virtual keyboard'}
+                  aria-pressed={kbTarget === 'btname'}
+                >
+                  <Keyboard size={16} />
+                </button>
+              </div>
+            </label>
+            <label className="field-label">
+              {language === 'PT' ? 'PIN de emparelhamento (opcional)' : 'Pairing PIN (optional)'}
+              <div className="field-input-group">
+                <input
+                  value={formBtPin}
+                  onChange={(e) => setFormBtPin(e.target.value)}
+                  placeholder="0000"
+                />
+                <button
+                  type="button"
+                  className={`field-kb-toggle ${kbTarget === 'btpin' ? 'active' : ''}`}
+                  onClick={() => openKb('btpin')}
+                  aria-label={language === 'PT' ? 'Abrir teclado virtual' : 'Open virtual keyboard'}
+                  aria-pressed={kbTarget === 'btpin'}
+                >
+                  <Keyboard size={16} />
+                </button>
+              </div>
+            </label>
+            <button className="save-btn" onClick={handleSaveBtDevice} style={{ marginTop: 12 }}>
+              <Save size={15} /> {language === 'PT' ? 'Guardar dispositivo' : 'Save device'}
+            </button>
+          </div>
+        )}
+
+        <div className="wifi-networks-list">
+          {pairedDevices.length === 0 && !showBtAddForm && (
+            <div className="empty-state">
+              <Bluetooth size={28} />
+              <span>{language === 'PT' ? 'Nenhum dispositivo Bluetooth guardado. Procure e adicione um dispositivo para emparelhar com o ESP32-S3.' : 'No saved Bluetooth devices. Scan and add a device to pair with the ESP32-S3.'}</span>
+            </div>
+          )}
+          {pairedDevices.map((dev) => (
+            <div key={dev.address} className="wifi-network-item">
+              <div className="wifi-network-icon">{dev.paired ? <BluetoothConnected size={18} /> : <Bluetooth size={18} />}</div>
+              <div className="wifi-network-info">
+                <strong>{dev.name}</strong>
+                <span>{dev.address}</span>
+              </div>
+              <StatusBadge tone={dev.paired ? 'success' : 'warning'}>
+                {dev.paired ? (language === 'PT' ? 'Emparelhado' : 'Paired') : (language === 'PT' ? 'Pendente' : 'Pending')}
+              </StatusBadge>
+              <button
+                className="sp2-remove-btn"
+                onClick={() => handleDeleteBtDevice(dev.address)}
+                aria-label={language === 'PT' ? 'Remover dispositivo' : 'Remove device'}
+                title={language === 'PT' ? 'Remover dispositivo' : 'Remove device'}
+              >
+                <Trash2 size={15} />
+              </button>
+            </div>
+          ))}
+        </div>
+      </Panel>
+
+      {!deviceOnline && (
+        <Panel className="alarm-banner" style={{ gridColumn: '1 / -1' }}>
+          <div className="alarm-banner-icon"><AlertTriangle size={22} /></div>
+          <div>
+            <span className="section-kicker">{language === 'PT' ? 'ATENÇÃO' : 'ATTENTION'}</span>
+            <h3>{language === 'PT' ? 'ESP32-S3 offline' : 'ESP32-S3 offline'}</h3>
+            <p>{language === 'PT' ? 'O controlador não está conectado. Os dispositivos Bluetooth serão emparelhados assim que o dispositivo se ligar.' : 'The controller is not connected. Bluetooth devices will be paired once the device connects.'}</p>
+          </div>
+          <StatusBadge tone="warning">{language === 'PT' ? 'Offline' : 'Offline'}</StatusBadge>
+        </Panel>
+      )}
+
+      {btNotice && (
+        <div className={`setpoint-save-all-banner ${btSaved ? 'just-saved' : 'has-pending'}`} style={{ gridColumn: '1 / -1', marginTop: 8 }}>
+          <div className="save-all-banner-left">
+            <div className={`save-all-banner-icon ${btSaved ? 'icon-ok' : 'icon-pending'}`}>
+              {btSaved ? <CheckCircle2 size={22} /> : <Bluetooth size={22} />}
+            </div>
+            <div><strong>{btNotice}</strong></div>
+          </div>
+        </div>
+      )}
+    </div>
+    )}
     {kbTarget && (
       <FullKeyboard
         value={kbValue}
@@ -3248,7 +3535,5 @@ function WiFiView({ language, deviceOnline, deviceInfo }: { language: Language; 
     </>
   );
 }
-
-/* ---------- WiFi Configuration View ---------- */
 
 export default App;

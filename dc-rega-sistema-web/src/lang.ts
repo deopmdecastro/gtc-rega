@@ -15,7 +15,7 @@ const pt: Dict = {
   'nav.histórico': 'Histórico',
   'nav.comandos': 'Comandos',
   'nav.alarmes': 'Alarmes',
-  'nav.wifi': 'Wi-Fi',
+  'nav.conexão': 'Conexão',
 
   // Topbar
   'topbar.title': 'Sistema de Rega Automatizada',
@@ -215,7 +215,7 @@ const en: Dict = {
   'nav.histórico': 'History',
   'nav.comandos': 'Commands',
   'nav.alarmes': 'Alarms',
-  'nav.wifi': 'Wi-Fi',
+  'nav.conexão': 'Connection',
 
   'topbar.title': 'Automated Irrigation System',
   'topbar.settings': 'Open settings',
