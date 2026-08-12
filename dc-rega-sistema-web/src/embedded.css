@@ -633,3 +633,39 @@
     max-width: 100vw;
   }
 }
+
+
+/* ================================================================
+ *  EMBEDDED — PRIORIDADE DA INFORMAÇÃO CRÍTICA (Resumo/Dashboard)
+ * ----------------------------------------------------------------
+ * O ecrã de 240×320 mostra primeiro o que é crítico, seguindo a
+ * hierarquia HMI: 1) Estado do sistema · 2) Alarmes · 3) Sensores
+ * · 4) Valores atuais · 5) Comandos. Feito apenas com `order` (CSS),
+ * sem tocar no JS/estrutura React — preserva toda a lógica e dados.
+ * `order` aplica-se tanto a grid como a flex, por isso não é preciso
+ * alterar o `display` já definido nos blocos acima.
+ * ================================================================ */
+@media (max-width: 340px),
+       (max-height: 260px) and (orientation: landscape) {
+  /* Contentor do Resumo */
+  .content-stack > .device-status-panel   { order: 1; } /* Estado do controlador */
+  .content-stack > .hero-panel            { order: 2; } /* Estado do sistema */
+  .content-stack > .quick-grid            { order: 3; } /* Alarmes recentes + próxima rega */
+  .content-stack > .sensor-grid           { order: 4; } /* Sensores / valores atuais */
+  .content-stack > .metrics-panel         { order: 5; } /* Valores (data/hora/última rega) */
+  .content-stack > .summary-actions-panel { order: 6; } /* Comandos rápidos */
+  .content-stack > .overview-map-link     { order: 7; } /* Mapa (menos crítico) */
+
+  /* Dentro da grelha de painéis rápidos, o cartão de ALARMES vem primeiro */
+  .quick-grid > .alarm-preview                 { order: 1; }
+  .quick-grid > .quick-panel:not(.alarm-preview) { order: 2; }
+
+  /* Realce de alta visibilidade quando existe um alarme ativo no Resumo */
+  .alarm-preview .alert-line:not(.alert-line-empty) {
+    border-radius: 8px;
+    padding: 10px;
+    margin: 10px -2px 0;
+    background: rgba(240, 101, 101, .08);
+    border: 1px solid rgba(240, 101, 101, .28);
+  }
+}
