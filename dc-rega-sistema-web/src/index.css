@@ -677,10 +677,20 @@ textarea:focus-visible {
   .close-menu { display: block; }
   .scrim { display: block; position: fixed; inset: 0; z-index: 4; border: 0; background: #0009; }
   .main-content { width: 100%; margin-left: 0; }
-  .mobile-menu { display: grid; place-items: center; width: 40px; height: 40px; margin-top: 2px; border: 1px solid #263943; border-radius: 8px; color: #18d6d0; background: #0b171d; }
-  .topbar-inner { align-items: center; }
+  .mobile-menu { display: grid; place-items: center; width: 40px; height: 40px; margin-top: 0; border: 1px solid #263943; border-radius: 8px; color: #18d6d0; background: #0b171d; }
   .topbar { left: 0; }
+
+  /* Layout de 3 colunas: hamburguer (esquerda) · logo (centro) · ações (direita) */
+  .topbar-inner { display: grid; grid-template-columns: auto 1fr auto; align-items: center; column-gap: 10px; }
+  .topbar-title.compact { grid-column: 2; justify-self: center; }
+  .topbar-right { grid-column: 3; justify-self: end; }
+  .topbar-h1-full { display: none; }
+  .topbar-logo-mark { display: flex; }
+  .topbar-h1-short { display: block; font-size: 17px; }
+  /* Idioma passa a viver só nas Definições em telas pequenas, para deixar apenas o botão de definições à direita */
+  .lang-toggle-btn { display: none; }
 }
+
 
 @media (max-width: 720px) {
   .content-wrap { padding: 0 14px 32px; }
@@ -769,13 +779,9 @@ textarea:focus-visible {
   .kb-key { height: 46px; font-size: 18px; }
 }
 
-/* ---------- Topbar: em telas pequenas mostra só o logo (sem título longo) ---------- */
+/* ---------- Topbar: em telas pequenas ajusta padding/gap do header compacto ---------- */
 @media (max-width: 560px) {
-  .topbar-h1-full { display: none; }
-  .topbar-logo-mark { display: flex; }
-  .topbar-h1-short { display: block; font-size: 17px; }
   .topbar-inner { padding: 14px 12px 12px; }
-  .topbar-title.compact { gap: 8px; }
   .topbar-right { gap: 6px; }
 }
 
