@@ -53,7 +53,7 @@ textarea:focus-visible {
 .nav-item.active { color: #16dfd7; background: linear-gradient(90deg, rgba(0, 198, 193, .22), rgba(0, 198, 193, .04)); box-shadow: inset 2px 0 #12d8d1; }
 .nav-count { margin-left: auto; min-width: 20px; padding: 2px 5px; border-radius: 5px; color: #ffca72; background: rgba(249, 178, 71, .12); text-align: center; font-size: 10px; }
 .sidebar-footer { margin-top: auto; border: 1px solid #192831; border-radius: 11px; padding: 14px; background: #0a131a; }
-.status-badge { display: inline-flex; align-items: center; gap: 7px; width: fit-content; border-radius: 99px; padding: 5px 9px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; line-height: 1; }
+.status-badge { display: inline-flex; flex-direction: row; flex-wrap: nowrap; flex-shrink: 0; align-items: center; gap: 7px; width: fit-content; border-radius: 99px; padding: 5px 9px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; line-height: 1; }
 .status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; box-shadow: 0 0 7px currentColor; flex-shrink: 0; }
 .status-success { color: #5ee58a; background: rgba(69, 207, 111, .12); border: 1px solid rgba(69, 207, 111, .22); }
 .status-warning { color: #f6be69; background: rgba(246, 190, 105, .12); border: 1px solid rgba(246, 190, 105, .22); }
@@ -172,6 +172,8 @@ textarea:focus-visible {
 .device-status-main { display: flex; align-items: center; gap: 12px; }
 .device-status-main strong { display: block; font-size: 13px; color: #e2ebed; }
 .device-status-main span { display: block; margin-top: 2px; font-size: 11px; color: #7f949e; font-family: 'DM Mono', monospace; }
+.device-status-info { min-width: 0; flex: 1 1 auto; }
+.device-status-main > .status-badge { flex-shrink: 0; }
 .device-status-dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
 .device-status-dot.on { background: #5ee58a; box-shadow: 0 0 0 5px rgba(94,229,138,.15); animation: pulse-device-glow 2s ease-in-out infinite; }
 .device-status-dot.off { background: #f2b35d; box-shadow: 0 0 0 5px rgba(242,179,93,.15); }
@@ -189,7 +191,7 @@ textarea:focus-visible {
   .device-status-dot { width: 8px; height: 8px; margin-top: 3px; align-self: flex-start; }
   .device-status-main strong { font-size: 12.5px; }
   .device-status-main span { font-size: 10.5px; line-height: 1.45; }
-  .device-status-main .status-badge { align-self: flex-start; margin-top: 1px; }
+  .device-status-main .status-badge { align-self: center; margin-top: 0; flex-shrink: 0; }
   .device-status-sensors { gap: 6px; margin-top: 2px; }
   .device-status-sensors-label { flex: 1 1 100%; margin-bottom: 2px; }
   .sensor-health-pill { flex: 1 1 calc(50% - 3px); justify-content: space-between; padding: 6px 10px; font-size: 10px; }
