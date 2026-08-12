@@ -1868,7 +1868,9 @@ input:focus-visible { outline: none; }
 .event-log-list::-webkit-scrollbar,
 .history-list::-webkit-scrollbar,
 .pinout-table-wrap::-webkit-scrollbar,
-.gpio-edit-table-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+.gpio-edit-table-scroll::-webkit-scrollbar,
+.schedule-grid::-webkit-scrollbar,
+.sched2-grid::-webkit-scrollbar { width: 6px; height: 6px; }
 .alarm-list::-webkit-scrollbar-thumb,
 .state-list::-webkit-scrollbar-thumb,
 .info-list::-webkit-scrollbar-thumb,
@@ -1878,7 +1880,9 @@ input:focus-visible { outline: none; }
 .event-log-list::-webkit-scrollbar-thumb,
 .history-list::-webkit-scrollbar-thumb,
 .pinout-table-wrap::-webkit-scrollbar-thumb,
-.gpio-edit-table-scroll::-webkit-scrollbar-thumb {
+.gpio-edit-table-scroll::-webkit-scrollbar-thumb,
+.schedule-grid::-webkit-scrollbar-thumb,
+.sched2-grid::-webkit-scrollbar-thumb {
   background: linear-gradient(180deg, #13bcb6, #0d8a85);
   border-radius: 99px;
   border: 0;

@@ -287,14 +287,39 @@
   .setpoint-save-btn { padding: 12px; min-height: 44px; font-size: 11px; }
   .remove-sensor-btn { width: 32px; height: 32px; top: 10px; right: 10px; }
 
-  /* Semana de rega — grid mais denso e touch ---------------------- */
+  /* Semana de rega — 7 dias não cabem lado a lado nos ~240px de largura;
+   * em vez de espremer, vira uma faixa com scroll horizontal (swipe),
+   * cada dia mantém uma largura tocável confortável. ------------------ */
+  .schedule-grid,
+  .sched2-grid {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    grid-template-columns: none !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+    gap: 6px !important;
+    padding: 2px 2px 8px !important;
+    margin: 0 -2px;
+  }
+  .schedule-day,
+  .sched2-day {
+    flex: 0 0 76px !important;
+    scroll-snap-align: start;
+  }
   .setpoint-schedule { margin-top: 14px; padding-top: 12px; }
   .setpoint-schedule > label { font-size: 9px; margin-bottom: 8px; }
-  .schedule-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
   .schedule-day { padding: 8px 4px 6px; gap: 6px; }
   .schedule-day-label { font-size: 9px; }
   .schedule-time-btn { width: 26px; height: 26px; }
   .schedule-time-display { font-size: 10px; padding: 4px 5px; }
+  .sched2-day { padding: 8px 6px 7px; gap: 5px; }
+  .sched2-day-label { font-size: 9px; }
+  .sched2-time-btn { font-size: 10px; padding: 4px 5px; }
+  .sched2-hint { font-size: 7px; }
+  .sched2-actions { flex-wrap: wrap; gap: 6px; }
+  .sched2-action-btn { font-size: 10px; padding: 8px 10px; }
 
   /* Time input --------------------------------------------------- */
   .time-controls { margin-top: 12px; padding-top: 12px; gap: 8px; }
@@ -476,11 +501,14 @@
   .section-kicker { display: none; }
   .connection { font-size: 9px; }
 
-  /* Aproveitar a largura: duas colunas em landscape (mas os "cards"
-   * empilham sempre em coluna única — ficam demasiado apertados a par) */
-  .two-column,
-  .commands-layout,
-  .alarms-layout,
+  /* Aproveitar a largura: duas colunas em landscape só para grelhas de
+   * cartões pequenos/compactos (sensores, setpoints, alarme-resumo, etc).
+   * Contentores com painéis "cheios" (cabeçalho + listas/comandos) —
+   * content-stack, command-actions, two-column, commands-layout e
+   * alarms-layout — empilham sempre em coluna única: a par ficam
+   * demasiado apertados nos 320×240 do ecrã HMI real. (alarms-layout é
+   * sempre 1 coluna por definição de base; forçar 2 colunas aqui
+   * partiria o layout, colocando o resumo de alarmes ao lado da lista.) */
   .quick-grid,
   .sensor-grid,
   .setpoint-grid,
@@ -491,12 +519,18 @@
     gap: 8px !important;
   }
   .content-stack,
-  .command-actions {
+  .command-actions,
+  .two-column,
+  .commands-layout,
+  .alarms-layout {
     display: grid !important;
     grid-template-columns: 1fr !important;
     gap: 8px !important;
   }
-  .content-stack > .panel { padding: 8px !important; }
+  .content-stack > .panel,
+  .two-column > .panel,
+  .commands-layout > .panel,
+  .alarms-layout > .panel { padding: 8px !important; }
   .metrics-panel { grid-template-columns: repeat(4, 1fr) !important; padding: 6px !important; gap: 4px !important; }
   .metric { padding: 4px !important; border-right: 1px solid #182530; border-bottom: 0; min-height: 40px; }
   .metric:last-child { border-right: 0; }
@@ -506,7 +540,6 @@
   .metric small { font-size: 8px; }
 
   .panel { border-radius: 8px; }
-  .two-column > .panel, .commands-layout > .panel { padding: 8px !important; }
   .panel-heading { padding: 8px 10px 6px; }
   .panel-heading h3 { font-size: 12px; }
 
@@ -536,6 +569,33 @@
   .cmd-btn svg { width: 18px; height: 18px; }
   .cmd-btn strong { font-size: 11px; }
   .cmd-btn small { font-size: 9px; }
+
+  /* Semana de rega — em landscape (240px de altura) empilhar os 7 dias
+   * verticalmente ocuparia demasiada altura; faz mais sentido manter
+   * a faixa horizontal com scroll/swipe (largura de 320-480px ajuda). */
+  .schedule-grid,
+  .sched2-grid {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    grid-template-columns: none !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+    gap: 6px !important;
+    padding: 2px 2px 6px !important;
+  }
+  .schedule-day,
+  .sched2-day {
+    flex: 0 0 72px !important;
+    scroll-snap-align: start;
+    padding: 6px 4px !important;
+  }
+  .schedule-day-label, .sched2-day-label { font-size: 9px; }
+  .sched2-time-btn { font-size: 10px; padding: 3px 4px; }
+  .sched2-hint { font-size: 7px; }
+  .sched2-actions { flex-wrap: wrap; gap: 6px; }
+  .sched2-action-btn { font-size: 10px; padding: 6px 9px; }
 
   .alarm-summary-card { padding: 8px 10px; min-height: 46px; }
   .alarm-summary-card strong { font-size: 18px; }
