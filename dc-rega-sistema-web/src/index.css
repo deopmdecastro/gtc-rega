@@ -181,6 +181,23 @@ textarea:focus-visible {
 .sensor-health-pill.ok { color: #5ee58a; background: rgba(94,229,138,.1); border-color: rgba(94,229,138,.2); }
 .sensor-health-pill.sim { color: #7c929c; background: rgba(124,146,156,.1); border-color: rgba(124,146,156,.2); }
 .sensor-health-pill.stale { color: #f06565; background: rgba(240,101,101,.1); border-color: rgba(240,101,101,.25); }
+
+/* ---------- Cartão "Controlador não reconhecido" em ecrãs pequenos ---------- */
+@media (max-width: 480px) {
+  .device-status-panel { padding: 14px 16px; gap: 12px; }
+  .device-status-main { gap: 10px; }
+  .device-status-dot { width: 8px; height: 8px; margin-top: 3px; align-self: flex-start; }
+  .device-status-main strong { font-size: 12.5px; }
+  .device-status-main span { font-size: 10.5px; line-height: 1.45; }
+  .device-status-main .status-badge { align-self: flex-start; margin-top: 1px; }
+  .device-status-sensors { gap: 6px; margin-top: 2px; }
+  .device-status-sensors-label { flex: 1 1 100%; margin-bottom: 2px; }
+  .sensor-health-pill { flex: 1 1 calc(50% - 3px); justify-content: space-between; padding: 6px 10px; font-size: 10px; }
+  .sensor-health-value { margin-left: 6px; }
+}
+@media (max-width: 360px) {
+  .sensor-health-pill { flex: 1 1 100%; }
+}
 .sensor-card-stale { border-color: rgba(240,101,101,.3); }
 
 /* ---------- Panel heading ---------- */
