@@ -48,10 +48,12 @@ import {
   Minus,
   Eraser,
   CircuitBoard,
+  Zap,
 } from 'lucide-react';
 import { fetchEvents, logEvent, type EventLogEntry, saveState, loadState, saveLayout, loadLayout } from '@/lib/supabase';
 import { t } from '@/lang';
 import { getControllerClient } from '@/lib/controller';
+import { useIsEmbedded } from '@/lib/useIsEmbedded';
 
 // Métricas do diagrama HARDWARE (têm de coincidir com --hw-row/--hw-gap no CSS)
 const HW_ROW = 46;
@@ -250,6 +252,9 @@ function eventToHistoryItem(ev: EventLogEntry): { time: string; zone: string; du
 }
 
 function App() {
+  // Versão embedded (display do ESP32-S3): sem mapa de pinos, sem edição de
+  // pinos e sem mapa de sensores/válvulas — só na versão web (PC/telemóvel/tablet).
+  const isEmbedded = useIsEmbedded();
   const [activePage, setActivePage] = useState<Page>('Resumo');
   const [zones, setZones] = useState(initialZones);
   const [pumpOn, setPumpOn] = useState(false);
@@ -824,13 +829,25 @@ function App() {
     window.setTimeout(() => setSettingsSaved(false), 2200);
   };
 
+  const visiblePages = useMemo(
+    () => (isEmbedded ? pages.filter((p) => p.label !== 'Mapa') : pages),
+    [isEmbedded],
+  );
+
+  useEffect(() => {
+    if (isEmbedded && activePage === 'Mapa') setActivePage('Resumo');
+  }, [isEmbedded, activePage]);
+
   const renderPage = () => {
     if (activePage === 'Resumo') {
-      return <Overview zones={zones} pumpOn={pumpOn} autoMode={autoMode} activeZones={activeZones} onToggleZone={toggleZone} onTogglePump={togglePump} onToggleMode={toggleAutoMode} onOpenMap={() => requireAuth('Mapa')} weather={weather} language={language} deviceOnline={deviceOnline} deviceInfo={deviceInfo} sensorHealth={sensorHealth} clock={clock} dateStr={dateStr} latestAlert={errors[0]} systemRunning={systemRunning} starting={starting} startStep={startStep} onStart={handleStart} onStop={handleStop} onReset={handleReset} />;
+      return <Overview zones={zones} pumpOn={pumpOn} autoMode={autoMode} activeZones={activeZones} onToggleZone={toggleZone} onTogglePump={togglePump} onToggleMode={toggleAutoMode} onOpenMap={() => requireAuth('Mapa')} isEmbedded={isEmbedded} weather={weather} language={language} deviceOnline={deviceOnline} deviceInfo={deviceInfo} sensorHealth={sensorHealth} clock={clock} dateStr={dateStr} latestAlert={errors[0]} systemRunning={systemRunning} starting={starting} startStep={startStep} onStart={handleStart} onStop={handleStop} onReset={handleReset} />;
     }
     if (activePage === 'Estado') return <StateView zones={zones} pumpOn={pumpOn} autoMode={autoMode} onToggleMode={toggleAutoMode} language={language} gpioConfig={gpioConfig} editingGpio={editingGpio} setEditingGpio={setEditingGpio} handleGpioUpdate={handleGpioUpdate} saveGpioConfig={saveGpioConfig} addGpioRow={addGpioRow} removeGpioRow={removeGpioRow} handleGpioPinChange={handleGpioPinChange} getAvailableGpios={getAvailableGpios} deviceOnline={deviceOnline} deviceInfo={deviceInfo} sensorHealth={sensorHealth} engineState={engineState} gpioLive={gpioLive} systemRunning={systemRunning} alarmCount={alarmCount} />;
     if (activePage === 'Setpoints') return <SetpointsView zones={zones} pumpDelay={pumpDelay} setPumpDelay={setPumpDelay} onChange={(id, target) => { setZones((cur) => { const next = cur.map((z) => (z.id === id ? { ...z, target } : z)); setTimeout(() => getControllerClient().updateZones(next), 200); return next; }); }} onUpdateZone={(id, patch) => { setZones((cur) => { const next = cur.map((z) => (z.id === id ? { ...z, ...patch } : z)); setTimeout(() => getControllerClient().updateZones(next), 200); return next; }); }} onAddZone={addZone} onRemoveZone={(z) => setZoneToDelete(z)} language={language} />;
-    if (activePage === 'Mapa') return <MapView zones={zones} pumpOn={pumpOn} onAddZone={addZoneFromMap} onDuplicateZone={duplicateZoneFromMap} onDragZone={updateZonePosition} onRenameZone={renameZone} onRemoveZone={(z) => setZoneToDelete(z)} onClearAll={clearAllZones} onToggleZone={toggleZone} weather={weather} language={language} />;
+    if (activePage === 'Mapa') {
+      if (isEmbedded) return <EmbeddedUnavailable language={language} />;
+      return <MapView zones={zones} pumpOn={pumpOn} onAddZone={addZoneFromMap} onDuplicateZone={duplicateZoneFromMap} onDragZone={updateZonePosition} onRenameZone={renameZone} onRemoveZone={(z) => setZoneToDelete(z)} onClearAll={clearAllZones} onToggleZone={toggleZone} weather={weather} language={language} />;
+    }
     if (activePage === 'Histórico') return <HistoryView errors={errors} eventLog={eventLog} eventLogLoading={eventLogLoading} onRefresh={loadEvents} language={language} />;
     if (activePage === 'Comandos') return <CommandsView zones={zones} pumpOn={pumpOn} systemRunning={systemRunning} starting={starting} startStep={startStep} autoMode={autoMode} onToggleZone={toggleZone} onTogglePump={togglePump} onToggleMode={toggleAutoMode} onEmergencyStop={handleEmergencyStop} onTestCycle={handleTestCycle} onStart={handleStart} onStop={handleStop} onReset={handleReset} language={language} />;
     if (activePage === 'Conexão') return <ConnectionView language={language} deviceOnline={deviceOnline} deviceInfo={deviceInfo} />;
@@ -847,7 +864,7 @@ function App() {
         </div>
         <div className="sidebar-label">{t('sidebar.control', language)}</div>
         <nav className="side-nav" aria-label="Navegação principal">
-          {pages.map(({ label, icon: Icon }) => (
+          {visiblePages.map(({ label, icon: Icon }) => (
             <button key={label} className={activePage === label ? 'nav-item active' : 'nav-item'} onClick={() => { if (label === 'Setpoints' || label === 'Mapa') { requireAuth(label); } else { setActivePage(label); } setMobileOpen(false); }}>
               <Icon size={19} strokeWidth={1.8} /><span>{t(`nav.${label.toLowerCase()}`, language)}</span>
               {label === 'Alarmes' && alarmCount > 0 && <span className="nav-count">{alarmCount}</span>}
@@ -903,8 +920,8 @@ function App() {
 }
 
 /* ---------- Overview ---------- */
-function Overview({ zones, pumpOn, autoMode, activeZones, onToggleZone, onTogglePump, onToggleMode, onOpenMap, weather, language, deviceOnline, deviceInfo, sensorHealth, clock, dateStr, latestAlert, systemRunning, starting, startStep, onStart, onStop, onReset }: {
-  zones: Zone[]; pumpOn: boolean; autoMode: boolean; activeZones: number; onToggleZone: (id: string) => void; onTogglePump: () => void; onToggleMode: () => void; onOpenMap: () => void; weather: { temp: number; desc: string; city: string; country: string; icon: string; humidity: number; precipitation: number; windSpeed: number; rainChance: number }; language: Language;
+function Overview({ zones, pumpOn, autoMode, activeZones, onToggleZone, onTogglePump, onToggleMode, onOpenMap, isEmbedded, weather, language, deviceOnline, deviceInfo, sensorHealth, clock, dateStr, latestAlert, systemRunning, starting, startStep, onStart, onStop, onReset }: {
+  zones: Zone[]; pumpOn: boolean; autoMode: boolean; activeZones: number; onToggleZone: (id: string) => void; onTogglePump: () => void; onToggleMode: () => void; onOpenMap: () => void; isEmbedded?: boolean; weather: { temp: number; desc: string; city: string; country: string; icon: string; humidity: number; precipitation: number; windSpeed: number; rainChance: number }; language: Language;
   deviceOnline: boolean;
   deviceInfo: { deviceId?: string; firmware?: string; ip?: string; rssi?: number; uptime?: number } | null;
   sensorHealth: Record<string, { stale: boolean; lastSeen: number | null }>;
@@ -1008,7 +1025,9 @@ function Overview({ zones, pumpOn, autoMode, activeZones, onToggleZone, onToggle
       <div className="overview-map-link">
         <Panel className="quick-panel">
           <div className="panel-title-row"><div><span className="section-kicker">{t('overview.location', language)}</span><h3>{t('overview.sensorMap', language)}</h3></div><MapIcon size={20} /></div>
-          <button className="action-button" onClick={onOpenMap}><MapIcon size={20} /><span><strong>Ver mapa completo</strong><small>Localização e estado de cada sensor na propriedade</small></span><ChevronRight size={17} /></button>
+          {!isEmbedded && (
+            <button className="action-button" onClick={onOpenMap}><MapIcon size={20} /><span><strong>Ver mapa completo</strong><small>Localização e estado de cada sensor na propriedade</small></span><ChevronRight size={17} /></button>
+          )}
         </Panel>
       </div>
     </div>
@@ -1107,6 +1126,7 @@ function BrandSelect<T extends string | number>({ value, options, onChange, clas
 }
 
 function StateView({ zones, pumpOn, autoMode, onToggleMode, language, gpioConfig, editingGpio, setEditingGpio, handleGpioUpdate, saveGpioConfig, addGpioRow, removeGpioRow, handleGpioPinChange, getAvailableGpios, deviceOnline, deviceInfo, sensorHealth, engineState, gpioLive, systemRunning, alarmCount }: { zones: Zone[]; pumpOn: boolean; autoMode: boolean; onToggleMode: () => void; language: Language; gpioConfig: { id: string; gpio: number; direction: string; label: string; func: string; inChannel: string }[]; editingGpio: number | null; setEditingGpio: (v: number | null) => void; handleGpioUpdate: (id: string, key: string, value: string) => void; saveGpioConfig: () => void; addGpioRow: () => void; removeGpioRow: (id: string) => void; handleGpioPinChange: (id: string, newPin: number) => void; getAvailableGpios: (excludeId?: string) => number[]; deviceOnline: boolean; deviceInfo: { deviceId?: string; firmware?: string; ip?: string; rssi?: number; uptime?: number } | null; sensorHealth: Record<string, { stale: boolean; lastSeen: number | null }>; engineState: string; gpioLive: Record<number, number | boolean>; systemRunning: boolean; alarmCount: number; }) {
+  const isEmbedded = useIsEmbedded();
   const [gpioKb, setGpioKb] = useState<{ id: string; field: 'label' | 'func' | 'inChannel' } | null>(null);
   const toggleGpioKb = (id: string, field: 'label' | 'func' | 'inChannel') => {
     setGpioKb(prev => (prev && prev.id === id && prev.field === field) ? null : { id, field });
@@ -1159,263 +1179,284 @@ function StateView({ zones, pumpOn, autoMode, onToggleMode, language, gpioConfig
         </div>
       </Panel>
 
-      {/* ESP32-S3 Hardware Diagram — Design da imagem de referência */}
-      <Panel className="estado-pinout-panel" style={{ gridColumn: '1 / -1' }}>
-        <div className="hw3-header">
-          <div className="hw3-header-titles">
-            <span className="section-kicker">HARDWARE</span>
-            <h3>ESP32-S3</h3>
-            <span className="hw3-subtitle">{language === 'PT' ? 'Mapa de Ligações GPIO' : 'GPIO Connection Map'}</span>
+      {/* Mapa de pinos GPIO + edição de pinos: apenas na versão web (PC/telemóvel/tablet) */}
+      {!isEmbedded && (
+        <Panel className="estado-pinout-panel" style={{ gridColumn: '1 / -1' }}>
+          <div className="hw3-header">
+            <div className="hw3-header-titles">
+              <span className="section-kicker">HARDWARE</span>
+              <h3>ESP32-S3</h3>
+              <span className="hw3-subtitle">{language === 'PT' ? 'Mapa de Ligações GPIO' : 'GPIO Connection Map'}</span>
+            </div>
+            <button className="gpio-edit-btn" onClick={() => setEditingGpio(editingGpio === null ? -1 : null)}>
+              <Settings2 size={15} /> {editingGpio === null ? (language === 'PT' ? 'Editar GPIO' : 'Edit GPIO') : (language === 'PT' ? 'Concluído' : 'Done')}
+            </button>
           </div>
-          <button className="gpio-edit-btn" onClick={() => setEditingGpio(editingGpio === null ? -1 : null)}>
-            <Settings2 size={15} /> {editingGpio === null ? (language === 'PT' ? 'Editar GPIO' : 'Edit GPIO') : (language === 'PT' ? 'Concluído' : 'Done')}
-          </button>
-        </div>
 
-        <div
-          className="hw3-diagram"
-          style={{ '--hw-left-offset': `${HW_HEADER_OFFSET}px`, '--hw-right-offset': `${HW_HEADER_OFFSET + inputPins.length * HW_ROW + Math.max(inputPins.length - 1, 0) * HW_GAP + HW_DIVIDER_GAP}px` } as React.CSSProperties}
-        >
-          {/* ── Coluna 1: Sensores (INPUT) ── */}
-          <div className="hw3-col hw3-col-left" style={{ '--hw-offset': 'var(--hw-left-offset)' } as React.CSSProperties}>
-            <span className="hw3-col-caption hw3-caption-input">INPUT</span>
-            {inputPins.map((g, i) => {
-              const zone = zones[i];
-              const stale = zone ? !!sensorHealth[zone.sensorId]?.stale : false;
-              return (
-                <div key={g.gpio} className="hw3-sensor-block">
-                  <div className={`hw3-block hw3-block-input ${zone ? (stale ? 'hw3-block-stale' : 'hw3-block-live') : 'hw3-block-empty'}`}>
-                    <span className="hw3-block-label">{g.label || zone?.sensorId || `B${i + 1}`}</span>
-                    <div className="hw3-block-info">
-                      <strong>{zone ? `${language === 'PT' ? 'Sensor' : 'Sensor'} ${zone.sensorId}` : (language === 'PT' ? 'Sem sensor' : 'No sensor')}</strong>
-                      <span>{zone ? `${zone.name} · ${zone.moisture}%` : (language === 'PT' ? 'não reconhecido' : 'not detected')}</span>
+          <div
+            className="hw3-diagram"
+            style={{ '--hw-left-offset': `${HW_HEADER_OFFSET}px`, '--hw-right-offset': `${HW_HEADER_OFFSET + inputPins.length * HW_ROW + Math.max(inputPins.length - 1, 0) * HW_GAP + HW_DIVIDER_GAP}px` } as React.CSSProperties}
+          >
+            {/* ── Coluna 1: Sensores (INPUT) ── */}
+            <div className="hw3-col hw3-col-left" style={{ '--hw-offset': 'var(--hw-left-offset)' } as React.CSSProperties}>
+              <span className="hw3-col-caption hw3-caption-input">INPUT</span>
+              {inputPins.map((g, i) => {
+                const zone = zones[i];
+                const stale = zone ? !!sensorHealth[zone.sensorId]?.stale : false;
+                return (
+                  <div key={g.gpio} className="hw3-sensor-block">
+                    <div className={`hw3-block hw3-block-input ${zone ? (stale ? 'hw3-block-stale' : 'hw3-block-live') : 'hw3-block-empty'}`}>
+                      <span className="hw3-block-label">{g.label || zone?.sensorId || `B${i + 1}`}</span>
+                      <div className="hw3-block-info">
+                        <strong>{zone ? `${language === 'PT' ? 'Sensor' : 'Sensor'} ${zone.sensorId}` : (language === 'PT' ? 'Sem sensor' : 'No sensor')}</strong>
+                        <span>{zone ? `${zone.name} · ${zone.moisture}%` : (language === 'PT' ? 'não reconhecido' : 'not detected')}</span>
+                      </div>
+                      <span className={`hw3-signal ${signalClass(inSig[g.gpio])}`}>
+                        <span className="hw3-signal-dot" />
+                        {inSig[g.gpio].known
+                          ? (inSig[g.gpio].active
+                              ? (language === 'PT' ? 'A receber sinal' : 'Receiving signal')
+                              : (language === 'PT' ? 'Sem sinal' : 'No signal'))
+                          : (language === 'PT' ? 'Offline' : 'Offline')}
+                        {inSig[g.gpio].value !== null && <b>{inSig[g.gpio].value}</b>}
+                      </span>
                     </div>
-                    <span className={`hw3-signal ${signalClass(inSig[g.gpio])}`}>
-                      <span className="hw3-signal-dot" />
-                      {inSig[g.gpio].known
-                        ? (inSig[g.gpio].active
-                            ? (language === 'PT' ? 'A receber sinal' : 'Receiving signal')
-                            : (language === 'PT' ? 'Sem sinal' : 'No signal'))
-                        : (language === 'PT' ? 'Offline' : 'Offline')}
-                      {inSig[g.gpio].value !== null && <b>{inSig[g.gpio].value}</b>}
-                    </span>
+                    <div className={`hw3-wire hw3-wire-input ${signalClass(inSig[g.gpio])}`}>
+                      <span className="hw3-wire-dot" />
+                      <span className="hw3-wire-line" />
+                      <span className="hw3-wire-arrow" />
+                    </div>
                   </div>
-                  <div className={`hw3-wire hw3-wire-input ${signalClass(inSig[g.gpio])}`}>
+                );
+              })}
+            </div>
+
+            {/* ── Coluna 2: ESP32-S3 (centro) ── */}
+            <div className="hw3-col hw3-col-center">
+              <div className="hw3-chip-frame">
+                <div className="hw3-chip-header">
+                  <span className="hw3-chip-icon"><Cpu size={18} /></span>
+                  <div className="hw3-chip-titles">
+                    <strong>ESP32-S3</strong>
+                    <span>{deviceOnline ? (language === 'PT' ? 'reconhecido' : 'recognized') : (language === 'PT' ? 'não reconhecido' : 'not recognized')}</span>
+                  </div>
+                  <span className={`hw3-chip-dot ${deviceOnline ? 'on' : 'off'}`} />
+                </div>
+                <div className="hw3-chip-body">
+                  <div className="hw3-pin-group">
+                    {inputPins.map(g => (
+                      <div key={g.gpio} className={`hw3-pin hw3-pin-input ${signalClass(inSig[g.gpio])}`}>
+                        <span className="hw3-pin-num">GPIO {g.gpio}</span>
+                        <span className="hw3-pin-state" title={inSig[g.gpio].known ? (inSig[g.gpio].active ? (language === 'PT' ? 'A receber sinal' : 'Receiving signal') : (language === 'PT' ? 'Sem sinal' : 'No signal')) : 'Offline'}>
+                          <span className="hw3-pin-led" />
+                          <span className="hw3-pin-dir">INPUT</span>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="hw3-chip-divider" />
+                  <div className="hw3-pin-group">
+                    {outputPins.map(g => (
+                      <div key={g.gpio} className={`hw3-pin hw3-pin-output ${signalClass(outSig[g.gpio])}`}>
+                        <span className="hw3-pin-num">GPIO {g.gpio}</span>
+                        <span className="hw3-pin-state" title={outSig[g.gpio].known ? (outSig[g.gpio].active ? (language === 'PT' ? 'A emitir sinal' : 'Emitting signal') : (language === 'PT' ? 'Sem sinal' : 'No signal')) : 'Offline'}>
+                          <span className="hw3-pin-led" />
+                          <span className="hw3-pin-dir">OUTPUT</span>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ── Coluna 3: Relés (OUTPUT) ── */}
+            <div className="hw3-col hw3-col-right" style={{ '--hw-offset': 'var(--hw-right-offset)' } as React.CSSProperties}>
+              <span className="hw3-col-caption hw3-caption-output">OUTPUT</span>
+              {outputPins.map((g) => (
+                <div key={g.gpio} className="hw3-relay-row">
+                  <div className={`hw3-wire hw3-wire-output ${signalClass(outSig[g.gpio])}`}>
                     <span className="hw3-wire-dot" />
                     <span className="hw3-wire-line" />
                     <span className="hw3-wire-arrow" />
                   </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* ── Coluna 2: ESP32-S3 (centro) ── */}
-          <div className="hw3-col hw3-col-center">
-            <div className="hw3-chip-frame">
-              <div className="hw3-chip-header">
-                <span className="hw3-chip-icon"><Cpu size={18} /></span>
-                <div className="hw3-chip-titles">
-                  <strong>ESP32-S3</strong>
-                  <span>{deviceOnline ? (language === 'PT' ? 'reconhecido' : 'recognized') : (language === 'PT' ? 'não reconhecido' : 'not recognized')}</span>
-                </div>
-                <span className={`hw3-chip-dot ${deviceOnline ? 'on' : 'off'}`} />
-              </div>
-              <div className="hw3-chip-body">
-                <div className="hw3-pin-group">
-                  {inputPins.map(g => (
-                    <div key={g.gpio} className={`hw3-pin hw3-pin-input ${signalClass(inSig[g.gpio])}`}>
-                      <span className="hw3-pin-num">GPIO {g.gpio}</span>
-                      <span className="hw3-pin-state" title={inSig[g.gpio].known ? (inSig[g.gpio].active ? (language === 'PT' ? 'A receber sinal' : 'Receiving signal') : (language === 'PT' ? 'Sem sinal' : 'No signal')) : 'Offline'}>
-                        <span className="hw3-pin-led" />
-                        <span className="hw3-pin-dir">INPUT</span>
-                      </span>
+                  <div className={`hw3-block hw3-block-output ${signalClass(outSig[g.gpio])}`}>
+                    <span className="hw3-block-label">{g.label}</span>
+                    <div className="hw3-block-info">
+                      <strong>{g.func || '—'}</strong>
+                      <span>{g.inChannel || '—'}</span>
                     </div>
-                  ))}
-                </div>
-                <div className="hw3-chip-divider" />
-                <div className="hw3-pin-group">
-                  {outputPins.map(g => (
-                    <div key={g.gpio} className={`hw3-pin hw3-pin-output ${signalClass(outSig[g.gpio])}`}>
-                      <span className="hw3-pin-num">GPIO {g.gpio}</span>
-                      <span className="hw3-pin-state" title={outSig[g.gpio].known ? (outSig[g.gpio].active ? (language === 'PT' ? 'A emitir sinal' : 'Emitting signal') : (language === 'PT' ? 'Sem sinal' : 'No signal')) : 'Offline'}>
-                        <span className="hw3-pin-led" />
-                        <span className="hw3-pin-dir">OUTPUT</span>
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* ── Coluna 3: Relés (OUTPUT) ── */}
-          <div className="hw3-col hw3-col-right" style={{ '--hw-offset': 'var(--hw-right-offset)' } as React.CSSProperties}>
-            <span className="hw3-col-caption hw3-caption-output">OUTPUT</span>
-            {outputPins.map((g) => (
-              <div key={g.gpio} className="hw3-relay-row">
-                <div className={`hw3-wire hw3-wire-output ${signalClass(outSig[g.gpio])}`}>
-                  <span className="hw3-wire-dot" />
-                  <span className="hw3-wire-line" />
-                  <span className="hw3-wire-arrow" />
-                </div>
-                <div className={`hw3-block hw3-block-output ${signalClass(outSig[g.gpio])}`}>
-                  <span className="hw3-block-label">{g.label}</span>
-                  <div className="hw3-block-info">
-                    <strong>{g.func || '—'}</strong>
-                    <span>{g.inChannel || '—'}</span>
+                    <span className={`hw3-signal ${signalClass(outSig[g.gpio])}`}>
+                      <span className="hw3-signal-dot" />
+                      {outSig[g.gpio].known
+                        ? (outSig[g.gpio].active
+                            ? (language === 'PT' ? 'A emitir sinal' : 'Emitting signal')
+                            : (language === 'PT' ? 'Sem sinal' : 'No signal'))
+                        : (language === 'PT' ? 'Offline' : 'Offline')}
+                    </span>
                   </div>
-                  <span className={`hw3-signal ${signalClass(outSig[g.gpio])}`}>
-                    <span className="hw3-signal-dot" />
-                    {outSig[g.gpio].known
-                      ? (outSig[g.gpio].active
-                          ? (language === 'PT' ? 'A emitir sinal' : 'Emitting signal')
-                          : (language === 'PT' ? 'Sem sinal' : 'No signal'))
-                      : (language === 'PT' ? 'Offline' : 'Offline')}
-                  </span>
                 </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Legend */}
+          <div className="hw3-legend">
+            <span className="hw3-legend-title">{language === 'PT' ? 'LEGENDA' : 'LEGEND'}</span>
+            <div className="hw3-legend-item">
+              <span className="hw3-legend-dot hw3-legend-green" />
+              <span className="hw3-legend-label">INPUT</span>
+              <span className="hw3-legend-desc">{language === 'PT' ? 'Entrada' : 'Input'}</span>
+            </div>
+            <div className="hw3-legend-item">
+              <span className="hw3-legend-dot hw3-legend-orange" />
+              <span className="hw3-legend-label">OUTPUT</span>
+              <span className="hw3-legend-desc">{language === 'PT' ? 'Saída' : 'Output'}</span>
+            </div>
+            <div className="hw3-legend-live">
+              <span className="hw3-legend-desc">{language === 'PT' ? 'A receber sinal' : 'Receiving'}: <b>{activeInputs}/{inputPins.length}</b></span>
+              <span className="hw3-legend-desc">{language === 'PT' ? 'A emitir sinal' : 'Emitting'}: <b>{activeOutputs}/{outputPins.length}</b></span>
+              <span className={`hw3-legend-desc ${deviceOnline ? 'sig-active' : 'sig-unknown'}`}>{deviceOnline ? (language === 'PT' ? 'Telemetria real' : 'Live telemetry') : (language === 'PT' ? 'Controlador offline' : 'Controller offline')}</span>
+            </div>
+          </div>
+
+          {/* Editable GPIO Table */}
+          {editingGpio !== null && (
+            <div className="gpio-edit-table-wrap">
+              <div className="gpio-edit-table-heading">
+                <h4>{language === 'PT' ? 'Editar configuração GPIO' : 'Edit GPIO Configuration'}</h4>
+                <span className="gpio-edit-count">
+                  {gpioConfig.length}/{ESP32S3_ALL_GPIOS.length} {language === 'PT' ? 'GPIOs em uso' : 'GPIOs in use'}
+                </span>
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Legend */}
-        <div className="hw3-legend">
-          <span className="hw3-legend-title">{language === 'PT' ? 'LEGENDA' : 'LEGEND'}</span>
-          <div className="hw3-legend-item">
-            <span className="hw3-legend-dot hw3-legend-green" />
-            <span className="hw3-legend-label">INPUT</span>
-            <span className="hw3-legend-desc">{language === 'PT' ? 'Entrada' : 'Input'}</span>
-          </div>
-          <div className="hw3-legend-item">
-            <span className="hw3-legend-dot hw3-legend-orange" />
-            <span className="hw3-legend-label">OUTPUT</span>
-            <span className="hw3-legend-desc">{language === 'PT' ? 'Saída' : 'Output'}</span>
-          </div>
-          <div className="hw3-legend-live">
-            <span className="hw3-legend-desc">{language === 'PT' ? 'A receber sinal' : 'Receiving'}: <b>{activeInputs}/{inputPins.length}</b></span>
-            <span className="hw3-legend-desc">{language === 'PT' ? 'A emitir sinal' : 'Emitting'}: <b>{activeOutputs}/{outputPins.length}</b></span>
-            <span className={`hw3-legend-desc ${deviceOnline ? 'sig-active' : 'sig-unknown'}`}>{deviceOnline ? (language === 'PT' ? 'Telemetria real' : 'Live telemetry') : (language === 'PT' ? 'Controlador offline' : 'Controller offline')}</span>
-          </div>
-        </div>
-
-        {/* Editable GPIO Table */}
-        {editingGpio !== null && (
-          <div className="gpio-edit-table-wrap">
-            <div className="gpio-edit-table-heading">
-              <h4>{language === 'PT' ? 'Editar configuração GPIO' : 'Edit GPIO Configuration'}</h4>
-              <span className="gpio-edit-count">
-                {gpioConfig.length}/{ESP32S3_ALL_GPIOS.length} {language === 'PT' ? 'GPIOs em uso' : 'GPIOs in use'}
-              </span>
+              <div className="gpio-edit-table-scroll">
+              <table className="gpio-edit-table">
+                <thead>
+                  <tr>
+                    <th>GPIO</th>
+                    <th>{language === 'PT' ? 'Direção' : 'Direction'}</th>
+                    <th>{language === 'PT' ? 'Rótulo' : 'Label'}</th>
+                    <th>{language === 'PT' ? 'Função' : 'Function'}</th>
+                    <th>{language === 'PT' ? 'Canal Relé' : 'Relay Channel'}</th>
+                    <th>{language === 'PT' ? 'Ações' : 'Actions'}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {gpioConfig.map((g) => {
+                    const pinOptions = [g.gpio, ...getAvailableGpios(g.id)]
+                      .filter((p, i, arr) => arr.indexOf(p) === i)
+                      .sort((a, b) => a - b)
+                      .map(p => ({ value: p, label: `GPIO ${p}` }));
+                    return (
+                      <tr key={g.id}>
+                        <td>
+                          <BrandSelect
+                            value={g.gpio}
+                            options={pinOptions}
+                            onChange={(v) => handleGpioPinChange(g.id, v)}
+                            className="brand-select-pin"
+                          />
+                        </td>
+                        <td>
+                          <BrandSelect
+                            value={g.direction}
+                            options={[
+                              { value: 'INPUT', label: 'INPUT' },
+                              { value: 'OUTPUT', label: 'OUTPUT' },
+                            ]}
+                            onChange={(v) => handleGpioUpdate(g.id, 'direction', v)}
+                            className="brand-select-direction"
+                          />
+                        </td>
+                        <td>
+                          <div className="gpio-field">
+                            <input className="gpio-input" value={g.label} onChange={(e) => handleGpioUpdate(g.id, 'label', e.target.value)} />
+                            <button type="button" className={`gpio-kb-toggle ${gpioKb?.id === g.id && gpioKb.field === 'label' ? 'active' : ''}`} onClick={() => toggleGpioKb(g.id, 'label')} aria-label={language === 'PT' ? 'Teclado virtual' : 'Virtual keyboard'}>
+                              <Keyboard size={13} />
+                            </button>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="gpio-field">
+                            <input className="gpio-input" value={g.func} onChange={(e) => handleGpioUpdate(g.id, 'func', e.target.value)} />
+                            <button type="button" className={`gpio-kb-toggle ${gpioKb?.id === g.id && gpioKb.field === 'func' ? 'active' : ''}`} onClick={() => toggleGpioKb(g.id, 'func')} aria-label={language === 'PT' ? 'Teclado virtual' : 'Virtual keyboard'}>
+                              <Keyboard size={13} />
+                            </button>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="gpio-field">
+                            <input className="gpio-input gpio-input-sm" value={g.inChannel} onChange={(e) => handleGpioUpdate(g.id, 'inChannel', e.target.value)} placeholder="IN—" />
+                            <button type="button" className={`gpio-kb-toggle ${gpioKb?.id === g.id && gpioKb.field === 'inChannel' ? 'active' : ''}`} onClick={() => toggleGpioKb(g.id, 'inChannel')} aria-label={language === 'PT' ? 'Teclado virtual' : 'Virtual keyboard'}>
+                              <Keyboard size={13} />
+                            </button>
+                          </div>
+                        </td>
+                        <td>
+                          <button type="button" className="gpio-row-delete" onClick={() => removeGpioRow(g.id)} aria-label={language === 'PT' ? 'Remover GPIO' : 'Remove GPIO'} title={language === 'PT' ? 'Remover esta entrada/saída' : 'Remove this input/output'}>
+                            <Trash2 size={14} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              </div>
+              <button type="button" className="gpio-add-btn" onClick={addGpioRow} disabled={getAvailableGpios().length === 0}>
+                <Plus size={15} /> {language === 'PT' ? 'Adicionar GPIO' : 'Add GPIO'}
+              </button>
+              <p className="gpio-reserved-note">
+                {language === 'PT'
+                  ? `Pinos reservados pelo firmware (não disponíveis): GPIO 0 (Botão BOOT / Emergência), GPIO 48 (LED de estado).`
+                  : `Pins reserved by the firmware (not available): GPIO 0 (BOOT button / Emergency), GPIO 48 (status LED).`}
+              </p>
+              <button className="save-btn" onClick={saveGpioConfig}>
+                <Save size={15} /> {language === 'PT' ? 'Guardar configuração GPIO' : 'Save GPIO configuration'}
+              </button>
+              {gpioKb && (() => {
+                const row = gpioConfig.find(r => r.id === gpioKb.id);
+                if (!row) return null;
+                const fieldLabels: Record<string, { PT: string; EN: string }> = {
+                  label: { PT: 'Rótulo', EN: 'Label' },
+                  func: { PT: 'Função', EN: 'Function' },
+                  inChannel: { PT: 'Canal Relé', EN: 'Relay Channel' },
+                };
+                const value = (row as unknown as Record<string, string>)[gpioKb.field] || '';
+                return (
+                  <FullKeyboard
+                    value={value}
+                    onChange={(v) => handleGpioUpdate(row.id, gpioKb.field, v)}
+                    onSubmit={() => setGpioKb(null)}
+                    onClose={() => setGpioKb(null)}
+                    language={language}
+                    title={`GPIO ${row.gpio} · ${language === 'PT' ? fieldLabels[gpioKb.field].PT : fieldLabels[gpioKb.field].EN}`}
+                    hint={language === 'PT' ? 'Também pode escrever com o teclado físico' : 'You can also type using your physical keyboard'}
+                  />
+                );
+              })()}
             </div>
-            <div className="gpio-edit-table-scroll">
-            <table className="gpio-edit-table">
-              <thead>
-                <tr>
-                  <th>GPIO</th>
-                  <th>{language === 'PT' ? 'Direção' : 'Direction'}</th>
-                  <th>{language === 'PT' ? 'Rótulo' : 'Label'}</th>
-                  <th>{language === 'PT' ? 'Função' : 'Function'}</th>
-                  <th>{language === 'PT' ? 'Canal Relé' : 'Relay Channel'}</th>
-                  <th>{language === 'PT' ? 'Ações' : 'Actions'}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {gpioConfig.map((g) => {
-                  const pinOptions = [g.gpio, ...getAvailableGpios(g.id)]
-                    .filter((p, i, arr) => arr.indexOf(p) === i)
-                    .sort((a, b) => a - b)
-                    .map(p => ({ value: p, label: `GPIO ${p}` }));
-                  return (
-                    <tr key={g.id}>
-                      <td>
-                        <BrandSelect
-                          value={g.gpio}
-                          options={pinOptions}
-                          onChange={(v) => handleGpioPinChange(g.id, v)}
-                          className="brand-select-pin"
-                        />
-                      </td>
-                      <td>
-                        <BrandSelect
-                          value={g.direction}
-                          options={[
-                            { value: 'INPUT', label: 'INPUT' },
-                            { value: 'OUTPUT', label: 'OUTPUT' },
-                          ]}
-                          onChange={(v) => handleGpioUpdate(g.id, 'direction', v)}
-                          className="brand-select-direction"
-                        />
-                      </td>
-                      <td>
-                        <div className="gpio-field">
-                          <input className="gpio-input" value={g.label} onChange={(e) => handleGpioUpdate(g.id, 'label', e.target.value)} />
-                          <button type="button" className={`gpio-kb-toggle ${gpioKb?.id === g.id && gpioKb.field === 'label' ? 'active' : ''}`} onClick={() => toggleGpioKb(g.id, 'label')} aria-label={language === 'PT' ? 'Teclado virtual' : 'Virtual keyboard'}>
-                            <Keyboard size={13} />
-                          </button>
-                        </div>
-                      </td>
-                      <td>
-                        <div className="gpio-field">
-                          <input className="gpio-input" value={g.func} onChange={(e) => handleGpioUpdate(g.id, 'func', e.target.value)} />
-                          <button type="button" className={`gpio-kb-toggle ${gpioKb?.id === g.id && gpioKb.field === 'func' ? 'active' : ''}`} onClick={() => toggleGpioKb(g.id, 'func')} aria-label={language === 'PT' ? 'Teclado virtual' : 'Virtual keyboard'}>
-                            <Keyboard size={13} />
-                          </button>
-                        </div>
-                      </td>
-                      <td>
-                        <div className="gpio-field">
-                          <input className="gpio-input gpio-input-sm" value={g.inChannel} onChange={(e) => handleGpioUpdate(g.id, 'inChannel', e.target.value)} placeholder="IN—" />
-                          <button type="button" className={`gpio-kb-toggle ${gpioKb?.id === g.id && gpioKb.field === 'inChannel' ? 'active' : ''}`} onClick={() => toggleGpioKb(g.id, 'inChannel')} aria-label={language === 'PT' ? 'Teclado virtual' : 'Virtual keyboard'}>
-                            <Keyboard size={13} />
-                          </button>
-                        </div>
-                      </td>
-                      <td>
-                        <button type="button" className="gpio-row-delete" onClick={() => removeGpioRow(g.id)} aria-label={language === 'PT' ? 'Remover GPIO' : 'Remove GPIO'} title={language === 'PT' ? 'Remover esta entrada/saída' : 'Remove this input/output'}>
-                          <Trash2 size={14} />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            </div>
-            <button type="button" className="gpio-add-btn" onClick={addGpioRow} disabled={getAvailableGpios().length === 0}>
-              <Plus size={15} /> {language === 'PT' ? 'Adicionar GPIO' : 'Add GPIO'}
-            </button>
-            <p className="gpio-reserved-note">
-              {language === 'PT'
-                ? `Pinos reservados pelo firmware (não disponíveis): GPIO 0 (Botão BOOT / Emergência), GPIO 48 (LED de estado).`
-                : `Pins reserved by the firmware (not available): GPIO 0 (BOOT button / Emergency), GPIO 48 (status LED).`}
-            </p>
-            <button className="save-btn" onClick={saveGpioConfig}>
-              <Save size={15} /> {language === 'PT' ? 'Guardar configuração GPIO' : 'Save GPIO configuration'}
-            </button>
-            {gpioKb && (() => {
-              const row = gpioConfig.find(r => r.id === gpioKb.id);
-              if (!row) return null;
-              const fieldLabels: Record<string, { PT: string; EN: string }> = {
-                label: { PT: 'Rótulo', EN: 'Label' },
-                func: { PT: 'Função', EN: 'Function' },
-                inChannel: { PT: 'Canal Relé', EN: 'Relay Channel' },
-              };
-              const value = (row as unknown as Record<string, string>)[gpioKb.field] || '';
-              return (
-                <FullKeyboard
-                  value={value}
-                  onChange={(v) => handleGpioUpdate(row.id, gpioKb.field, v)}
-                  onSubmit={() => setGpioKb(null)}
-                  onClose={() => setGpioKb(null)}
-                  language={language}
-                  title={`GPIO ${row.gpio} · ${language === 'PT' ? fieldLabels[gpioKb.field].PT : fieldLabels[gpioKb.field].EN}`}
-                  hint={language === 'PT' ? 'Também pode escrever com o teclado físico' : 'You can also type using your physical keyboard'}
-                />
-              );
-            })()}
-          </div>
-        )}
+          )}
+        </Panel>
+      )}
+    </div>
+  );
+}
+
+function EmbeddedUnavailable({ language }: { language: Language }) {
+  return (
+    <div className="two-column">
+      <Panel style={{ gridColumn: '1 / -1' }}>
+        <PanelHeader
+          eyebrow="HARDWARE"
+          title={language === 'PT' ? 'Disponível apenas na versão web' : 'Available only in the web version'}
+        />
+        <div className="empty-state">
+          <MapIcon size={26} />
+          <span>{language === 'PT'
+            ? 'O mapa de pinos, a edição de pinos e o mapa de sensores e válvulas estão disponíveis apenas na versão web (PC, telemóvel ou tablet).'
+            : 'The pin map, pin editing and the sensor/valve location map are available only in the web version (PC, phone or tablet).'}</span>
+        </div>
       </Panel>
     </div>
   );
