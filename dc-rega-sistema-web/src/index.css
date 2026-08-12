@@ -719,26 +719,57 @@ textarea:focus-visible {
   .pk-body { padding: 10px 10px 14px; gap: 4px; }
 }
 
-/* Ecrãs grandes (desktop): teclado maior e mais confortável de usar com rato,
-   em vez de ficar minúsculo a flutuar no centro de um monitor grande. */
+/* Ecrãs grandes (desktop): o teclado escala de forma fluida com a largura
+   do ecrã (clamp), tal como o modo embedded escala para ecrãs pequenos —
+   em vez de saltar para um tamanho fixo, cresce em proporção até um monitor
+   ultra-wide, ficando sempre confortável de ler e tocar com o rato. */
 @media (min-width: 1200px) {
-  .full-keyboard { max-width: 920px; border-radius: 22px; }
-  .keyboard-header { padding: 20px 26px; font-size: 13px; }
-  .full-keyboard .keyboard-display { font-size: 30px; padding: 22px 26px; }
-  .keyboard-hint { font-size: 12.5px; padding: 6px 20px 0; }
-  .pk-body { padding: 20px 24px 26px; gap: 9px; }
-  .pk-row { gap: 8px; }
-  .pk-key { height: 54px; font-size: 16px; border-radius: 10px; }
-  .pk-key svg { width: 18px; height: 18px; }
-  .pk-tab, .pk-caps, .pk-shift, .pk-ctrl, .pk-alt { font-size: 13px; }
-  .pk-enter { font-size: 14px; }
+  .full-keyboard {
+    width: clamp(760px, 56vw, 1120px);
+    max-width: clamp(760px, 56vw, 1120px);
+    border-radius: 24px;
+  }
+  .keyboard-header {
+    padding: clamp(18px, 1.4vw, 26px) clamp(22px, 1.8vw, 32px);
+    font-size: clamp(12px, .8vw, 15px);
+  }
+  .keyboard-header svg { width: clamp(18px, 1.2vw, 22px); height: clamp(18px, 1.2vw, 22px); }
+  .full-keyboard .keyboard-display {
+    font-size: clamp(28px, 2.1vw, 38px);
+    padding: clamp(22px, 1.8vw, 32px) clamp(24px, 2vw, 34px);
+  }
+  .keyboard-hint {
+    font-size: clamp(12px, .78vw, 14px);
+    padding: clamp(6px, .5vw, 10px) clamp(20px, 1.6vw, 30px) 0;
+  }
+  .pk-body {
+    padding: clamp(18px, 1.6vw, 30px) clamp(22px, 1.8vw, 32px) clamp(24px, 2vw, 34px);
+    gap: clamp(8px, .7vw, 12px);
+  }
+  .pk-row { gap: clamp(7px, .6vw, 11px); }
+  .pk-key {
+    height: clamp(50px, 3.6vw, 68px);
+    font-size: clamp(15px, 1.05vw, 19px);
+    border-radius: clamp(9px, .8vw, 13px);
+  }
+  .pk-key svg { width: clamp(17px, 1.2vw, 21px); height: clamp(17px, 1.2vw, 21px); }
+  .pk-tab, .pk-caps, .pk-shift, .pk-ctrl, .pk-alt { font-size: clamp(12px, .85vw, 14px); }
+  .pk-enter { font-size: clamp(13px, .9vw, 15px); }
 
   /* O ecrã de login define a sua própria largura fixa (760px); em ecrãs
-     grandes seguimos a mesma escala do teclado geral acima. */
-  .login-screen .full-keyboard { width: min(920px, calc(100vw - 48px)); max-width: 920px; }
-  .login-screen .pk-key { height: 54px; font-size: 16px; }
-  .login-screen .pk-enter { font-size: 14px; }
+     grandes segue a mesma escala fluida do teclado geral acima. */
+  .login-screen .full-keyboard {
+    width: clamp(760px, 56vw, 1120px);
+    max-width: clamp(760px, 56vw, 1120px);
+  }
+  .login-screen .pk-key { height: clamp(50px, 3.6vw, 68px); font-size: clamp(15px, 1.05vw, 19px); }
+  .login-screen .pk-enter { font-size: clamp(13px, .9vw, 15px); }
+  .login-screen .full-keyboard .keyboard-display {
+    font-size: clamp(30px, 2.3vw, 40px);
+    padding: clamp(24px, 2vw, 34px) clamp(24px, 2vw, 34px);
+  }
 }
+
 
 @media (max-width: 1000px) {
   .content-wrap { padding: 0 22px 40px; }
