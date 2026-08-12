@@ -873,9 +873,6 @@ function App() {
             </div>
             <div className="topbar-right">
               <div className="weather" title={`Humidade ${weather.humidity}% · Vento ${weather.windSpeed} km/h · Prob. chuva (6h) ${weather.rainChance}%`}><CloudSun size={28} /><div><strong>{weather.temp}°C</strong><span>{weather.city}, {weather.country} · {weather.desc}</span></div></div>
-              <button className="lang-toggle-btn" onClick={() => setLanguage(l => l === 'PT' ? 'EN' : 'PT')} aria-label="Trocar idioma" title={language === 'PT' ? 'Switch to English' : 'Mudar para Português'}>
-                <Globe2 size={18} /><span className="lang-label">{language}</span>
-              </button>
               <button className="settings-btn" onClick={() => setSettingsOpen(true)} aria-label="Abrir definições"><Settings2 size={20} /></button>
             </div>
           </div>
@@ -1950,25 +1947,27 @@ function MapView({ zones, pumpOn, onAddZone, onDuplicateZone, onDragZone, onRena
       </div>
 
       <div className="map-toolbar">
-        <button
-          className={`map-tool-btn ${editMode ? 'active' : ''}`}
-          onClick={() => {
-            setEditMode((v) => {
-              const next = !v;
-              setSelected(null);
-              setEditorTool('select');
-              return next;
-            });
-          }}
-        >
-          <PencilLine size={15} />{editMode ? 'Modo edição ativo' : 'Editar mapa'}
-        </button>
-        <button className={`map-tool-btn ${showPinout ? 'active' : ''}`} onClick={() => setShowPinout(v => !v)}>
-          <CircuitBoard size={15} />Pinout ESP32-S3
-        </button>
-        <button className={`map-tool-btn ${layoutSaved ? 'active' : ''}`} onClick={handleSaveLayout}>
-          <Save size={15} />{layoutSaved ? 'Layout guardado!' : 'Guardar layout'}
-        </button>
+        <div className="map-primary-btns">
+          <button
+            className={`map-tool-btn ${editMode ? 'active' : ''}`}
+            onClick={() => {
+              setEditMode((v) => {
+                const next = !v;
+                setSelected(null);
+                setEditorTool('select');
+                return next;
+              });
+            }}
+          >
+            <PencilLine size={15} />{editMode ? 'Modo edição ativo' : 'Editar mapa'}
+          </button>
+          <button className={`map-tool-btn ${showPinout ? 'active' : ''}`} onClick={() => setShowPinout(v => !v)}>
+            <CircuitBoard size={15} />Pinout ESP32-S3
+          </button>
+          <button className={`map-tool-btn ${layoutSaved ? 'active' : ''}`} onClick={handleSaveLayout}>
+            <Save size={15} />{layoutSaved ? 'Layout guardado!' : 'Guardar layout'}
+          </button>
+        </div>
         {editMode && (
           <>
             <button className={`map-tool-btn ${editorTool === 'select' ? 'active' : ''}`} onClick={() => setEditorTool('select')}>
