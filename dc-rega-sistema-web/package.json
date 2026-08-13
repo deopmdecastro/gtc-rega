@@ -4,8 +4,11 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "predev": "node scripts/sync-pdf.mjs",
     "dev": "vite",
+    "prebuild": "node scripts/sync-pdf.mjs",
     "build": "vite build",
+    "sync-pdf": "node scripts/sync-pdf.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.app.json"

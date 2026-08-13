@@ -2142,6 +2142,47 @@ textarea:focus-visible {
 }
 .login-screen .full-keyboard { width: min(760px, calc(100vw - 32px)); max-width: 760px; }
 
+/* Em telemóveis, o teclado virtual passa a ancorar-se ao fundo do ecrã,
+   como um teclado nativo, em vez de flutuar centrado num "vazio" preto.
+   Esta regra aplica-se a QUALQUER teclado (login, numérico, texto), não só
+   ao do ecrã de login, e cobre a gama real de larguras de telemóvel
+   (~360–480px) — antes só existia uma versão equivalente restrita a
+   max-width:320px (pensada só para o ecrã embutido do ESP32), pelo que
+   nenhum telemóvel normal a recebia. Fica propositadamente depois da regra
+   "centrada" acima para a vencer na cascata neste breakpoint. */
+@media (max-width: 640px) {
+  .keyboard-overlay,
+  .login-screen .keyboard-overlay {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 0;
+    background: rgba(3, 7, 11, .62);
+  }
+  .keyboard,
+  .login-screen .keyboard {
+    width: 100vw;
+    max-width: 100vw;
+    margin: 0;
+    border-radius: 18px 18px 0 0;
+    border-left: 0;
+    border-right: 0;
+    border-bottom: 0;
+    animation: kb-slide-up-mobile .26s cubic-bezier(.16, 1, .3, 1);
+  }
+  .full-keyboard,
+  .login-screen .full-keyboard {
+    width: 100vw !important;
+    max-width: 100vw !important;
+  }
+  .keyboard-display,
+  .login-screen .keyboard-display { border-radius: 0; }
+}
+@keyframes kb-slide-up-mobile {
+  from { transform: translateY(100%); opacity: .7; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
 .keyboard-header { padding: 16px 22px; }
 .keyboard-hint { padding: 8px 20px 4px; font-style: italic; color: #6b8390; }
 .keyboard-keys { gap: 10px; padding: 18px 20px 10px; }
