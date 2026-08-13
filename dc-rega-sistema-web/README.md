@@ -56,19 +56,65 @@ npm run lint       # ESLint
 ## Stack
 - React 18 · TypeScript · Vite 5 · lucide-react · Supabase JS
 
-## Notas
-- `backend/` contém um mock backend Express + Socket.IO para desenvolvimento local (não é usado pela app React).
+## Arquitetura geral (Vercel + backend + ESP32-S3)
+```text
+                INTERNET
+                   │
+                   ▼
+        ┌─────────────────────┐
+        │       VERCEL        │   gtc-rega.vercel.app
+        │  GTC Rega Web       │   React/Vite (só ficheiros estáticos)
+        │  (este projeto)     │
+        └──────────┬──────────┘
+                   │ HTTPS + WebSocket (VITE_API_URL)
+                   ▼
+        ┌─────────────────────┐
+        │  backend/ (Docker)  │   Express + Socket.IO, auto-hospedado
+        │  REST + WebSocket   │   (docker-compose.yml, NÃO corre na Vercel)
+        │  DEVICE_TOKEN       │
+        └──────────┬──────────┘
+                   │ REST (telemetria/comandos) — mesma rede ou VPN/porta exposta
+                   ▼
+        ┌─────────────────────┐
+        │      ESP32-S3       │   GTC_SERVER_HOST/PORT em firmware/…/config.h
+        │  Web server local   │   também expõe UI própria: http://gtc-rega.local
+        │  BLE de emparelh.   │
+        └──────────┬──────────┘
+                   │
+            Sensores · Válvulas · Bomba
+```
+- O **frontend** (este repositório) fica só na Vercel — nunca fala diretamente
+  com o IP do ESP32 pela Internet; usa sempre `VITE_API_URL` para chegar ao
+  `backend/`.
+- O **backend** (`backend/`, Express + Socket.IO) é o único componente que
+  fala com o ESP32-S3, autentica-o via `DEVICE_TOKEN` e mantém o estado
+  (`gtc-state.json`, `gtc-layout.json`) num volume Docker. Corre num
+  self-host (Docker/VPS) — **não é um mock** e é o backend real usado em
+  produção pela app React (ver `docker-compose.yml` e `.env.example`).
+- O **ESP32-S3** nunca fica exposto diretamente à Internet (sem port-forward
+  a partir do router); comunica para fora através do backend, e continua a
+  servir a sua própria interface local (`gtc-rega.local`, LittleFS) e BLE
+  para configuração mesmo sem Internet.
+- Não há MQTT no fluxo atual — o par REST + WebSocket entre o ESP32, o
+  backend e o frontend já cobre telemetria, comandos e estado em tempo real
+  para um único controlador. Um broker MQTT só passaria a valer a pena se o
+  projeto evoluir para vários ESP32 em paralelo (ex.: `REGA-001`,
+  `REGA-002`, …), cada um a publicar num tópico próprio.
 
 ## Esquema elétrico (PDF)
 - A fonte de verdade do PDF é `schematics/Esquema - GTC Rega.pdf` (raiz do repositório).
 - A app usa a cópia em `src/assets/esquema-eletrico.pdf` (separador "Esquema").
-- Para sincronizar automaticamente após cada `git pull`/`git merge`, ativa os hooks uma única vez (por clone):
+- **Sincronização automática (recomendado):** `npm run dev` e `npm run build`
+  correm sempre `scripts/sync-pdf.mjs` antes (via `predev`/`prebuild`), que
+  copia a versão mais recente de `schematics/` para `src/assets/`. Isto
+  funciona em qualquer máquina e também no build da Vercel — não depende de
+  git hooks nem de ninguém correr um comando manualmente.
+- Os hooks em `.githooks/` (`post-merge`/`post-checkout`) fazem o mesmo, mas
+  só correm localmente e só depois de ativados uma vez por clone com
+  `git config core.hooksPath .githooks`; ficam como conveniência extra, não
+  como o mecanismo principal. Para sincronizar manualmente a qualquer altura:
   ```bash
-  git config core.hooksPath .githooks
-  ```
-  A partir daí, sempre que o PDF em `schematics/` for atualizado e fizeres pull, a cópia usada pela app é atualizada automaticamente. Sem ativar os hooks, copia manualmente com:
-  ```bash
-  cp "schematics/Esquema - GTC Rega.pdf" "dc-rega-sistema-web/src/assets/esquema-eletrico.pdf"
+  npm run sync-pdf
   ```
 
 ## Ícone da app (PWA / Adicionar ao ecrã principal)
