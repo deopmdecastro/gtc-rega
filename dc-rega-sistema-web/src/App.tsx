@@ -63,6 +63,11 @@ import {
 import { fetchEvents, logEvent, type EventLogEntry, saveState, loadState, saveLayout, loadLayout } from '@/lib/supabase';
 import { t } from '@/lang';
 import { getControllerClient } from '@/lib/controller';
+
+// Base da API do backend (Socket.IO/REST). Em produção (Vercel) é obrigatório
+// definir VITE_API_URL, ou os pedidos vão para o próprio domínio do frontend
+// (que não tem backend) e nunca sincronizam entre dispositivos.
+const API_BASE = import.meta.env.VITE_API_URL || '';
 import { useIsEmbedded } from '@/lib/useIsEmbedded';
 
 // Métricas do diagrama HARDWARE (têm de coincidir com --hw-row/--hw-gap no CSS)
@@ -783,7 +788,7 @@ function App() {
     // Sync to backend
     const ctrl = getControllerClient();
     // Send as custom gpio config update
-    fetch(`${import.meta.env.VITE_API_URL || ''}/api/gpio-config`, {
+    fetch(`${API_BASE}/api/gpio-config`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ config: gpioConfig }),
@@ -3294,7 +3299,7 @@ function ConnectionView({ language, deviceOnline, deviceInfo }: { language: Lang
 
   const loadBluetoothConfig = async () => {
     try {
-      const res = await fetch('/api/bluetooth/config');
+      const res = await fetch(`${API_BASE}/api/bluetooth/config`);
       if (res.ok) {
         const data = await res.json();
         setPairedDevices(data.devices || []);
@@ -3311,7 +3316,7 @@ function ConnectionView({ language, deviceOnline, deviceInfo }: { language: Lang
     setBtScanning(true);
     setBtNotice(language === 'PT' ? 'A procurar dispositivos Bluetooth...' : 'Scanning Bluetooth devices...');
     try {
-      await fetch('/api/bluetooth/scan', { method: 'POST' });
+      await fetch(`${API_BASE}/api/bluetooth/scan`, { method: 'POST' });
       setTimeout(async () => {
         if (btScanResults.length === 0) {
           setBtScanResults([
@@ -3332,7 +3337,7 @@ function ConnectionView({ language, deviceOnline, deviceInfo }: { language: Lang
   const handleSaveBtDevice = async () => {
     if (!formBtAddress.trim()) return;
     try {
-      const res = await fetch('/api/bluetooth/config', {
+      const res = await fetch(`${API_BASE}/api/bluetooth/config`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ address: formBtAddress.trim(), name: formBtName || formBtAddress.trim(), pin: formBtPin }),
@@ -3355,7 +3360,7 @@ function ConnectionView({ language, deviceOnline, deviceInfo }: { language: Lang
 
   const handleDeleteBtDevice = async (address: string) => {
     try {
-      await fetch('/api/bluetooth/config', {
+      await fetch(`${API_BASE}/api/bluetooth/config`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ address }),
@@ -3378,7 +3383,7 @@ function ConnectionView({ language, deviceOnline, deviceInfo }: { language: Lang
 
   const loadWifiConfig = async () => {
     try {
-      const res = await fetch('/api/wifi/config');
+      const res = await fetch(`${API_BASE}/api/wifi/config`);
       if (res.ok) {
         const data = await res.json();
         setSavedNetworks(data.networks || []);
@@ -3395,7 +3400,7 @@ function ConnectionView({ language, deviceOnline, deviceInfo }: { language: Lang
     setScanning(true);
     setNotice(language === 'PT' ? 'A procurar redes Wi-Fi...' : 'Scanning Wi-Fi networks...');
     try {
-      await fetch('/api/wifi/scan', { method: 'POST' });
+      await fetch(`${API_BASE}/api/wifi/scan`, { method: 'POST' });
       // Listen for scan results via polling or SSE — for now show message
       setTimeout(async () => {
         // For demo, show some example networks
@@ -3419,7 +3424,7 @@ function ConnectionView({ language, deviceOnline, deviceInfo }: { language: Lang
   const handleSaveNetwork = async () => {
     if (!formSsid.trim()) return;
     try {
-      const res = await fetch('/api/wifi/config', {
+      const res = await fetch(`${API_BASE}/api/wifi/config`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ssid: formSsid.trim(), password: formPassword, hostname: formHostname || 'gtc-esp32s3' }),
@@ -3442,7 +3447,7 @@ function ConnectionView({ language, deviceOnline, deviceInfo }: { language: Lang
 
   const handleDeleteNetwork = async (ssid: string) => {
     try {
-      await fetch('/api/wifi/config', {
+      await fetch(`${API_BASE}/api/wifi/config`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ssid }),
