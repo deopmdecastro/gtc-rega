@@ -7,7 +7,7 @@
         <property name="savedfilepath" show="1">C:/Users/Deogracia de Castro/Documents/Estudos/GTC REGA/gtc-rega/schematics/Esquema - GTC Rega.qet</property>
         <property name="savedtime" show="1">10:42</property>
     </properties>
-    <usage enabled="true" time_spent="63771"/>
+    <usage enabled="true" time_spent="65701"/>
     <newdiagrams>
         <border rows="8" colsize="60" displayrows="true" rowsize="80" cols="17" displaycols="true"/>
         <inset date="now" locmach="" author="Deogracia de Castro" displayAt="bottom" plant="" title="" filename="" indexrev="" folio="%id/%total" version="" auto_page_num="Créer un Folio Numérotation Auto"/>
