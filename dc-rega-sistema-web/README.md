@@ -58,3 +58,19 @@ npm run lint       # ESLint
 
 ## Notas
 - `backend/` contém um mock backend Express + Socket.IO para desenvolvimento local (não é usado pela app React).
+
+## Esquema elétrico (PDF)
+- A fonte de verdade do PDF é `schematics/Esquema - GTC Rega.pdf` (raiz do repositório).
+- A app usa a cópia em `src/assets/esquema-eletrico.pdf` (separador "Esquema").
+- Para sincronizar automaticamente após cada `git pull`/`git merge`, ativa os hooks uma única vez (por clone):
+  ```bash
+  git config core.hooksPath .githooks
+  ```
+  A partir daí, sempre que o PDF em `schematics/` for atualizado e fizeres pull, a cópia usada pela app é atualizada automaticamente. Sem ativar os hooks, copia manualmente com:
+  ```bash
+  cp "schematics/Esquema - GTC Rega.pdf" "dc-rega-sistema-web/src/assets/esquema-eletrico.pdf"
+  ```
+
+## Ícone da app (PWA / Adicionar ao ecrã principal)
+- `public/site.webmanifest` + `public/icon-192.png`, `public/icon-512.png`, `public/icon-maskable-512.png` e `public/apple-touch-icon.png` foram gerados a partir de `icon gtc rega.PNG` (o ícone da folha, mesmo usado no logo).
+- Ao instalar a PWA ou "Adicionar ao ecrã principal" no telemóvel, este ícone é o que aparece.

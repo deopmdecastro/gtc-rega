@@ -1,0 +1,14 @@
+#!/bin/sh
+# Sincroniza automaticamente o PDF do esquema elétrico após git pull/merge.
+# Fonte de verdade: schematics/Esquema - GTC Rega.pdf
+# Destino: dc-rega-sistema-web/src/assets/esquema-eletrico.pdf (usado pelo separador "Esquema" da app)
+
+SRC="schematics/Esquema - GTC Rega.pdf"
+DST="dc-rega-sistema-web/src/assets/esquema-eletrico.pdf"
+
+if [ -f "$SRC" ]; then
+  if ! cmp -s "$SRC" "$DST" 2>/dev/null; then
+    cp -f "$SRC" "$DST"
+    echo "[gtc-rega] PDF do esquema atualizado em $DST"
+  fi
+fi
