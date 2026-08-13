@@ -394,7 +394,7 @@
   .login-brand-mark { width: 40px; height: 40px; border-radius: 10px; }
   .login-brand-text { font-size: 16px; }
   .login-input-group { padding: 10px 12px; gap: 8px; min-height: 44px; }
-  .login-input-group input { font-size: 14px; }
+  .login-input-group input { font-size: 16px; }
   .login-kb-toggle { width: 32px; height: 32px; }
   .login-submit-btn { padding: 12px; min-height: 44px; font-size: 13px; }
   .login-footer { font-size: 9px; margin-top: 14px; gap: 8px; }
@@ -739,7 +739,7 @@
   .login-desc { font-size: 9px !important; margin: 0 0 8px; }
   .login-form { gap: 6px !important; }
   .login-input-group { padding: 7px 9px !important; border-radius: 7px; min-height: 34px; gap: 6px; }
-  .login-input-group input { font-size: 11px !important; }
+  .login-input-group input { font-size: 16px !important; }
   .login-kb-toggle { width: 26px !important; height: 26px !important; }
   .login-submit-btn { padding: 8px !important; font-size: 11px !important; min-height: 34px; margin-top: 1px; }
   .login-footer { margin-top: 8px !important; font-size: 8px !important; }

@@ -1005,7 +1005,7 @@ textarea:focus-visible {
 .pipe-mcu { stroke: rgba(255,159,67,.3); stroke-dasharray: 2 2; }
 .marker-edit-btn { display: inline-grid; place-items: center; border: 0; padding: 2px; color: #718792; background: none; cursor: pointer; transition: .2s; vertical-align: middle; margin-left: 4px; }
 .marker-edit-btn:hover { color: #1ad5d0; }
-.marker-name-input { background: #0a141a; border: 1px solid #12bcb6; border-radius: 6px; color: #dce5e8; font-size: 11px; font-family: inherit; padding: 4px 6px; outline: none; width: 120px; }
+.marker-name-input { background: #0a141a; border: 1px solid #12bcb6; border-radius: 6px; color: #dce5e8; font-size: 16px; font-family: inherit; padding: 4px 6px; outline: none; width: 120px; }
 .refresh-btn { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid #263943; border-radius: 9px; color: #18d6d0; background: #0b171d; transition: .2s; cursor: pointer; }
 .refresh-btn:hover { background: rgba(20,221,214,.1); border-color: #12bcb6; }
 .map-grid-bg { position: absolute; inset: 0; background-image: linear-gradient(rgba(20,221,214,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(20,221,214,.05) 1px, transparent 1px); background-size: 40px 40px; }
@@ -1156,7 +1156,7 @@ textarea:focus-visible {
 .language-toggle button { padding: 12px; border: 1px solid #263943; border-radius: 10px; color: #8a9aa5; background: #0b171d; font-size: 13px; font-weight: 600; transition: .2s; }
 .language-toggle button.selected { color: #1adbd4; border-color: #12bcb6; background: rgba(20,221,214,.1); }
 .field-label { display: grid; gap: 8px; margin-top: 18px; color: #7e909c; font-size: 11px; font-weight: 600; letter-spacing: .06em; }
-.field-label input { width: 100%; padding: 12px 14px; border: 1px solid #263943; border-radius: 10px; color: #dce5e8; background: #0b171d; font-size: 13px; font-family: inherit; outline: none; transition: .2s; }
+.field-label input { width: 100%; padding: 12px 14px; border: 1px solid #263943; border-radius: 10px; color: #dce5e8; background: #0b171d; font-size: 16px; font-family: inherit; outline: none; transition: .2s; }
 .field-label input:focus { border-color: #12bcb6; background: rgba(20,221,214,.04); }
 
 /* Campo de texto + botão para abrir o teclado virtual (usado nas Definições, Wi-Fi, etc.) */
@@ -1988,7 +1988,7 @@ input:focus-visible { outline: none; }
 /* ── WiFi: formulário mais organizado ── */
 .wifi-add-form { display: flex; flex-direction: column; gap: 14px; padding: 18px; margin-top: 14px; background: rgba(20,221,214,.03); border: 1px solid #1a2a33; border-radius: 12px; }
 .wifi-add-form .field-label { display: flex; flex-direction: column; gap: 8px; font-size: 11px; color: #7e909c; letter-spacing: .04em; text-transform: uppercase; font-weight: 700; }
-.wifi-add-form input { padding: 12px 14px; border: 1px solid #263943; border-radius: 10px; background: #0b171d; color: #dce5e8; font-size: 14px; font-family: inherit; letter-spacing: normal; text-transform: none; font-weight: 400; outline: none; transition: .2s; }
+.wifi-add-form input { padding: 12px 14px; border: 1px solid #263943; border-radius: 10px; background: #0b171d; color: #dce5e8; font-size: 16px; font-family: inherit; letter-spacing: normal; text-transform: none; font-weight: 400; outline: none; transition: .2s; }
 .wifi-add-form input:focus { border-color: #12bcb6; box-shadow: 0 0 0 3px rgba(18,188,182,.1); }
 .wifi-scan-results { display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow-y: auto; }
 .wifi-scan-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border: 1px solid #1a2a33; border-radius: 10px; background: #0b171d; color: #dce5e8; text-align: left; cursor: pointer; transition: .15s; }
@@ -2114,7 +2114,7 @@ textarea:focus-visible {
 .login-screen-card { padding: 44px 42px 34px; border-radius: 22px; }
 .login-form { gap: 14px; }
 .login-input-group { padding: 15px 18px; gap: 14px; border-radius: 12px; }
-.login-input-group input { font-size: 15px; color: #eaf3f4; letter-spacing: .12em; }
+.login-input-group input { font-size: 16px; color: #eaf3f4; letter-spacing: .12em; }
 .login-input-group input::placeholder { color: #4a5c66; }
 .login-input-active { border-color: #14ddd6 !important; background: #0c1a20 !important; box-shadow: 0 0 0 3px rgba(20, 221, 214, .18) !important; }
 
@@ -2857,7 +2857,7 @@ textarea:focus-visible {
   .login-desc { font-size: 10px !important; margin: 0 0 14px; }
   .login-form { gap: 8px !important; }
   .login-input-group { padding: 9px 10px !important; border-radius: 9px; gap: 7px; }
-  .login-input-group input { font-size: 12px !important; }
+  .login-input-group input { font-size: 16px !important; }
   .login-kb-toggle { width: 28px !important; height: 28px !important; border-radius: 7px; }
   .login-submit-btn { padding: 10px !important; font-size: 12px !important; border-radius: 9px; margin-top: 2px; }
   .login-footer { margin-top: 12px !important; font-size: 9px !important; }
