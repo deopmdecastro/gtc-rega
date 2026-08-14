@@ -70,13 +70,6 @@ import { getControllerClient } from '@/lib/controller';
 const API_BASE = import.meta.env.VITE_API_URL || '';
 import { useIsEmbedded } from '@/lib/useIsEmbedded';
 
-// Métricas do diagrama HARDWARE (têm de coincidir com --hw-row/--hw-gap no CSS)
-const HW_ROW = 46;
-const HW_GAP = 8;
-const HW_HEADER_OFFSET = 56;   // altura do header do chip + padding do grupo de pinos
-const HW_DIVIDER_GAP = 17;     // padding inferior + divisor + padding superior
-
-
 type Page = 'Resumo' | 'Estado' | 'Setpoints' | 'Mapa' | 'Histórico' | 'Comandos' | 'Alarmes' | 'Conexão' | 'Esquema';
 type WeekDay = 'sun' | 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat';
 type WaterSchedule = {
@@ -157,9 +150,23 @@ function eventToErrorEvent(ev: EventLogEntry): ErrorEvent {
 type GpioConfigRow = { id: string; gpio: number; direction: 'INPUT' | 'OUTPUT'; label: string; func: string; inChannel: string };
 
 const SENSOR_GPIO_MAP: Record<string, number> = { B1: 21, B2: 14 };
+const SENSOR_HARDWARE_LINKS = [
+  { sensorId: 'B1', gpio: 21, pin: 'IO21', title: 'DHT22 #1', subtitlePT: 'Temperatura / Humidade', subtitleEN: 'Temperature / Humidity' },
+  { sensorId: 'B2', gpio: 14, pin: 'IO14', title: 'DHT22 #2', subtitlePT: 'Temperatura / Humidade', subtitleEN: 'Temperature / Humidity' },
+];
 const I2C_BUS_PINS = [
-  { label: 'SCL', gpio: 16, func: 'I2C → MCP23017' },
-  { label: 'SDA', gpio: 18, func: 'I2C → MCP23017' },
+  { label: 'SCL', gpio: 16, espPin: 'IO16', mcpPin: 'SCL', func: 'I2C → MCP23017' },
+  { label: 'SDA', gpio: 18, espPin: 'IO18', mcpPin: 'SDA', func: 'I2C → MCP23017' },
+];
+const ESP32_DIRECT_PINS = [
+  { pin: '3VCC', kind: 'power', titlePT: 'Barramento 3.3V', titleEN: '3.3V power rail', detailPT: 'Alimenta DHT22, MCP23017 e pull-ups', detailEN: 'Powers DHT22, MCP23017 and pull-ups' },
+  { pin: 'GND', kind: 'ground', titlePT: 'Massa comum 0V', titleEN: 'Common ground 0V', detailPT: 'Referência elétrica do circuito', detailEN: 'Electrical reference for the circuit' },
+  { pin: 'IO16', gpio: 16, kind: 'i2c', titlePT: 'Clock I2C', titleEN: 'I2C clock', detailPT: 'Ligação ao MCP23017 · SCL', detailEN: 'Linked to MCP23017 · SCL' },
+  { pin: 'IO18', gpio: 18, kind: 'i2c', titlePT: 'Dados I2C', titleEN: 'I2C data', detailPT: 'Ligação ao MCP23017 · SDA', detailEN: 'Linked to MCP23017 · SDA' },
+  { pin: 'IO21', gpio: 21, kind: 'sensor', sensorId: 'B1', titlePT: 'DHT22 #1 · SDA', titleEN: 'DHT22 #1 · SDA', detailPT: 'Leitura de temperatura / humidade', detailEN: 'Temperature / humidity reading' },
+  { pin: 'IO14', gpio: 14, kind: 'sensor', sensorId: 'B2', titlePT: 'DHT22 #2 · SDA', titleEN: 'DHT22 #2 · SDA', detailPT: 'Leitura de temperatura / humidade', detailEN: 'Temperature / humidity reading' },
+  { pin: 'IO02', gpio: 2, kind: 'free', titlePT: 'Pino livre', titleEN: 'Free pin', detailPT: 'Reservado para não interferir no boot', detailEN: 'Reserved to avoid boot interference' },
+  { pin: 'IO03', gpio: 3, kind: 'free', titlePT: 'Pino livre', titleEN: 'Free pin', detailPT: 'Reservado para não interferir na gravação USB', detailEN: 'Reserved to avoid USB flashing issues' },
 ];
 const SYSTEM_RELAYS = [
   { relay: 'PA0', gpio: 0, inChannel: '9-E6', func: 'MOTOR ON' },
@@ -176,6 +183,25 @@ const MCP_FEEDBACK_PINS = [
   { relay: 'PB6', gpio: 14, inChannel: 'Opto', func: 'Sinal da bomba ON' },
   { relay: 'PB7', gpio: 15, inChannel: 'Opto', func: 'Sinal do relé térmico ON' },
 ];
+const MCP_CONTROL_PINS = [
+  { pin: '3VCC', funcPT: 'Alimentação 3.3V', funcEN: '3.3V supply' },
+  { pin: 'GND', funcPT: 'Massa 0V', funcEN: '0V ground' },
+  { pin: 'SCL', funcPT: 'Clock I2C ← IO16', funcEN: 'I2C clock ← IO16' },
+  { pin: 'SDA', funcPT: 'Dados I2C ↔ IO18', funcEN: 'I2C data ↔ IO18' },
+  { pin: 'RST', funcPT: 'Reset fixo em nível alto', funcEN: 'Reset tied high' },
+];
+const MCP_PORT_A_PINS = SYSTEM_RELAYS.filter((pin) => pin.relay.startsWith('PA')).map((pin) => ({ ...pin, direction: 'OUTPUT' as const }));
+const MCP_PORT_B_PINS = [
+  { relay: 'PB0', gpio: 8, inChannel: '9-E6', func: 'RELÉ TEMP ON', direction: 'OUTPUT' as const },
+  { relay: 'PB1', gpio: 9, inChannel: '', func: 'Livre', direction: 'FREE' as const },
+  { relay: 'PB2', gpio: 10, inChannel: '', func: 'Livre', direction: 'FREE' as const },
+  { relay: 'PB3', gpio: 11, inChannel: '', func: 'Livre', direction: 'FREE' as const },
+  { relay: 'PB4', gpio: 12, inChannel: '', func: 'Livre', direction: 'FREE' as const },
+  { relay: 'PB5', gpio: 13, inChannel: '', func: 'Livre', direction: 'FREE' as const },
+  { relay: 'PB6', gpio: 14, inChannel: 'Opto', func: 'Sinal da bomba ON', direction: 'INPUT' as const },
+  { relay: 'PB7', gpio: 15, inChannel: 'Opto', func: 'Sinal do relé térmico ON', direction: 'INPUT' as const },
+];
+const MCP_USED_OUTPUTS = [...SYSTEM_RELAYS, ...MCP_FEEDBACK_PINS];
 const DEFAULT_GPIO_CONFIG: GpioConfigRow[] = [
   { id: 'row-1', gpio: 21, direction: 'INPUT', label: 'B1', func: 'DHT22 #1 · Temperatura / Humidade', inChannel: '' },
   { id: 'row-2', gpio: 14, direction: 'INPUT', label: 'B2', func: 'DHT22 #2 · Temperatura / Humidade', inChannel: '' },
@@ -1244,21 +1270,34 @@ function StateView({ zones, pumpOn, autoMode, onToggleMode, language, gpioConfig
   const toggleGpioKb = (id: string, field: 'label' | 'func' | 'inChannel') => {
     setGpioKb(prev => (prev && prev.id === id && prev.field === field) ? null : { id, field });
   };
-  const inputPins = gpioConfig.filter((g) => g.direction === 'INPUT');
-  const outputPins = gpioConfig.filter((g) => g.direction === 'OUTPUT');
   const sensorById = new Map(zones.map((z) => [z.sensorId, z] as const));
-  const inputZones = inputPins.map((g, index) => sensorById.get(g.label) ?? zones[index] ?? null);
   const okSensorCount = zones.filter((z) => deviceOnline && !sensorHealth[z.sensorId]?.stale).length;
-  // Sinal real por pino — INPUT (sensores DHT22) e OUTPUT (índices lógicos do MCP23017)
-  const inSig: Record<number, PinSignal> = {};
-  inputPins.forEach((g, index) => {
-    const zone = inputZones[index];
-    inSig[g.gpio] = zone ? sensorPinSignal(zone.sensorId, sensorHealth, deviceOnline) : pinSignal(gpioLive, g.gpio, deviceOnline);
+  const sensorHardwarePins = SENSOR_HARDWARE_LINKS.map((pin) => {
+    const zone = sensorById.get(pin.sensorId) ?? null;
+    return {
+      ...pin,
+      zone,
+      signal: zone ? sensorPinSignal(zone.sensorId, sensorHealth, deviceOnline) : pinSignal(gpioLive, pin.gpio, deviceOnline),
+    };
   });
-  const outSig: Record<number, PinSignal> = {};
-  outputPins.forEach((g) => { outSig[g.gpio] = pinSignal(gpioLive, g.gpio, deviceOnline); });
-  const activeInputs = inputPins.filter((g) => inSig[g.gpio].active).length;
-  const activeOutputs = outputPins.filter((g) => outSig[g.gpio].active).length;
+  const mcpUsedSignals: Record<number, PinSignal> = {};
+  MCP_USED_OUTPUTS.forEach((pin) => { mcpUsedSignals[pin.gpio] = pinSignal(gpioLive, pin.gpio, deviceOnline); });
+  const activeInputs = sensorHardwarePins.filter((pin) => pin.signal.active).length;
+  const activeOutputs = SYSTEM_RELAYS.filter((pin) => mcpUsedSignals[pin.gpio]?.active).length;
+  const activeFeedbacks = MCP_FEEDBACK_PINS.filter((pin) => mcpUsedSignals[pin.gpio]?.active).length;
+  const espPinStatus = (pin: typeof ESP32_DIRECT_PINS[number]) => {
+    if (pin.kind === 'sensor' && pin.sensorId) {
+      const sig = sensorHardwarePins.find((entry) => entry.sensorId === pin.sensorId)?.signal ?? { known: false, active: false, value: null };
+      if (!sig.known) return { tone: 'neutral', label: language === 'PT' ? 'Offline' : 'Offline' };
+      return sig.active
+        ? { tone: 'input', label: language === 'PT' ? 'INPUT' : 'INPUT' }
+        : { tone: 'warning', label: language === 'PT' ? 'Sem sinal' : 'No signal' };
+    }
+    if (pin.kind === 'i2c') return { tone: deviceOnline ? 'link' : 'neutral', label: deviceOnline ? 'I2C' : (language === 'PT' ? 'Offline' : 'Offline') };
+    if (pin.kind === 'power') return { tone: deviceOnline ? 'power' : 'neutral', label: '3V3' };
+    if (pin.kind === 'ground') return { tone: deviceOnline ? 'ground' : 'neutral', label: '0V' };
+    return { tone: 'free', label: language === 'PT' ? 'Livre' : 'Free' };
+  };
   return (
     <div className="two-column">
       <Panel>
@@ -1306,137 +1345,216 @@ function StateView({ zones, pumpOn, autoMode, onToggleMode, language, gpioConfig
           <div className="hw3-header">
             <div className="hw3-header-titles">
               <span className="section-kicker">HARDWARE</span>
-              <h3>ESP32-S3 + MCP23017</h3>
-              <span className="hw3-subtitle">{language === 'PT' ? 'Mapa real de I/O do controlador' : 'Real controller I/O map'}</span>
+              <h3>ES3C28P / ESP32-S3 + MCP23017</h3>
+              <span className="hw3-subtitle">{language === 'PT' ? 'Mapa físico do controlador, barramento I²C e saídas do expansor' : 'Physical controller map, I²C bus and expander outputs'}</span>
             </div>
             <button className="gpio-edit-btn" onClick={() => setEditingGpio(editingGpio === null ? -1 : null)}>
-              <Settings2 size={15} /> {editingGpio === null ? (language === 'PT' ? 'Editar GPIO' : 'Edit GPIO') : (language === 'PT' ? 'Concluído' : 'Done')}
+              <Settings2 size={15} /> {editingGpio === null ? (language === 'PT' ? 'Editar mapa lógico' : 'Edit logical map') : (language === 'PT' ? 'Concluído' : 'Done')}
             </button>
           </div>
 
-          <div
-            className="hw3-diagram"
-            style={{ '--hw-left-offset': `${HW_HEADER_OFFSET}px`, '--hw-right-offset': `${HW_HEADER_OFFSET + inputPins.length * HW_ROW + Math.max(inputPins.length - 1, 0) * HW_GAP + HW_DIVIDER_GAP}px` } as React.CSSProperties}
-          >
-            {/* ── Coluna 1: Sensores (INPUT) ── */}
-            <div className="hw3-col hw3-col-left" style={{ '--hw-offset': 'var(--hw-left-offset)' } as React.CSSProperties}>
-              <span className="hw3-col-caption hw3-caption-input">INPUT</span>
-              {inputPins.map((g, i) => {
-                const zone = zones[i];
-                const stale = zone ? !!sensorHealth[zone.sensorId]?.stale : false;
-                return (
-                  <div key={g.gpio} className="hw3-sensor-block">
-                    <div className={`hw3-block hw3-block-input ${zone ? (stale ? 'hw3-block-stale' : 'hw3-block-live') : 'hw3-block-empty'}`}>
-                      <span className="hw3-block-label">{g.label || zone?.sensorId || `B${i + 1}`}</span>
-                      <div className="hw3-block-info">
-                        <strong>{zone ? `${language === 'PT' ? 'Sensor' : 'Sensor'} ${zone.sensorId}` : (language === 'PT' ? 'Sem sensor' : 'No sensor')}</strong>
-                        <span>{zone ? `${zone.name} · ${zone.moisture}%` : (language === 'PT' ? 'não reconhecido' : 'not detected')}</span>
-                      </div>
-                      <span className={`hw3-signal ${signalClass(inSig[g.gpio])}`}>
-                        <span className="hw3-signal-dot" />
-                        {inSig[g.gpio].known
-                          ? (inSig[g.gpio].active
-                              ? (language === 'PT' ? 'A receber sinal' : 'Receiving signal')
-                              : (language === 'PT' ? 'Sem sinal' : 'No signal'))
-                          : (language === 'PT' ? 'Offline' : 'Offline')}
-                        {inSig[g.gpio].value !== null && <b>{inSig[g.gpio].value}</b>}
-                      </span>
+          <div className="hw4-diagram">
+            <div className="hw4-column hw4-sensors">
+              <div className="hw4-section-tag hw4-tag-input">INPUT</div>
+              {sensorHardwarePins.map((pin) => (
+                <div key={pin.sensorId} className="hw4-io-row">
+                  <div className={`hw3-block hw3-block-input ${pin.zone ? (pin.signal.active ? 'hw3-block-live' : 'hw3-block-stale') : 'hw3-block-empty'}`}>
+                    <span className="hw3-block-label">{pin.sensorId}</span>
+                    <div className="hw3-block-info">
+                      <strong>{pin.zone ? pin.zone.name : pin.title}</strong>
+                      <span>{pin.zone ? `${pin.title} · ${pin.zone.moisture}%` : (language === 'PT' ? 'Sensor não configurado' : 'Sensor not configured')}</span>
                     </div>
-                    <div className={`hw3-wire hw3-wire-input ${signalClass(inSig[g.gpio])}`}>
-                      <span className="hw3-wire-dot" />
-                      <span className="hw3-wire-line" />
-                      <span className="hw3-wire-arrow" />
-                    </div>
+                    <span className={`hw3-signal ${signalClass(pin.signal)}`}>
+                      <span className="hw3-signal-dot" />
+                      {pin.signal.known
+                        ? (pin.signal.active ? (language === 'PT' ? 'A receber sinal' : 'Receiving signal') : (language === 'PT' ? 'Sem sinal' : 'No signal'))
+                        : (language === 'PT' ? 'Offline' : 'Offline')}
+                    </span>
                   </div>
-                );
-              })}
+                  <div className={`hw3-wire hw3-wire-input ${signalClass(pin.signal)}`}>
+                    <span className="hw3-wire-dot" />
+                    <span className="hw3-wire-line" />
+                    <span className="hw3-wire-arrow" />
+                  </div>
+                </div>
+              ))}
             </div>
 
-            {/* ── Coluna 2: ESP32-S3 (centro) ── */}
-            <div className="hw3-col hw3-col-center">
-              <div className="hw3-chip-frame">
+            <div className="hw4-core">
+              <div className="hw4-chip-frame hw4-chip-esp32">
                 <div className="hw3-chip-header">
                   <span className="hw3-chip-icon"><Cpu size={18} /></span>
                   <div className="hw3-chip-titles">
-                    <strong>ESP32-S3</strong>
-                    <span>{deviceOnline ? (language === 'PT' ? 'reconhecido' : 'recognized') : (language === 'PT' ? 'não reconhecido' : 'not recognized')}</span>
+                    <strong>ES3C28P · ESP32-S3</strong>
+                    <span>{deviceOnline ? (language === 'PT' ? 'controlador reconhecido' : 'controller recognized') : (language === 'PT' ? 'controlador offline' : 'controller offline')}</span>
                   </div>
                   <span className={`hw3-chip-dot ${deviceOnline ? 'on' : 'off'}`} />
                 </div>
-                <div className="hw3-chip-body">
-                  <div className="hw3-pin-group">
-                    {inputPins.map(g => (
-                      <div key={g.gpio} className={`hw3-pin hw3-pin-input ${signalClass(inSig[g.gpio])}`}>
-                        <span className="hw3-pin-num">GPIO {g.gpio}</span>
-                        <span className="hw3-pin-state" title={inSig[g.gpio].known ? (inSig[g.gpio].active ? (language === 'PT' ? 'A receber sinal' : 'Receiving signal') : (language === 'PT' ? 'Sem sinal' : 'No signal')) : 'Offline'}>
-                          <span className="hw3-pin-led" />
-                          <span className="hw3-pin-dir">INPUT</span>
-                        </span>
+                <div className="hw4-chip-body">
+                  {ESP32_DIRECT_PINS.map((pin) => {
+                    const status = espPinStatus(pin);
+                    return (
+                      <div key={pin.pin} className={`hw4-chip-row hw4-row-${pin.kind}`}>
+                        <div className="hw4-chip-main">
+                          <span className="hw4-chip-pin">{pin.pin}</span>
+                          <div className="hw4-chip-copy">
+                            <strong>{language === 'PT' ? pin.titlePT : pin.titleEN}</strong>
+                            <span>{language === 'PT' ? pin.detailPT : pin.detailEN}</span>
+                          </div>
+                        </div>
+                        <span className={`hw4-status-chip tone-${status.tone}`}>{status.label}</span>
                       </div>
-                    ))}
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="hw4-bus-bridge">
+                <div className="hw4-section-tag hw4-tag-bus">I²C</div>
+                {I2C_BUS_PINS.map((bus) => (
+                  <div key={bus.label} className="hw4-bus-row">
+                    <span className="hw4-bus-end">{bus.espPin}</span>
+                    <span className="hw4-bus-line" />
+                    <span className="hw4-bus-mid">{bus.label}</span>
+                    <span className="hw4-bus-line" />
+                    <span className="hw4-bus-end">{bus.mcpPin}</span>
                   </div>
-                  <div className="hw3-chip-divider" />
-                  <div className="hw3-pin-group">
-                    {outputPins.map(g => (
-                      <div key={g.gpio} className={`hw3-pin hw3-pin-output ${signalClass(outSig[g.gpio])}`}>
-                        <span className="hw3-pin-num">GPIO {g.gpio}</span>
-                        <span className="hw3-pin-state" title={outSig[g.gpio].known ? (outSig[g.gpio].active ? (language === 'PT' ? 'A emitir sinal' : 'Emitting signal') : (language === 'PT' ? 'Sem sinal' : 'No signal')) : 'Offline'}>
-                          <span className="hw3-pin-led" />
-                          <span className="hw3-pin-dir">OUTPUT</span>
-                        </span>
-                      </div>
-                    ))}
+                ))}
+              </div>
+
+              <div className="hw4-chip-frame hw4-chip-mcp">
+                <div className="hw3-chip-header">
+                  <span className="hw3-chip-icon"><CircuitBoard size={18} /></span>
+                  <div className="hw3-chip-titles">
+                    <strong>MCP23017</strong>
+                    <span>{language === 'PT' ? 'Expansor I/O · endereço 0x20' : 'I/O expander · address 0x20'}</span>
+                  </div>
+                  <span className={`hw3-chip-dot ${deviceInfo?.mcpPresent === false ? 'off' : 'on'}`} />
+                </div>
+                <div className="hw4-mcp-controls">
+                  {MCP_CONTROL_PINS.map((pin) => (
+                    <div key={pin.pin} className="hw4-mcp-control-row">
+                      <span className="hw4-chip-pin">{pin.pin}</span>
+                      <span>{language === 'PT' ? pin.funcPT : pin.funcEN}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="hw4-mcp-sides">
+                  <div className="hw4-mcp-side hw4-mcp-side-a">
+                    <div className="hw4-mcp-side-title">PORTO A · AZUL</div>
+                    {MCP_PORT_A_PINS.map((pin) => {
+                      const sig = mcpUsedSignals[pin.gpio] ?? { known: false, active: false, value: null };
+                      return (
+                        <div key={pin.relay} className={`hw4-mcp-pin-row ${signalClass(sig)}`}>
+                          <span className="hw4-chip-pin">{pin.relay}</span>
+                          <div className="hw4-mcp-pin-copy">
+                            <strong>IDX {pin.gpio}</strong>
+                            <span>{pin.func}</span>
+                          </div>
+                          <span className="hw4-status-chip tone-output">OUTPUT</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="hw4-mcp-side hw4-mcp-side-b">
+                    <div className="hw4-mcp-side-title">PORTO B · VERDE</div>
+                    {MCP_PORT_B_PINS.map((pin) => {
+                      const sig = mcpUsedSignals[pin.gpio] ?? { known: false, active: false, value: null };
+                      return (
+                        <div key={pin.relay} className={`hw4-mcp-pin-row ${pin.direction === 'FREE' ? 'sig-free' : signalClass(sig)}`}>
+                          <span className="hw4-chip-pin">{pin.relay}</span>
+                          <div className="hw4-mcp-pin-copy">
+                            <strong>IDX {pin.gpio}</strong>
+                            <span>{pin.func}{pin.inChannel ? ` · ${pin.inChannel}` : ''}</span>
+                          </div>
+                          <span className={`hw4-status-chip ${pin.direction === 'OUTPUT' ? 'tone-output' : pin.direction === 'INPUT' ? 'tone-input' : 'tone-free'}`}>{pin.direction}</span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* ── Coluna 3: Relés (OUTPUT) ── */}
-            <div className="hw3-col hw3-col-right" style={{ '--hw-offset': 'var(--hw-right-offset)' } as React.CSSProperties}>
-              <span className="hw3-col-caption hw3-caption-output">OUTPUT</span>
-              {outputPins.map((g) => (
-                <div key={g.gpio} className="hw3-relay-row">
-                  <div className={`hw3-wire hw3-wire-output ${signalClass(outSig[g.gpio])}`}>
-                    <span className="hw3-wire-dot" />
-                    <span className="hw3-wire-line" />
-                    <span className="hw3-wire-arrow" />
-                  </div>
-                  <div className={`hw3-block hw3-block-output ${signalClass(outSig[g.gpio])}`}>
-                    <span className="hw3-block-label">{g.label}</span>
-                    <div className="hw3-block-info">
-                      <strong>{g.func || '—'}</strong>
-                      <span>{g.inChannel || '—'}</span>
+            <div className="hw4-column hw4-outputs">
+              <div className="hw4-section-tag hw4-tag-output">OUTPUTS</div>
+              {SYSTEM_RELAYS.map((pin) => {
+                const sig = mcpUsedSignals[pin.gpio] ?? { known: false, active: false, value: null };
+                return (
+                  <div key={pin.relay} className="hw4-io-row hw4-io-row-right">
+                    <div className={`hw3-wire hw3-wire-output ${signalClass(sig)}`}>
+                      <span className="hw3-wire-dot" />
+                      <span className="hw3-wire-line" />
+                      <span className="hw3-wire-arrow" />
                     </div>
-                    <span className={`hw3-signal ${signalClass(outSig[g.gpio])}`}>
-                      <span className="hw3-signal-dot" />
-                      {outSig[g.gpio].known
-                        ? (outSig[g.gpio].active
-                            ? (language === 'PT' ? 'A emitir sinal' : 'Emitting signal')
-                            : (language === 'PT' ? 'Sem sinal' : 'No signal'))
-                        : (language === 'PT' ? 'Offline' : 'Offline')}
-                    </span>
+                    <div className={`hw3-block hw3-block-output ${signalClass(sig)}`}>
+                      <span className="hw3-block-label">{pin.relay}</span>
+                      <div className="hw3-block-info">
+                        <strong>{pin.func}</strong>
+                        <span>{pin.inChannel || '—'} · IDX {pin.gpio}</span>
+                      </div>
+                      <span className={`hw3-signal ${signalClass(sig)}`}>
+                        <span className="hw3-signal-dot" />
+                        {sig.known ? (sig.active ? (language === 'PT' ? 'A emitir sinal' : 'Emitting signal') : (language === 'PT' ? 'Sem sinal' : 'No signal')) : (language === 'PT' ? 'Offline' : 'Offline')}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
+              <div className="hw4-section-tag hw4-tag-feedback">FEEDBACKS</div>
+              {MCP_FEEDBACK_PINS.map((pin) => {
+                const sig = mcpUsedSignals[pin.gpio] ?? { known: false, active: false, value: null };
+                return (
+                  <div key={pin.relay} className="hw4-io-row hw4-io-row-right">
+                    <div className={`hw3-wire hw3-wire-output ${signalClass(sig)}`}>
+                      <span className="hw3-wire-dot" />
+                      <span className="hw3-wire-line" />
+                      <span className="hw3-wire-arrow" />
+                    </div>
+                    <div className={`hw3-block hw3-block-output hw4-feedback-block ${signalClass(sig)}`}>
+                      <span className="hw3-block-label">{pin.relay}</span>
+                      <div className="hw3-block-info">
+                        <strong>{pin.func}</strong>
+                        <span>{pin.inChannel} · IDX {pin.gpio}</span>
+                      </div>
+                      <span className={`hw3-signal ${signalClass(sig)}`}>
+                        <span className="hw3-signal-dot" />
+                        {sig.known ? (sig.active ? (language === 'PT' ? 'Entrada ativa' : 'Input active') : (language === 'PT' ? 'Entrada inativa' : 'Input idle')) : (language === 'PT' ? 'Offline' : 'Offline')}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
           {/* Legend */}
-          <div className="hw3-legend">
+          <div className="hw3-legend hw4-legend">
             <span className="hw3-legend-title">{language === 'PT' ? 'LEGENDA' : 'LEGEND'}</span>
             <div className="hw3-legend-item">
               <span className="hw3-legend-dot hw3-legend-green" />
               <span className="hw3-legend-label">INPUT</span>
-              <span className="hw3-legend-desc">{language === 'PT' ? 'Entrada' : 'Input'}</span>
+              <span className="hw3-legend-desc">{language === 'PT' ? 'Sensores / feedbacks' : 'Sensors / feedbacks'}</span>
             </div>
             <div className="hw3-legend-item">
               <span className="hw3-legend-dot hw3-legend-orange" />
               <span className="hw3-legend-label">OUTPUT</span>
-              <span className="hw3-legend-desc">{language === 'PT' ? 'Saída' : 'Output'}</span>
+              <span className="hw3-legend-desc">{language === 'PT' ? 'Comandos do processo' : 'Process commands'}</span>
+            </div>
+            <div className="hw3-legend-item">
+              <span className="hw3-legend-dot hw4-legend-blue" />
+              <span className="hw3-legend-label">PORT A</span>
+              <span className="hw3-legend-desc">{language === 'PT' ? 'Lado azul do MCP23017' : 'Blue side of MCP23017'}</span>
+            </div>
+            <div className="hw3-legend-item">
+              <span className="hw3-legend-dot hw4-legend-teal" />
+              <span className="hw3-legend-label">PORT B</span>
+              <span className="hw3-legend-desc">{language === 'PT' ? 'Lado verde do MCP23017' : 'Green side of MCP23017'}</span>
             </div>
             <div className="hw3-legend-live">
-              <span className="hw3-legend-desc">{language === 'PT' ? 'A receber sinal' : 'Receiving'}: <b>{activeInputs}/{inputPins.length}</b></span>
-              <span className="hw3-legend-desc">{language === 'PT' ? 'A emitir sinal' : 'Emitting'}: <b>{activeOutputs}/{outputPins.length}</b></span>
+              <span className="hw3-legend-desc">{language === 'PT' ? 'Sensores ativos' : 'Active sensors'}: <b>{activeInputs}/{sensorHardwarePins.length}</b></span>
+              <span className="hw3-legend-desc">{language === 'PT' ? 'Saídas ativas' : 'Active outputs'}: <b>{activeOutputs}/{SYSTEM_RELAYS.length}</b></span>
+              <span className="hw3-legend-desc">{language === 'PT' ? 'Feedbacks ativos' : 'Active feedbacks'}: <b>{activeFeedbacks}/{MCP_FEEDBACK_PINS.length}</b></span>
               <span className={`hw3-legend-desc ${deviceOnline ? 'sig-active' : 'sig-unknown'}`}>{deviceOnline ? (language === 'PT' ? 'Telemetria real' : 'Live telemetry') : (language === 'PT' ? 'Controlador offline' : 'Controller offline')}</span>
             </div>
           </div>
@@ -1454,7 +1572,7 @@ function StateView({ zones, pumpOn, autoMode, onToggleMode, language, gpioConfig
               <table className="gpio-edit-table">
                 <thead>
                   <tr>
-                    <th>GPIO</th>
+                    <th>{language === 'PT' ? 'GPIO / IDX' : 'GPIO / IDX'}</th>
                     <th>{language === 'PT' ? 'Direção' : 'Direction'}</th>
                     <th>{language === 'PT' ? 'Rótulo' : 'Label'}</th>
                     <th>{language === 'PT' ? 'Função' : 'Function'}</th>
@@ -1464,6 +1582,7 @@ function StateView({ zones, pumpOn, autoMode, onToggleMode, language, gpioConfig
                 </thead>
                 <tbody>
                   {gpioConfig.map((g) => {
+                    const isMcpLogicalRow = g.direction === 'OUTPUT' && /^P[AB]\d$/.test(g.label);
                     const pinOptions = [g.gpio, ...getAvailableGpios(g.id)]
                       .filter((p, i, arr) => arr.indexOf(p) === i)
                       .sort((a, b) => a - b)
@@ -1471,12 +1590,16 @@ function StateView({ zones, pumpOn, autoMode, onToggleMode, language, gpioConfig
                     return (
                       <tr key={g.id}>
                         <td>
-                          <BrandSelect
-                            value={g.gpio}
-                            options={pinOptions}
-                            onChange={(v) => handleGpioPinChange(g.id, v)}
-                            className="brand-select-pin"
-                          />
+                          {isMcpLogicalRow ? (
+                            <span className="gpio-fixed-badge">{g.label} · IDX {g.gpio}</span>
+                          ) : (
+                            <BrandSelect
+                              value={g.gpio}
+                              options={pinOptions}
+                              onChange={(v) => handleGpioPinChange(g.id, v)}
+                              className="brand-select-pin"
+                            />
+                          )}
                         </td>
                         <td>
                           <BrandSelect
@@ -1529,8 +1652,8 @@ function StateView({ zones, pumpOn, autoMode, onToggleMode, language, gpioConfig
               </button>
               <p className="gpio-reserved-note">
                 {language === 'PT'
-                  ? `Referência do hardware: GPIO 21/14 = DHT22, GPIO 16/18 = I2C do MCP23017, GPIO 0 = botão BOOT / emergência, GPIO 48 = LED de estado. As saídas PA0..PA7/PB0 são índices lógicos do MCP23017.`
-                  : `Hardware reference: GPIO 21/14 = DHT22, GPIO 16/18 = MCP23017 I2C, GPIO 0 = BOOT / emergency button, GPIO 48 = status LED. Outputs PA0..PA7/PB0 are MCP23017 logical indices.`}
+                  ? `Referência do hardware: IO21/IO14 = DHT22, IO16/IO18 = barramento I²C do MCP23017, 3VCC/GND = alimentação comum. PA0..PA7 e PB0..PB7 são pinos lógicos do MCP23017; por isso aparecem como IDX no editor.`
+                  : `Hardware reference: IO21/IO14 = DHT22, IO16/IO18 = MCP23017 I²C bus, 3VCC/GND = shared power. PA0..PA7 and PB0..PB7 are MCP23017 logical pins, so they appear as IDX in the editor.`}
               </p>
               <button className="save-btn" onClick={saveGpioConfig}>
                 <Save size={15} /> {language === 'PT' ? 'Guardar configuração GPIO' : 'Save GPIO configuration'}
@@ -2351,47 +2474,60 @@ function MapView({ zones, pumpOn, onAddZone, onDuplicateZone, onDragZone, onRena
       {showPinout && (
         <div className="pinout-panel">
           <div className="pinout-header">
-            <div><span className="section-kicker">HARDWARE</span><h3>ESP32-S3 + MCP23017 · Mapa de I/O</h3></div>
+            <div><span className="section-kicker">HARDWARE</span><h3>ES3C28P / ESP32-S3 + MCP23017 · Mapa de I/O</h3></div>
             <button className="pinout-close" onClick={() => setShowPinout(false)} aria-label="Fechar"><X size={16} /></button>
           </div>
           <div className="pinout-grid">
             <div className="pinout-section">
-              <div className="pinout-section-title"><Radio size={14} /> Sensores (INPUT)</div>
-              {zones.map((z) => (
-                <div key={z.sensorId} className="pinout-row">
-                  <span className="pinout-pin">GPIO {SENSOR_GPIO_MAP[z.sensorId] ?? '—'}</span>
-                  <span className="pinout-label">{z.sensorId}</span>
-                  <span className="pinout-desc">{z.name}</span>
+              <div className="pinout-section-title"><Cpu size={14} /> ESP32 — pinos diretos</div>
+              {ESP32_DIRECT_PINS.map((pin) => (
+                <div key={pin.pin} className="pinout-row">
+                  <span className="pinout-pin">{pin.pin}</span>
+                  <span className="pinout-label">{language === 'PT' ? pin.titlePT : pin.titleEN}</span>
+                  <span className="pinout-desc">{language === 'PT' ? pin.detailPT : pin.detailEN}</span>
                 </div>
               ))}
             </div>
             <div className="pinout-section">
-              <div className="pinout-section-title"><CircuitBoard size={14} /> Barramento I2C (ESP32 → MCP)</div>
-              {I2C_BUS_PINS.map((bus) => (
-                <div key={bus.label} className="pinout-row">
-                  <span className="pinout-pin">GPIO {bus.gpio}</span>
-                  <span className="pinout-label">{bus.label}</span>
-                  <span className="pinout-desc">{bus.func}</span>
+              <div className="pinout-section-title"><Radio size={14} /> Sensores DHT22</div>
+              {SENSOR_HARDWARE_LINKS.map((pin) => {
+                const zone = zones.find((z) => z.sensorId === pin.sensorId);
+                return (
+                  <div key={pin.sensorId} className="pinout-row">
+                    <span className="pinout-pin">GPIO {pin.gpio}</span>
+                    <span className="pinout-label">{pin.sensorId} · {pin.title}</span>
+                    <span className="pinout-desc">{zone ? zone.name : (language === 'PT' ? 'Sensor não configurado' : 'Sensor not configured')}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="pinout-section">
+              <div className="pinout-section-title"><CircuitBoard size={14} /> MCP23017 — controlo / I²C</div>
+              {MCP_CONTROL_PINS.map((pin) => (
+                <div key={pin.pin} className="pinout-row">
+                  <span className="pinout-pin">{pin.pin}</span>
+                  <span className="pinout-label">MCP23017</span>
+                  <span className="pinout-desc">{language === 'PT' ? pin.funcPT : pin.funcEN}</span>
                 </div>
               ))}
             </div>
             <div className="pinout-section">
-              <div className="pinout-section-title"><Cpu size={14} /> Saídas via MCP23017</div>
-              {SYSTEM_RELAYS.map((r) => (
-                <div key={r.relay} className="pinout-row">
-                  <span className="pinout-pin">IDX {r.gpio}</span>
-                  <span className="pinout-label">{r.relay}{r.inChannel ? ` · ${r.inChannel}` : ''}</span>
-                  <span className="pinout-desc">{r.func}</span>
+              <div className="pinout-section-title"><ArrowBigUp size={14} /> Porto A — azul</div>
+              {MCP_PORT_A_PINS.map((pin) => (
+                <div key={pin.relay} className="pinout-row">
+                  <span className="pinout-pin">IDX {pin.gpio}</span>
+                  <span className="pinout-label">{pin.relay}{pin.inChannel ? ` · ${pin.inChannel}` : ''}</span>
+                  <span className="pinout-desc">{pin.func}</span>
                 </div>
               ))}
             </div>
             <div className="pinout-section">
-              <div className="pinout-section-title"><AlertTriangle size={14} /> Feedbacks / Segurança</div>
-              {MCP_FEEDBACK_PINS.map((r) => (
-                <div key={r.relay} className="pinout-row">
-                  <span className="pinout-pin">IDX {r.gpio}</span>
-                  <span className="pinout-label">{r.relay} · {r.inChannel}</span>
-                  <span className="pinout-desc">{r.func}</span>
+              <div className="pinout-section-title"><Leaf size={14} /> Porto B — verde</div>
+              {MCP_PORT_B_PINS.map((pin) => (
+                <div key={pin.relay} className="pinout-row">
+                  <span className="pinout-pin">IDX {pin.gpio}</span>
+                  <span className="pinout-label">{pin.relay}{pin.inChannel ? ` · ${pin.inChannel}` : ''}</span>
+                  <span className="pinout-desc">{pin.func}</span>
                 </div>
               ))}
             </div>
