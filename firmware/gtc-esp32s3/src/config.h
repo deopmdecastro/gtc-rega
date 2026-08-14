@@ -46,30 +46,48 @@
 #define SENSOR_SAMPLE_MS        500
 
 // ─────────────────────────────────────────────────────────────
-// I²C — ES3N28P <-> MCP23017-E/SS
+// I²C — ES3N28P (ESP32-S3) <-> MCP23017-E/SS
 // ─────────────────────────────────────────────────────────────
-// A ES3N28P expõe barramento I2C na interface de expansão. O MCP23017
-// liga-se a esse barramento. Verificar o pinout real da placa para
-// SDA/SCL — o ESP32-S3 permite mapear I2C por GPIO Matrix.
-#define I2C_SDA_PIN           8
-#define I2C_SCL_PIN           9
+// O MCP23017-E/SS expõe fisicamente (confirmado pelo silkscreen da placa):
+//   SCL / SDA   -> pinos de barramento I2C do MCP
+//   PA0..PA7    -> porto A (GPA0..GPA7) — entradas
+//   PB0..PB7    -> porto B (GPB0..GPB7) — saídas
+//   RST         -> reset externo do MCP (ativo LOW; opcional, v1 = não ligado)
+//   VCC / GND   -> alimentação 3v3 e massa (partilhada com a lógica)
+//
+// O ESP32-S3 usa GPIO Matrix, pelo que QUALQUER par de GPIOs pode servir
+// de SDA/SCL. Estes valores ligam aos pinos SDA/SCL do MCP acima:
+#define I2C_SDA_PIN           8     // ESP32-S3 -> MCP23017 SDA
+#define I2C_SCL_PIN           9     // ESP32-S3 -> MCP23017 SCL
 #define I2C_CLOCK_HZ          100000   // 100 kHz (seguro para cabos de campo)
 
-// MCP23017
-#define MCP23017_ADDRESS      0x20    // A0=A1=A2=GND
+// Reset externo do MCP23017 (RST). -1 = não ligado (o MCP arranca com os
+// registos por defeito; o reset por software é feito via I2C).
+#define MCP_RESET_PIN        -1
+
+// Endereço I²C do MCP23017 (A2:A1:A0 = 000 => 0x20).
+// Se os pinos de endereço A0/A1/A2 estiverem ligados a VCC, ajustar:
+//   A0=1 -> 0x21, A1=1 -> 0x22, A0=A1=1 -> 0x23, etc.
+#define MCP23017_ADDRESS      0x20    // A0=A1=A2=GND (padrão de fábrica)
 
 // ─────────────────────────────────────────────────────────────
 // Mapeamento central de I/O — MCP23017-E/SS (16 GPIO: GPA0-7, GPB0-7)
 // ------------------------------------------------------------------
-// Entradas (GPA = lógica de baixa tensão, via optoacopladores):
-//   GPA0 — KM1 (contacto auxiliar do contactor => bomba em funcionamento)
-//   GPA1 — Relé térmico (alarme térmico)
-//   GPA2..GPA7 — reserva
-// Saídas (GPB = comando de relés de campo):
-//   GPB0 — bomba/arranque (K5), GPB1 — paragem (K6), GPB2 — automático (K7),
-//   GPB3..GPB6 — válvulas de zona
+// Corresponde aos pinos do silkscreen: PA0..PA7 = GPA0..GPA7,
+//                                     PB0..PB7 = GPB0..GPB7.
+// Entradas (porto A / PAx — lógica de baixa tensão, via optoacopladores):
+//   PA0 (GPA0) — KM1 (contacto auxiliar do contactor => bomba em funcionamento)
+//   PA1 (GPA1) — Relé térmico (alarme térmico)
+//   PA2..PA7    — reserva
+// Saídas (porto B / PBx — comando de relés de campo):
+//   PB0 (GPB0) — bomba/arranque (K5)
+//   PB1 (GPB1) — paragem/emergência (K6)
+//   PB2 (GPB2) — modo automático (K7)
+//   PB3..PB6    — válvulas de zona
 // ------------------------------------------------------------------
-// ATENÇÃO: números de exemplo — alinhar com o esquema elétrico real.
+// ATENÇÃO: correspondência entre sinais e pinos = alinhar com o esquema
+// elétrico real do quadro. Os números de pino lógico (0..15) abaixo são
+// o índice interno do MCP: GPA0..7 = 0..7, GPB0..7 = 8..15.
 #define MCP_INPUT_KM1         0    // GPA0
 #define MCP_INPUT_THERMAL     1    // GPA1
 

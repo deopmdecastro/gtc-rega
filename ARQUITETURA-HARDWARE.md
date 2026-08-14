@@ -153,6 +153,36 @@ Antes de fixar os GPIOs do I²C, verificar na documentação/pinout da ES3N28P:
 Matrix, pelo que SDA/SCL podem ser reajustados em `config.h` sem alterar o
 esquema.
 
+### Pinout físico do MCP23017-E/SS (confirmado pelo silkscreen)
+
+O MCP23017-E/SS expõe fisicamente os seguintes pinos:
+
+| Pino | Função |
+|---|---|
+| `SCL` / `SDA` | barramento I²C (ligam ao ESP32-S3) |
+| `PA0` … `PA7` | porto A — GPA0…GPA7 (entradas) |
+| `PB0` … `PB7` | porto B — GPB0…GPB7 (saídas) |
+| `RST` | reset externo (ativo LOW; opcional) |
+| `VCC` / `GND` | alimentação (3V3 partilhada) |
+
+Correspondência com o mapa de I/O do firmware:
+
+- `PA0 (GPA0)` → `MCP_INPUT_KM1` (feedback da bomba);
+- `PA1 (GPA1)` → `MCP_INPUT_THERMAL` (relé térmico);
+- `PB0 (GPB0)` → `MCP_OUTPUT_RELAY_PUMP` (bomba K5);
+- `PB1 (GPB1)` → `MCP_OUTPUT_RELAY_STOP` (paragem K6);
+- `PB2 (GPB2)` → `MCP_OUTPUT_RELAY_AUTO` (automático K7);
+- `PB3…PB6 (GPB3…GPB6)` → válvulas de zona.
+
+Endereço I²C: `0x20` (A2:A1:A0 = 000, padrão de fábrica com os pinos de
+endereço a GND). Se A0/A1/A2 estiverem ligados a VCC, o endereço muda
+(0x21/0x22/0x23…), ajustável em `MCP23017_ADDRESS`.
+
+> **Em aberto**: o par de GPIOs **específico** do ESP32-S3 a usar para
+> SDA/SCL ainda não está confirmado no pinout da ES3N28P. O firmware usa
+> por omissão `I2C_SDA_PIN=8` / `I2C_SCL_PIN=9` (reajustáveis em `config.h`),
+> ligando aos pinos `SDA`/`SCL` do MCP acima.
+
 ## 9. Display, touch, áudio, MicroSD
 
 - **LCD 240×320 + touch**: a HMI local respeita a resolução física; na v1 a
