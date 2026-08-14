@@ -3149,6 +3149,59 @@ textarea:focus-visible {
 .hw4-row-ground .hw4-chip-pin { border-color: rgba(131,156,168,.28); background: rgba(131,156,168,.12); color: #b4c3c9; }
 .hw4-row-sensor .hw4-chip-pin { border-color: rgba(94,229,138,.28); background: rgba(94,229,138,.12); color: #82f4aa; }
 .hw4-row-free .hw4-chip-pin { border-color: rgba(122,146,156,.18); background: rgba(122,146,156,.08); color: #93a8b2; }
+
+/* Pinos GPIOs livres do ESP32-S3 (ES3C28P) */
+.hw4-free-gpios {
+  margin: 2px 10px 10px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px dashed rgba(122,146,156,.2);
+  background: rgba(9,16,22,.5);
+}
+.hw4-free-gpios-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+  font: 700 10px 'DM Mono', monospace;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: #76909c;
+}
+.hw4-free-gpios-title span {
+  font-weight: 600;
+  color: #93a8b2;
+  letter-spacing: .04em;
+}
+.hw4-free-gpios-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+.hw4-free-gpio {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 4px 6px;
+  border-radius: 8px;
+  border: 1px solid rgba(122,146,156,.12);
+  background: rgba(11,21,27,.6);
+}
+.hw4-chip-pin-free {
+  min-width: 46px;
+  height: 24px;
+  font-size: 10px;
+  border-color: rgba(122,146,156,.18);
+  background: rgba(122,146,156,.08);
+  color: #93a8b2;
+}
+.hw4-free-gpio-state {
+  font: 600 10px 'DM Mono', monospace;
+  color: #6b828e;
+  letter-spacing: .05em;
+}
 .hw4-status-chip {
   display: inline-flex;
   align-items: center;
@@ -3227,7 +3280,7 @@ textarea:focus-visible {
 .hw4-mcp-control-row .hw4-chip-pin { min-width: 52px; }
 .hw4-mcp-sides {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 12px;
   padding: 10px;
 }
@@ -3241,9 +3294,32 @@ textarea:focus-visible {
 .hw4-mcp-side-a { box-shadow: inset 0 0 0 1px rgba(63,159,255,.08); }
 .hw4-mcp-side-b { box-shadow: inset 0 0 0 1px rgba(94,229,138,.08); }
 .hw4-mcp-side-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-bottom: 10px;
-  font: 700 10px 'DM Mono', monospace;
+  font: 700 11px 'DM Mono', monospace;
   letter-spacing: .12em;
+  color: #dce5e8;
+}
+.hw4-mcp-side-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  font: 700 12px 'DM Mono', monospace;
+  flex-shrink: 0;
+}
+.hw4-mcp-side-badge-a { background: rgba(63,159,255,.16); border: 1px solid rgba(63,159,255,.34); color: #9fcfff; }
+.hw4-mcp-side-badge-b { background: rgba(94,229,138,.16); border: 1px solid rgba(94,229,138,.34); color: #8df2af; }
+.hw4-mcp-side-sub {
+  width: 100%;
+  font: 600 10px 'Inter', sans-serif;
+  letter-spacing: .02em;
+  color: #6b828e;
 }
 .hw4-mcp-side-a .hw4-mcp-side-title { color: #79b8ff; }
 .hw4-mcp-side-b .hw4-mcp-side-title { color: #82f4aa; }

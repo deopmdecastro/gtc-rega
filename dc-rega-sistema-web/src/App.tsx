@@ -168,6 +168,35 @@ const ESP32_DIRECT_PINS = [
   { pin: 'IO02', gpio: 2, kind: 'free', titlePT: 'Pino livre', titleEN: 'Free pin', detailPT: 'Reservado para não interferir no boot', detailEN: 'Reserved to avoid boot interference' },
   { pin: 'IO03', gpio: 3, kind: 'free', titlePT: 'Pino livre', titleEN: 'Free pin', detailPT: 'Reservado para não interferir na gravação USB', detailEN: 'Reserved to avoid USB flashing issues' },
 ];
+
+// Restantes GPIOs livres do ESP32-S3 (ES3C28P) — apresentados como pinos
+// disponíveis e não atribuídos, no mesmo estilo do diagrama.
+const ESP32_FREE_GPIO_PINS = [
+  { pin: 'IO01', gpio: 1 },
+  { pin: 'IO04', gpio: 4 },
+  { pin: 'IO05', gpio: 5 },
+  { pin: 'IO06', gpio: 6 },
+  { pin: 'IO07', gpio: 7 },
+  { pin: 'IO08', gpio: 8 },
+  { pin: 'IO09', gpio: 9 },
+  { pin: 'IO10', gpio: 10 },
+  { pin: 'IO11', gpio: 11 },
+  { pin: 'IO12', gpio: 12 },
+  { pin: 'IO13', gpio: 13 },
+  { pin: 'IO15', gpio: 15 },
+  { pin: 'IO17', gpio: 17 },
+  { pin: 'IO35', gpio: 35 },
+  { pin: 'IO36', gpio: 36 },
+  { pin: 'IO37', gpio: 37 },
+  { pin: 'IO38', gpio: 38 },
+  { pin: 'IO39', gpio: 39 },
+  { pin: 'IO40', gpio: 40 },
+  { pin: 'IO41', gpio: 41 },
+  { pin: 'IO42', gpio: 42 },
+  { pin: 'IO45', gpio: 45 },
+  { pin: 'IO46', gpio: 46 },
+  { pin: 'IO47', gpio: 47 },
+];
 const SYSTEM_RELAYS = [
   { relay: 'PA0', gpio: 0, inChannel: '9-E6', func: 'MOTOR ON' },
   { relay: 'PA1', gpio: 1, inChannel: '9-D6', func: 'AUTO GTC' },
@@ -1407,6 +1436,20 @@ function StateView({ zones, pumpOn, autoMode, onToggleMode, language, gpioConfig
                     );
                   })}
                 </div>
+                <div className="hw4-free-gpios">
+                  <div className="hw4-free-gpios-title">
+                    {language === 'PT' ? 'GPIOs livres · ESP32-S3' : 'Free GPIOs · ESP32-S3'}
+                    <span>{ESP32_FREE_GPIO_PINS.length} {language === 'PT' ? 'disponíveis' : 'available'}</span>
+                  </div>
+                  <div className="hw4-free-gpios-grid">
+                    {ESP32_FREE_GPIO_PINS.map((pin) => (
+                      <span key={pin.pin} className="hw4-free-gpio">
+                        <span className="hw4-chip-pin hw4-chip-pin-free">{pin.pin}</span>
+                        <span className="hw4-free-gpio-state">{language === 'PT' ? 'Livre' : 'Free'}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               <div className="hw4-bus-bridge">
@@ -1441,15 +1484,19 @@ function StateView({ zones, pumpOn, autoMode, onToggleMode, language, gpioConfig
                 </div>
                 <div className="hw4-mcp-sides">
                   <div className="hw4-mcp-side hw4-mcp-side-a">
-                    <div className="hw4-mcp-side-title">PORTO A · AZUL</div>
+                    <div className="hw4-mcp-side-title">
+                      <span className="hw4-mcp-side-badge hw4-mcp-side-badge-a">A</span>
+                      PORTO A
+                      <span className="hw4-mcp-side-sub">{language === 'PT' ? 'Lado azul · saídas do processo' : 'Blue side · process outputs'}</span>
+                    </div>
                     {MCP_PORT_A_PINS.map((pin) => {
                       const sig = mcpUsedSignals[pin.gpio] ?? { known: false, active: false, value: null };
                       return (
                         <div key={pin.relay} className={`hw4-mcp-pin-row ${signalClass(sig)}`}>
                           <span className="hw4-chip-pin">{pin.relay}</span>
                           <div className="hw4-mcp-pin-copy">
-                            <strong>IDX {pin.gpio}</strong>
-                            <span>{pin.func}</span>
+                            <strong>{pin.func}</strong>
+                            <span>IDX {pin.gpio}{pin.inChannel ? ` · ${pin.inChannel}` : ''}</span>
                           </div>
                           <span className="hw4-status-chip tone-output">OUTPUT</span>
                         </div>
@@ -1457,15 +1504,19 @@ function StateView({ zones, pumpOn, autoMode, onToggleMode, language, gpioConfig
                     })}
                   </div>
                   <div className="hw4-mcp-side hw4-mcp-side-b">
-                    <div className="hw4-mcp-side-title">PORTO B · VERDE</div>
+                    <div className="hw4-mcp-side-title">
+                      <span className="hw4-mcp-side-badge hw4-mcp-side-badge-b">B</span>
+                      PORTO B
+                      <span className="hw4-mcp-side-sub">{language === 'PT' ? 'Lado verde · entradas / saídas' : 'Green side · inputs / outputs'}</span>
+                    </div>
                     {MCP_PORT_B_PINS.map((pin) => {
                       const sig = mcpUsedSignals[pin.gpio] ?? { known: false, active: false, value: null };
                       return (
                         <div key={pin.relay} className={`hw4-mcp-pin-row ${pin.direction === 'FREE' ? 'sig-free' : signalClass(sig)}`}>
                           <span className="hw4-chip-pin">{pin.relay}</span>
                           <div className="hw4-mcp-pin-copy">
-                            <strong>IDX {pin.gpio}</strong>
-                            <span>{pin.func}{pin.inChannel ? ` · ${pin.inChannel}` : ''}</span>
+                            <strong>{pin.func}</strong>
+                            <span>IDX {pin.gpio}{pin.inChannel ? ` · ${pin.inChannel}` : ''}</span>
                           </div>
                           <span className={`hw4-status-chip ${pin.direction === 'OUTPUT' ? 'tone-output' : pin.direction === 'INPUT' ? 'tone-input' : 'tone-free'}`}>{pin.direction}</span>
                         </div>
