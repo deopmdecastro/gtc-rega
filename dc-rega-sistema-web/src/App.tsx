@@ -218,6 +218,8 @@ const MCP_CONTROL_PINS = [
   { pin: 'SCL', funcPT: 'Clock I2C ← IO16', funcEN: 'I2C clock ← IO16' },
   { pin: 'SDA', funcPT: 'Dados I2C ↔ IO18', funcEN: 'I2C data ↔ IO18' },
   { pin: 'RST', funcPT: 'Reset fixo em nível alto', funcEN: 'Reset tied high' },
+  { pin: 'INTA', funcPT: 'Interrupção porta A · livre', funcEN: 'Port A interrupt · unused' },
+  { pin: 'INTB', funcPT: 'Interrupção porta B · livre', funcEN: 'Port B interrupt · unused' },
 ];
 const MCP_PORT_A_PINS = SYSTEM_RELAYS.filter((pin) => pin.relay.startsWith('PA')).map((pin) => ({ ...pin, direction: 'OUTPUT' as const }));
 const MCP_PORT_B_PINS = [
