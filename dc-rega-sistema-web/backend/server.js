@@ -25,14 +25,13 @@ const DEVICE_OFFLINE_TIMEOUT = 30000; // 30s sem telemetria → voltar a simular
 const engine = new ControlEngine();
 
 // Wire engine events → WebSocket + event log
-engine.onStateChange = (ctrlState) => {
-  io.emit('controller:state', ctrlState);
+engine.onStateChange = (state) => {
+  io.emit('controller:state', state);
   persistState();
 };
 
 engine.onLog = (entry) => {
   io.emit('controller:event', entry);
-  // Save to persistent event log
   if (!appState.eventLog) appState.eventLog = [];
   appState.eventLog.unshift(entry);
   if (appState.eventLog.length > 500) appState.eventLog.length = 500;
@@ -43,31 +42,23 @@ engine.onGpioChange = (pin, value) => {
   io.emit('controller:gpio', { pin, value });
 };
 
-engine.onSensorUpdate = (sensorId, moisture) => {
-  io.emit('controller:sensor', { sensorId, moisture });
-};
-
-engine.onSensorHealthChange = (health) => {
-  io.emit('controller:sensor-health', health);
+engine.onSensorUpdate = (sensorId, payload) => {
+  io.emit('controller:sensor', { sensorId, payload });
 };
 
 // ── Device tracking ──
 let deviceOnline = false;
 let lastDeviceContact = 0;
-let deviceInfo = null; // info from /api/device/hello
-let everConnected = false;       // já houve alguma vez um handshake válido
-let neverConnectedWarned = false; // já foi emitido o alarme de "nunca reconhecido"
+let deviceInfo = null;
+let everConnected = false;
+let neverConnectedWarned = false;
 const SERVER_BOOT_TIME = Date.now();
-const NEVER_CONNECTED_GRACE_MS = 45000; // dá tempo ao ESP32 arrancar/ligar ao Wi-Fi
+const NEVER_CONNECTED_GRACE_MS = 45000;
 
 function broadcastDeviceStatus() {
   io.emit('controller:device', { online: deviceOnline, info: deviceInfo });
 }
 
-// ── Monitorização real (a cada 3s) ──
-// Não existe simulação de sensores: todos os valores vêm da telemetria real do
-// ESP32-S3 (POST /api/device/telemetry). Aqui apenas verificamos presença do
-// controlador, saúde dos sensores e horários de rega.
 let monitorInterval = null;
 function startMonitor() {
   if (monitorInterval) clearInterval(monitorInterval);
@@ -77,29 +68,23 @@ function startMonitor() {
       deviceOnline = false;
       console.log('[DEVICE] ESP32-S3 offline — sem telemetria');
       engine._log('device_offline', 'ESP32-S3',
-        `Controlador ${deviceInfo?.deviceId || 'ESP32-S3'} sem contacto há ${Math.round(silentFor / 1000)}s — sem dados reais`,
+        `Controlador ${deviceInfo?.deviceId || 'ESP32-S3'} sem contacto há ${Math.round(silentFor / 1000)}s`,
         'critical', { deviceId: deviceInfo?.deviceId || null, silentFor });
       broadcastDeviceStatus();
     }
 
-    // Sensores sem reporte → alarme real (warning)
-    engine.checkSensorHealth(15000);
-
-    // ESP32 nunca reconhecido desde o arranque do backend → alarme único
     if (!everConnected && !neverConnectedWarned && (Date.now() - SERVER_BOOT_TIME) > NEVER_CONNECTED_GRACE_MS) {
       neverConnectedWarned = true;
       engine._log('device_never_connected', 'ESP32-S3',
-        'Nenhum controlador ESP32-S3 reconhecido desde o arranque do sistema — verifique a alimentação, a rede Wi-Fi e o token do dispositivo',
+        'Nenhum controlador ESP32-S3 reconhecido desde o arranque do sistema',
         'critical');
     }
 
-    // Horários de rega correm sempre
     engine.checkAutoCycle();
   }, 3000);
 }
 startMonitor();
 
-// ── Persistent state helpers ──
 let appState = { eventLog: [] };
 
 function loadPersistedState() {
@@ -138,17 +123,13 @@ function saveLayoutToFile(layout) {
   } catch (e) { console.error('Failed to save layout:', e.message); }
 }
 
-// ── Device token middleware ──
 let lastUnauthorizedWarnAt = 0;
-const UNAUTHORIZED_WARN_THROTTLE_MS = 30000; // evita inundar o log de alarmes
+const UNAUTHORIZED_WARN_THROTTLE_MS = 30000;
 
 function checkDeviceToken(req, res, next) {
-  if (!DEVICE_TOKEN) return next(); // no token configured → allow all
+  if (!DEVICE_TOKEN) return next();
   const token = req.headers['x-device-token'];
   if (token === DEVICE_TOKEN) return next();
-
-  // Dispositivo não reconhecido (token inválido/ausente) → alarme (com
-  // throttle, para não encher o histórico se alguém insistir em ligar).
   const now = Date.now();
   if (now - lastUnauthorizedWarnAt > UNAUTHORIZED_WARN_THROTTLE_MS) {
     lastUnauthorizedWarnAt = now;
@@ -159,11 +140,9 @@ function checkDeviceToken(req, res, next) {
   return res.status(401).json({ error: 'Invalid or missing device token' });
 }
 
-// Load persisted state and restore engine
 const persisted = loadPersistedState();
 if (persisted) {
   appState = { eventLog: persisted.eventLog || [] };
-  // Restore engine state from last session
   if (persisted.controlState && persisted.controlState.zones && persisted.controlState.zones.length > 0) {
     engine.restoreState(persisted);
     console.log(`Engine restored: ${engine.zones.length} zones, state=${engine.state}`);
@@ -172,7 +151,6 @@ if (persisted) {
 
 // ── API Routes ──
 
-// Health
 app.get('/api/health', (_req, res) => {
   res.json({
     ok: true,
@@ -190,15 +168,13 @@ app.get('/api/health', (_req, res) => {
   });
 });
 
-// Get full controller state
 app.get('/api/control/state', (_req, res) => {
   res.json(engine.getState());
 });
 
-// ── Control commands ──
 app.post('/api/control/start', (req, res) => {
   const { pumpDelay } = req.body || {};
-  const ok = engine.start(pumpDelay || 5);
+  const ok = engine.start(pumpDelay || engine.pumpDelay || 5);
   res.json({ ok, state: engine.getState() });
 });
 
@@ -240,45 +216,34 @@ app.post('/api/control/mode', (req, res) => {
   res.json({ ok: true, state: engine.getState() });
 });
 
-// Update zones config (setpoints, waterDuration)
 app.post('/api/control/zones', (req, res) => {
   const { zones } = req.body || {};
-  if (zones && Array.isArray(zones)) {
-    engine.updateZones(zones);
-  }
+  if (zones && Array.isArray(zones)) engine.updateZones(zones);
   res.json({ ok: true, state: engine.getState() });
 });
 
 // ── Device API (ESP32-S3 firmware endpoints) ──
-// POST /api/device/hello — handshake / registo do dispositivo
 app.post('/api/device/hello', checkDeviceToken, (req, res) => {
   const { deviceId, firmware, ip, rssi } = req.body || {};
-  
   const wasOnline = deviceOnline;
   deviceOnline = true;
   everConnected = true;
   lastDeviceContact = Date.now();
   deviceInfo = { deviceId, firmware, ip, rssi, connectedAt: new Date().toISOString() };
-  
   console.log(`[DEVICE] Hello from ${deviceId || 'unknown'} — fw ${firmware || '?'} @ ${ip || '?'}`);
-  
   engine._log('device_connected', 'ESP32-S3',
-    `Dispositivo ${deviceId || 'desconhecido'} reconhecido — controlador ligado (fw ${firmware || '?'})`, 'info',
+    `Dispositivo ${deviceId || 'desconhecido'} reconhecido (fw ${firmware || '?'})`, 'info',
     { deviceId, firmware, ip, rssi });
   broadcastDeviceStatus();
-  
-  res.json({
-    ok: true,
-    serverTime: new Date().toISOString(),
-    message: 'Handshake OK — GTC Rega backend pronto',
-  });
+  res.json({ ok: true, serverTime: new Date().toISOString(), message: 'Handshake OK — GTC Rega backend pronto' });
 });
 
-// POST /api/device/telemetry — recebe sensores e devolve saídas desejadas
+// POST /api/device/telemetry — recebe sensores DHT22 + estados reais
 app.post('/api/device/telemetry', checkDeviceToken, (req, res) => {
-  const { deviceId, firmware, ip, rssi, uptime, emergency, sensors, gpio,
-          platform, pumpRunning, thermalAlarm, mcpPresent } = req.body || {};
-  
+  const { deviceId, firmware, ip, rssi, uptime, emergency, motor,
+          platform, pumpRunning, thermalAlarm, mcpPresent,
+          dhts, gpio } = req.body || {};
+
   const wasOnline = deviceOnline;
   deviceOnline = true;
   everConnected = true;
@@ -291,23 +256,26 @@ app.post('/api/device/telemetry', checkDeviceToken, (req, res) => {
 
   if (!wasOnline) {
     engine._log('device_reconnected', 'ESP32-S3',
-      `Dispositivo ${deviceId || 'desconhecido'} voltou a comunicar`, 'info', { deviceId, firmware, ip, rssi });
+      `Dispositivo ${deviceId || 'desconhecido'} voltou a comunicar`, 'info', { deviceId, firmware, ip });
   }
-  // Reenviar sempre (não só na reconexão) para que RSSI/uptime na UI
-  // acompanhem a telemetria real, que chega a cada TELEMETRY_INTERVAL_MS.
   broadcastDeviceStatus();
 
-  // Update sensor readings from real device
-  if (sensors && Array.isArray(sensors)) {
-    sensors.forEach(s => {
-      if (s.sensorId && typeof s.moisture === 'number') {
-        engine.updateDeviceSensor(s.sensorId, Math.round(s.moisture));
-      }
-    });
+  // DHT22 — telemetria de temperatura/humidade (substitui B1/B2)
+  if (Array.isArray(dhts)) {
+    dhts.forEach(d => engine.updateDeviceDht(d.id, {
+      temperature: d.temperature,
+      humidity: d.humidity,
+      ok: d.ok,
+    }));
   }
-  
-  // Estado elétrico real dos pinos (INPUT a receber / OUTPUT a emitir),
-  // reportado pelo firmware. É a única fonte destes valores na UI.
+
+  // Feedback 24 V via optocopladores (PB6/PB7)
+  engine.updateDeviceFeedback({
+    bombaRunning: typeof pumpRunning === 'boolean' ? pumpRunning : undefined,
+    releTempOn:   typeof thermalAlarm === 'boolean' ? thermalAlarm : undefined,
+  });
+
+  // Estado elétrico real dos pinos (firmware envia mapa { nome: valor })
   if (gpio && typeof gpio === 'object') {
     Object.entries(gpio).forEach(([pin, value]) => {
       const p = Number(pin);
@@ -321,41 +289,51 @@ app.post('/api/device/telemetry', checkDeviceToken, (req, res) => {
     });
   }
 
-  // Handle emergency signal from device
   if (emergency && engine.state !== 'emergency') {
     engine.emergencyStop();
     console.log('[DEVICE] Emergency stop received from ESP32');
   }
-  
-  // Build outputs response for the device
+
+  // Saídas desejadas para o ESP32 (consumidas em /api/device/outputs também)
   const outputs = {
-    emergency: engine.state === 'emergency',
-    pump: engine.pumpOn,
+    emergency:   engine.state === 'emergency',
+    pump:        engine.motorOn,
+    auto:        engine.autoMode,
+    on:          !!engine.gpio[3],   // ON GTC (PA3)
+    timeReg:     !!engine.gpio[4],   // PA4
+    timeDelay:   !!engine.gpio[5],   // PA5
+    out1:        !!engine.gpio[7],   // PA7
+    out2:        !!engine.gpio[6],   // PA6
+    tempRelay:   !!engine.gpio[8],   // PB0
+    stop:        !!engine.gpio[2],   // PA2 STO/EMERG
     zones: engine.zones.map((z, i) => ({
       name: z.name,
       on: z.on,
       duration: z.waterDuration || 30,
     })),
   };
-  
-  res.json({
-    ok: true,
-    outputs,
-    serverTime: new Date().toISOString(),
-  });
+
+  res.json({ ok: true, outputs, serverTime: new Date().toISOString() });
 });
 
-// GET /api/device/outputs — ESP32 consulta as saídas desejadas
 app.get('/api/device/outputs', checkDeviceToken, (req, res) => {
   const wasOnline = deviceOnline;
   lastDeviceContact = Date.now();
   deviceOnline = true;
   everConnected = true;
   if (!wasOnline) broadcastDeviceStatus();
-  
+
   res.json({
     emergency: engine.state === 'emergency',
-    pump: engine.pumpOn,
+    pump:      engine.motorOn,
+    auto:      engine.autoMode,
+    on:        !!engine.gpio[3],
+    timeReg:   !!engine.gpio[4],
+    timeDelay: !!engine.gpio[5],
+    out1:      !!engine.gpio[7],
+    out2:      !!engine.gpio[6],
+    tempRelay: !!engine.gpio[8],
+    stop:      !!engine.gpio[2],
     zones: engine.zones.map((z, i) => ({
       name: z.name,
       on: z.on,
@@ -364,24 +342,23 @@ app.get('/api/device/outputs', checkDeviceToken, (req, res) => {
   });
 });
 
-// GET /api/device/status — estado completo do dispositivo (consumido pela UI web,
-// não pelo firmware — por isso não leva checkDeviceToken, senão a app falha a
-// carregar o estado inicial assim que um DEVICE_TOKEN é configurado)
 app.get('/api/device/status', (req, res) => {
   res.json({
     deviceOnline,
     lastContact: lastDeviceContact ? new Date(lastDeviceContact).toISOString() : null,
     deviceInfo,
-    sensors: engine.getSensorHealth(),
+    dhts: [engine.dht1, engine.dht2],
     engine: {
       state: engine.state,
-      pumpOn: engine.pumpOn,
+      motorOn: engine.motorOn,
       autoMode: engine.autoMode,
       cycleActive: engine.cycleActive,
       testCycleActive: engine.testCycleActive,
       currentZoneIndex: engine.currentZoneIndex,
       zones: engine.zones.length,
+        pumpDelay: engine.pumpDelay,
     },
+    gpio: engine.gpio,
   });
 });
 
@@ -406,16 +383,13 @@ app.post('/api/events', (req, res) => {
 });
 
 // ── Layout ──
-app.get('/api/layout', (_req, res) => {
-  res.json(loadLayout() || {});
-});
-
+app.get('/api/layout', (_req, res) => res.json(loadLayout() || {}));
 app.post('/api/layout', (req, res) => {
   saveLayoutToFile(req.body);
   res.json({ ok: true, saved: new Date().toISOString() });
 });
 
-// Deprecated state endpoints (keep for backward compat)
+// Deprecated state endpoints
 app.get('/api/state', (_req, res) => {
   const cs = engine.getState();
   res.json({
@@ -432,12 +406,11 @@ app.post('/api/state', (req, res) => {
   const { zones, mode, pump } = req.body || {};
   if (zones) engine.updateZones(zones);
   if (mode) engine.setAutoMode(mode === 'automatic');
-  if (pump !== undefined && pump && !engine.pumpOn) engine.togglePump();
-  if (pump !== undefined && !pump && engine.pumpOn) engine.togglePump();
+  if (pump !== undefined && pump && !engine.motorOn) engine.togglePump();
+  if (pump !== undefined && !pump && engine.motorOn) engine.togglePump();
   res.json({ ok: true });
 });
 
-// Legacy command endpoint
 app.post('/api/command', (req, res) => {
   const { command, zoneId } = req.body || {};
   if (command === 'START') engine.start();
@@ -450,25 +423,18 @@ app.post('/api/command', (req, res) => {
 
 // ── GPIO Config persistence ──
 const GPIO_CONFIG_FILE = path.join(DATA_DIR, 'gtc-gpio-config.json');
-
 function loadGpioConfigFile() {
-  try {
-    if (fs.existsSync(GPIO_CONFIG_FILE)) return JSON.parse(fs.readFileSync(GPIO_CONFIG_FILE, 'utf-8'));
-  } catch (e) { /* ignore */ }
+  try { if (fs.existsSync(GPIO_CONFIG_FILE)) return JSON.parse(fs.readFileSync(GPIO_CONFIG_FILE, 'utf-8')); }
+  catch (e) { /* ignore */ }
   return null;
 }
-
 function saveGpioConfigFile(config) {
   try {
     if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
     fs.writeFileSync(GPIO_CONFIG_FILE, JSON.stringify(config, null, 2), 'utf-8');
   } catch (e) { console.error('Failed to save GPIO config:', e.message); }
 }
-
-app.get('/api/gpio-config', (_req, res) => {
-  res.json(loadGpioConfigFile() || { config: [] });
-});
-
+app.get('/api/gpio-config', (_req, res) => res.json(loadGpioConfigFile() || { config: [] }));
 app.post('/api/gpio-config', (req, res) => {
   const { config } = req.body || {};
   if (config && Array.isArray(config)) {
@@ -482,25 +448,18 @@ app.post('/api/gpio-config', (req, res) => {
 
 // ── WiFi Configuration ──
 const WIFI_CONFIG_FILE = path.join(DATA_DIR, 'gtc-wifi-config.json');
-
 function loadWifiConfig() {
-  try {
-    if (fs.existsSync(WIFI_CONFIG_FILE)) return JSON.parse(fs.readFileSync(WIFI_CONFIG_FILE, 'utf-8'));
-  } catch (e) { /* ignore */ }
+  try { if (fs.existsSync(WIFI_CONFIG_FILE)) return JSON.parse(fs.readFileSync(WIFI_CONFIG_FILE, 'utf-8')); }
+  catch (e) { /* ignore */ }
   return { networks: [] };
 }
-
 function saveWifiConfig(config) {
   try {
     if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
     fs.writeFileSync(WIFI_CONFIG_FILE, JSON.stringify({ ...config, savedAt: new Date().toISOString() }, null, 2), 'utf-8');
-  } catch (e) { console.error('Failed to save WiFi config:', e.message); }
+  } catch (e) { console.error('Failed to save wifi:', e.message); }
 }
-
-app.get('/api/wifi/config', (_req, res) => {
-  res.json(loadWifiConfig());
-});
-
+app.get('/api/wifi/config', (_req, res) => res.json(loadWifiConfig()));
 app.post('/api/wifi/config', (req, res) => {
   const { ssid, password, hostname } = req.body || {};
   const cfg = loadWifiConfig();
@@ -516,13 +475,9 @@ app.post('/api/wifi/config', (req, res) => {
   }
   saveWifiConfig(cfg);
   io.emit('wifi:config', cfg);
-  // If device is online, forward WiFi config to ESP32
-  if (deviceOnline) {
-    io.emit('wifi:apply', { ssid, password });
-  }
+  if (deviceOnline) io.emit('wifi:apply', { ssid, password });
   res.json({ ok: true, config: cfg });
 });
-
 app.delete('/api/wifi/config', (req, res) => {
   const { ssid } = req.body || {};
   const cfg = loadWifiConfig();
@@ -533,49 +488,30 @@ app.delete('/api/wifi/config', (req, res) => {
   }
   res.json({ ok: true, config: cfg });
 });
-
-// WiFi scan (ask ESP32 to scan nearby networks)
 app.post('/api/wifi/scan', (_req, res) => {
-  if (deviceOnline) {
-    io.emit('wifi:scan-request', { timestamp: Date.now() });
-    res.json({ ok: true, message: 'Scan request sent to ESP32' });
-  } else {
-    res.json({ ok: false, message: 'ESP32 offline — cannot scan' });
-  }
+  if (deviceOnline) { io.emit('wifi:scan-request', { timestamp: Date.now() }); res.json({ ok: true, message: 'Scan request sent' }); }
+  else { res.json({ ok: false, message: 'ESP32 offline' }); }
 });
-
-// Receive WiFi scan results from ESP32
 app.post('/api/device/wifi-scan-results', checkDeviceToken, (req, res) => {
   const { networks } = req.body || {};
-  if (networks && Array.isArray(networks)) {
-    io.emit('wifi:scan-results', { networks, timestamp: Date.now() });
-    res.json({ ok: true });
-  } else {
-    res.status(400).json({ error: 'Missing networks array' });
-  }
+  if (networks && Array.isArray(networks)) { io.emit('wifi:scan-results', { networks, timestamp: Date.now() }); res.json({ ok: true }); }
+  else { res.status(400).json({ error: 'Missing networks array' }); }
 });
 
 // ── Bluetooth Configuration ──
 const BLUETOOTH_CONFIG_FILE = path.join(DATA_DIR, 'gtc-bluetooth-config.json');
-
 function loadBluetoothConfig() {
-  try {
-    if (fs.existsSync(BLUETOOTH_CONFIG_FILE)) return JSON.parse(fs.readFileSync(BLUETOOTH_CONFIG_FILE, 'utf-8'));
-  } catch (e) { /* ignore */ }
+  try { if (fs.existsSync(BLUETOOTH_CONFIG_FILE)) return JSON.parse(fs.readFileSync(BLUETOOTH_CONFIG_FILE, 'utf-8')); }
+  catch (e) { /* ignore */ }
   return { devices: [] };
 }
-
 function saveBluetoothConfig(config) {
   try {
     if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
     fs.writeFileSync(BLUETOOTH_CONFIG_FILE, JSON.stringify({ ...config, savedAt: new Date().toISOString() }, null, 2), 'utf-8');
-  } catch (e) { console.error('Failed to save Bluetooth config:', e.message); }
+  } catch (e) { console.error('Failed to save bluetooth:', e.message); }
 }
-
-app.get('/api/bluetooth/config', (_req, res) => {
-  res.json(loadBluetoothConfig());
-});
-
+app.get('/api/bluetooth/config', (_req, res) => res.json(loadBluetoothConfig()));
 app.post('/api/bluetooth/config', (req, res) => {
   const { address, name, pin } = req.body || {};
   const cfg = loadBluetoothConfig();
@@ -591,13 +527,9 @@ app.post('/api/bluetooth/config', (req, res) => {
   }
   saveBluetoothConfig(cfg);
   io.emit('bluetooth:config', cfg);
-  // If device is online, forward pairing request to ESP32
-  if (deviceOnline) {
-    io.emit('bluetooth:apply', { address, pin });
-  }
+  if (deviceOnline) io.emit('bluetooth:apply', { address, pin });
   res.json({ ok: true, config: cfg });
 });
-
 app.delete('/api/bluetooth/config', (req, res) => {
   const { address } = req.body || {};
   const cfg = loadBluetoothConfig();
@@ -605,35 +537,19 @@ app.delete('/api/bluetooth/config', (req, res) => {
     cfg.devices = cfg.devices.filter(d => d.address !== address);
     saveBluetoothConfig(cfg);
     io.emit('bluetooth:config', cfg);
-    if (deviceOnline) {
-      io.emit('bluetooth:forget', { address });
-    }
+    if (deviceOnline) io.emit('bluetooth:forget', { address });
   }
   res.json({ ok: true, config: cfg });
 });
-
-// Bluetooth scan (ask ESP32 to scan nearby BLE devices)
 app.post('/api/bluetooth/scan', (_req, res) => {
-  if (deviceOnline) {
-    io.emit('bluetooth:scan-request', { timestamp: Date.now() });
-    res.json({ ok: true, message: 'Scan request sent to ESP32' });
-  } else {
-    res.json({ ok: false, message: 'ESP32 offline — cannot scan' });
-  }
+  if (deviceOnline) { io.emit('bluetooth:scan-request', { timestamp: Date.now() }); res.json({ ok: true, message: 'Scan request sent' }); }
+  else { res.json({ ok: false, message: 'ESP32 offline' }); }
 });
-
-// Receive Bluetooth scan results from ESP32
 app.post('/api/device/bluetooth-scan-results', checkDeviceToken, (req, res) => {
   const { devices } = req.body || {};
-  if (devices && Array.isArray(devices)) {
-    io.emit('bluetooth:scan-results', { devices, timestamp: Date.now() });
-    res.json({ ok: true });
-  } else {
-    res.status(400).json({ error: 'Missing devices array' });
-  }
+  if (devices && Array.isArray(devices)) { io.emit('bluetooth:scan-results', { devices, timestamp: Date.now() }); res.json({ ok: true }); }
+  else { res.status(400).json({ error: 'Missing devices array' }); }
 });
-
-// Receive Bluetooth pairing confirmation from ESP32
 app.post('/api/device/bluetooth-status', checkDeviceToken, (req, res) => {
   const { address, paired } = req.body || {};
   if (address) {
@@ -646,9 +562,7 @@ app.post('/api/device/bluetooth-status', checkDeviceToken, (req, res) => {
       io.emit('bluetooth:config', cfg);
     }
     res.json({ ok: true });
-  } else {
-    res.status(400).json({ error: 'Missing address' });
-  }
+  } else { res.status(400).json({ error: 'Missing address' }); }
 });
 
 // ── WebSocket ──
@@ -656,12 +570,11 @@ io.on('connection', (socket) => {
   console.log(`Client connected: ${socket.id}`);
   socket.emit('controller:state', engine.getState());
   socket.emit('controller:gpio', engine.gpio);
-  // Send device status
   socket.emit('controller:device', { online: deviceOnline, info: deviceInfo });
-  // Send current sensor health snapshot
-  engine.getSensorHealth().forEach((health) => socket.emit('controller:sensor-health', health));
+  socket.emit('controller:sensor', { sensorId: 'DHT1', payload: engine.dht1 });
+  socket.emit('controller:sensor', { sensorId: 'DHT2', payload: engine.dht2 });
 
-  socket.on('control:start', (data) => engine.start(data?.pumpDelay || 5));
+  socket.on('control:start', (data) => engine.start(data?.pumpDelay || engine.pumpDelay));
   socket.on('control:stop', () => engine.stop());
   socket.on('control:emergency', () => engine.emergencyStop());
   socket.on('control:reset', () => engine.reset());
@@ -671,15 +584,14 @@ io.on('connection', (socket) => {
   socket.on('control:mode', (data) => engine.setAutoMode(!!data?.auto));
 });
 
-// ── Start ──
 const port = process.env.PORT || 3000;
 server.listen(port, () => {
   console.log(`GTC Rega API + Engine listening on port ${port}`);
   console.log(`Data dir: ${DATA_DIR}`);
   console.log(`Device token: ${DEVICE_TOKEN ? 'configured' : 'disabled (no token)'}`);
-  console.log(`Device API endpoints:`);
-  console.log(`  POST /api/device/hello      — handshake`);
-  console.log(`  POST /api/device/telemetry  — sensors + outputs`);
-  console.log(`  GET  /api/device/outputs    — desired outputs`);
-  console.log(`  GET  /api/device/status     — device + engine status`);
+  console.log('Endpoints:');
+  console.log('  POST /api/device/hello');
+  console.log('  POST /api/device/telemetry');
+  console.log('  GET  /api/device/outputs');
+  console.log('  GET  /api/device/status');
 });

@@ -2,20 +2,21 @@
  * GTC Rega — Firmware ESP32-S3 (plataforma ES3N28P)
  * ---------------------------------------------------------------
  * Controlador físico: ES3N28P (ESP32-S3 integrado).
- * Expansão de I/O: MCP23017-E/SS via I2C, com isolamento galvânico
- * (optoacopladores) de todos os sinais de campo de 24 VDC.
+ * Expansão de I/O: MCP23017-E/SS via I2C (IO16=SCL, IO18=SDA),
+ * com isolamento galvânico (optoacopladores) das entradas 24 VDC.
  *
  *   ESP32-S3 (ES3N28P) ── I2C ──► MCP23017 ── optoacopladores ──► 24 VDC
  *
- * Liga-se ao WiFi (portal WiFiManager), anuncia BLE, serve a interface
- * web local (webui.h) e sincroniza com o backend GTC Rega:
- *   - lê sensores capacitivos de humidade (B1/B2) e envia telemetria
- *   - lê o estado REAL do campo: KM1 (bomba em funcionamento) e relé
- *     térmico (alarme), via MCP23017 + optoacopladores
- *   - aplica as saídas desejadas (bomba + válvulas por zona) com
- *     bloqueio de segurança (alarme térmico / MCP ausente)
- *   - paragem de emergência local (botão) e fail-safe em perda de rede
- *   - protege-se com watchdog de hardware
+ * Pinout real do quadro:
+ *   ESP32-S3 IO16/IO18 ─── I2C ─── MCP23017 (endereço 0x20)
+ *   ESP32-S3 IO21 ─── DHT22 #1 (T/H)
+ *   ESP32-S3 IO14 ─── DHT22 #2 (T/H)
+ *
+ *   MCP23017 (saídas): PA0..PA7 (MOTOR ON, AUTO GTC, STO/EMERG GTC,
+ *                              ON GTC, Temp. Rega, Temp. Delay,
+ *                              Out Sensor 2, Out Sensor 1) e PB0 (RELÉ TEMP-ON).
+ *   MCP23017 (entradas opto): PB6 (Sinal bomba ON — 24 V) e
+ *                              PB7 (Sinal Relé Temp ON — 24 V).
  */
 
 #include <Arduino.h>
@@ -47,12 +48,14 @@
 // ── Estado ──
 static String baseUrl;
 static uint32_t lastPoll = 0, lastTelemetry = 0, lastSample = 0, lastOkContact = 0, lastBleNotify = 0;
-static bool pumpOn = false;
+static bool motorOn = false;
 static bool autoModeOn = false;
-static bool zoneOn[ZONE_COUNT] = { false };
-static float moistureB1 = 0, moistureB2 = 0;
 static bool emergencyLatched = false;
 static bool serverOnline = false;
+
+// Última leitura válida dos DHT22 (NaN = ainda nenhuma).
+static float dht1Temp = NAN, dht1Hum = NAN;
+static float dht2Temp = NAN, dht2Hum = NAN;
 
 // ── Bluetooth (BLE) ──
 static NimBLEServer* bleServer = nullptr;
@@ -65,51 +68,50 @@ static void allOutputsOff() {
   irrigation::setStop(false);
   irrigation::setAuto(false);
   pump::set(false);
-  for (size_t i = 0; i < ZONE_COUNT; i++) irrigation::setZone(i, false);
+  irrigation::allZonesOff();
+  io::writeOutSensor1(false);
+  io::writeOutSensor2(false);
+  io::writeTimeReg(false);
+  io::writeTimeDelay(false);
+  io::writeReleTempOn(false);
   autoModeOn = false;
-  for (auto& z : zoneOn) z = false;
-  pumpOn = false;
+  motorOn = false;
 }
 
-// ── Sensores (ADC do ESP32-S3) ──
-static float rawToMoisture(int raw) {
-  float pct = 100.0f * (SENSOR_DRY_RAW - raw) / float(SENSOR_DRY_RAW - SENSOR_WET_RAW);
-  if (pct < 0) pct = 0;
-  if (pct > 100) pct = 100;
-  return pct;
-}
-
-static float readSensor(uint8_t pin) {
-  uint32_t acc = 0;
-  for (int i = 0; i < 8; i++) { acc += analogRead(pin); delayMicroseconds(200); }
-  return rawToMoisture(acc / 8);
-}
-
-static void sampleSensors() {
-  float b1 = readSensor(PIN_SENSOR_B1);
-  float b2 = readSensor(PIN_SENSOR_B2);
-  moistureB1 = moistureB1 == 0 ? b1 : (moistureB1 * 0.8f + b1 * 0.2f);
-  moistureB2 = moistureB2 == 0 ? b2 : (moistureB2 * 0.8f + b2 * 0.2f);
+// ── Sensores DHT22 (IO21 / IO14) ──
+static void sampleDht() {
+  io::DhtReading a = io::readDht1();
+  if (a.ok) { dht1Temp = a.temperature; dht1Hum = a.humidity; }
+  io::DhtReading b = io::readDht2();
+  if (b.ok) { dht2Temp = b.temperature; dht2Hum = b.humidity; }
 }
 
 // ── Estado elétrico real (para a vista HARDWARE da interface) ──
+// Chaves por nome lógico em vez de GPIO — coerente com o frontend e o backend.
 static void gpioSnapshot(JsonObject out) {
   const auto s = signals24v::snapshot();
-  out[String(PIN_SENSOR_B1)] = analogRead(PIN_SENSOR_B1) > SENSOR_SIGNAL_RAW_MIN ? 1 : 0;
-  out[String(PIN_SENSOR_B2)] = analogRead(PIN_SENSOR_B2) > SENSOR_SIGNAL_RAW_MIN ? 1 : 0;
-  out[String(PIN_EMERGENCY_BTN)] = io::emergencyPressed() ? 1 : 0;
-  // GPIOs lógicos do MCP23017 (nomes simbólicos):
-  out["KM1"] = s.km1 ? 1 : 0;             // contacto auxiliar do contactor
-  out["TH"] = s.thermal ? 1 : 0;          // relé térmico
-  out["MCP"] = s.mcpPresent ? 1 : 0;      // expansor presente no barramento
-  out[String(MCP_OUTPUT_RELAY_PUMP)] = pumpOn ? 1 : 0;
-  out[String(MCP_OUTPUT_RELAY_STOP)] = emergencyLatched ? 1 : 0;
-  out[String(MCP_OUTPUT_RELAY_AUTO)] = autoModeOn ? 1 : 0;
-  for (size_t i = 0; i < ZONE_COUNT; i++)
-    out[String(MCP_OUTPUT_ZONE_PINS[i])] = zoneOn[i] ? 1 : 0;
+
+  // DHT22 — leituras analógicas/digitais na entrada (valor 1 = sensor presente)
+  out["DHT1_OK"] = io::readDht1().ok ? 1 : 0;
+  out["DHT2_OK"] = io::readDht2().ok ? 1 : 0;
+  out["EMERG_BTN"] = io::emergencyPressed() ? 1 : 0;
+
+  // Pinos lógicos do MCP23017 (índices 0..15 conforme config.h).
+  out["KM1"]     = s.bomba ? 1 : 0;         // PB6 via opto
+  out["TH"]      = s.releTemp ? 1 : 0;      // PB7 via opto
+  out["MCP"]     = s.mcpPresent ? 1 : 0;
+  out[String(MCP_OUTPUT_MOTOR_ON)]      = motorOn ? 1 : 0;
+  out[String(MCP_OUTPUT_AUTO_GTC)]      = autoModeOn ? 1 : 0;
+  out[String(MCP_OUTPUT_STO_EMERG_GTC)] = emergencyLatched ? 1 : 0;
+  out[String(MCP_OUTPUT_ON_GTC)]        = 0;     // controlado pelo backend
+  out[String(MCP_OUTPUT_TIME_REG)]      = 0;
+  out[String(MCP_OUTPUT_TIME_DELAY)]    = 0;
+  out[String(MCP_OUTPUT_SENSOR_1)]      = 0;
+  out[String(MCP_OUTPUT_SENSOR_2)]      = 0;
+  out[String(MCP_OUTPUT_RELE_TEMP_ON)]  = 0;
 }
 
-// Estado real exposto pela interface local (webui.h)
+// Estado real exposto pela interface local (webui.h) e pelo backend.
 String gtcStatusJson() {
   JsonDocument doc;
   const auto s = signals24v::snapshot();
@@ -122,17 +124,25 @@ String gtcStatusJson() {
   doc["rssi"] = WiFi.RSSI();
   doc["uptime"] = millis() / 1000;
   doc["emergency"] = emergencyLatched;
-  doc["pump"] = pumpOn;
-  doc["pumpRunning"] = s.km1;               // feedback real da bomba
-  doc["thermalAlarm"] = s.thermal;          // alarme térmico
-  doc["mcpPresent"] = s.mcpPresent;         // expansor I/O presente
-  JsonArray sensors = doc["sensors"].to<JsonArray>();
-  JsonObject s1 = sensors.add<JsonObject>();
-  s1["sensorId"] = "B1"; s1["moisture"] = (int)roundf(moistureB1);
-  s1["ok"] = analogRead(PIN_SENSOR_B1) > SENSOR_SIGNAL_RAW_MIN;
-  JsonObject s2 = sensors.add<JsonObject>();
-  s2["sensorId"] = "B2"; s2["moisture"] = (int)roundf(moistureB2);
-  s2["ok"] = analogRead(PIN_SENSOR_B2) > SENSOR_SIGNAL_RAW_MIN;
+  doc["motor"] = motorOn;
+  doc["pumpRunning"] = s.bomba;               // feedback real (PB6 via opto)
+  doc["thermalAlarm"] = s.releTemp;           // relé térmico (PB7 via opto)
+  doc["mcpPresent"] = s.mcpPresent;
+
+  // DHT22 — telemetria de temperatura/humidade (e não mais sensores
+  // capacitivos B1/B2 como na versão anterior).
+  JsonArray dhts = doc["dhts"].to<JsonArray>();
+  auto d1 = dhts.add<JsonObject>();
+  d1["id"] = SENSOR_DHT_ID_1;
+  d1["temperature"] = isnan(dht1Temp) ? (float)0.0f : dht1Temp;
+  d1["humidity"]    = isnan(dht1Hum)  ? (float)0.0f : dht1Hum;
+  d1["ok"] = io::readDht1().ok;
+  auto d2 = dhts.add<JsonObject>();
+  d2["id"] = SENSOR_DHT_ID_2;
+  d2["temperature"] = isnan(dht2Temp) ? (float)0.0f : dht2Temp;
+  d2["humidity"]    = isnan(dht2Hum)  ? (float)0.0f : dht2Hum;
+  d2["ok"] = io::readDht2().ok;
+
   gpioSnapshot(doc["gpio"].to<JsonObject>());
   String out;
   serializeJson(doc, out);
@@ -226,12 +236,12 @@ static bool httpJson(const char* method, const String& path, const String& body,
 // ── Aplicar saídas vindas do servidor (com bloqueio de segurança) ──
 static void applyOutputs(JsonDocument& doc) {
   bool emergency = doc["emergency"] | false;
-  bool wantPump = doc["pump"] | false;
-  bool wantAuto = doc["auto"] | false;
+  bool wantMotor = doc["pump"] | false;
+  bool wantAuto  = doc["auto"] | false;
 
   if (emergency) { allOutputsOff(); return; }
 
-  // Alarme térmico => bomba bloqueada (segurança local prevalece).
+  // Relé térmico ON => motor bloqueado (segurança local prevalece).
   const bool blocked = alarms::thermalActive() || !signals24v::snapshot().mcpPresent;
 
   if (wantAuto != autoModeOn) {
@@ -240,27 +250,27 @@ static void applyOutputs(JsonDocument& doc) {
     Serial.printf("[AUTO] %s\n", wantAuto ? "ON" : "OFF");
   }
 
-  JsonArray zones = doc["zones"].as<JsonArray>();
-  size_t i = 0;
-  for (JsonObject z : zones) {
-    if (i >= ZONE_COUNT) break;
-    bool on = z["on"] | false;
-    if (on != zoneOn[i]) {
-      zoneOn[i] = on;
-      irrigation::setZone(i, on);
-      Serial.printf("[ZONE] %s -> %s\n", (const char*)(z["name"] | "zona"), on ? "ON" : "OFF");
-    }
-    i++;
-  }
-  for (; i < ZONE_COUNT; i++) {
-    if (zoneOn[i]) { zoneOn[i] = false; irrigation::setZone(i, false); }
-  }
+  // Sinais de comando vindos do backend (mapeados 1:1 para PA3/PA4/PA5/...).
+  bool onGtc    = doc["on"]      | false;
+  bool timeReg  = doc["timeReg"] | false;
+  bool timeDly  = doc["timeDelay"] | false;
+  bool s1Out    = doc["out1"]    | false;
+  bool s2Out    = doc["out2"]    | false;
+  bool tempRel  = doc["tempRelay"] | false;
+  bool stopRel  = doc["stop"]    | false;
+  io::writeOnGtc(onGtc);
+  io::writeTimeReg(timeReg);
+  io::writeTimeDelay(timeDly);
+  io::writeOutSensor1(s1Out);
+  io::writeOutSensor2(s2Out);
+  io::writeReleTempOn(tempRel);
+  io::writeStoEmergGtc(stopRel);
 
-  if (wantPump != pumpOn) {
-    bool applied = pump::set(wantPump && !blocked);
+  if (wantMotor != motorOn) {
+    bool applied = pump::set(wantMotor && !blocked);
     if (applied) {
-      pumpOn = wantPump && !blocked;
-      Serial.printf("[PUMP] %s%s\n", pumpOn ? "ON" : "OFF", blocked ? " (bloqueado pelo alarme termico)" : "");
+      motorOn = wantMotor && !blocked;
+      Serial.printf("[MOTOR] %s%s\n", motorOn ? "ON" : "OFF", blocked ? " (bloqueado pelo rele termico)" : "");
     }
   }
 }
@@ -275,17 +285,21 @@ static void sendTelemetry() {
   body["rssi"] = WiFi.RSSI();
   body["uptime"] = millis() / 1000;
   body["emergency"] = emergencyLatched;
-  body["pumpRunning"] = s.km1;
-  body["thermalAlarm"] = s.thermal;
+  body["pumpRunning"] = s.bomba;
+  body["thermalAlarm"] = s.releTemp;
   body["mcpPresent"] = s.mcpPresent;
 
-  JsonArray sensors = body["sensors"].to<JsonArray>();
-  JsonObject s1 = sensors.add<JsonObject>();
-  s1["sensorId"] = "B1";
-  s1["moisture"] = (int)roundf(moistureB1);
-  JsonObject s2 = sensors.add<JsonObject>();
-  s2["sensorId"] = "B2";
-  s2["moisture"] = (int)roundf(moistureB2);
+  JsonArray dhts = body["dhts"].to<JsonArray>();
+  auto d1 = dhts.add<JsonObject>();
+  d1["id"] = SENSOR_DHT_ID_1;
+  d1["temperature"] = isnan(dht1Temp) ? (float)0.0f : dht1Temp;
+  d1["humidity"]    = isnan(dht1Hum)  ? (float)0.0f : dht1Hum;
+  d1["ok"] = io::readDht1().ok;
+  auto d2 = dhts.add<JsonObject>();
+  d2["id"] = SENSOR_DHT_ID_2;
+  d2["temperature"] = isnan(dht2Temp) ? (float)0.0f : dht2Temp;
+  d2["humidity"]    = isnan(dht2Hum)  ? (float)0.0f : dht2Hum;
+  d2["ok"] = io::readDht2().ok;
 
   gpioSnapshot(body["gpio"].to<JsonObject>());
 
@@ -328,6 +342,8 @@ void setup() {
   if (!io::begin()) {
     Serial.println("[I/O] MCP23017 AUSENTE no barramento I2C — saídas bloqueadas (fail-safe)");
   }
+  // Leitura inicial dos DHT22 (vai estabilizar durante as primeiras leituras)
+  sampleDht();
   allOutputsOff();
 
   // Periféricos on-board (stub na v1, HMI via web)
@@ -376,12 +392,12 @@ void loop() {
   esp_task_wdt_reset();
   uint32_t now = millis();
 
-  // Segurança: alarme térmico => desligar bomba imediatamente (independente da rede)
+  // Segurança: relé térmico ON (PB7 via opto) => desligar motor imediatamente
   if (alarms::thermalActive()) {
-    if (pumpOn) {
+    if (motorOn) {
       pump::set(false);
-      pumpOn = false;
-      Serial.println("[SAFETY] alarme termico — bomba desligada");
+      motorOn = false;
+      Serial.println("[SAFETY] rele termico ON — motor desligado");
     }
   }
 
@@ -410,12 +426,12 @@ void loop() {
   }
 
   // Fail-safe: sem contacto com o servidor há mais de 15s
-  if (lastOkContact && now - lastOkContact > 15000 && (pumpOn || zoneOn[0])) {
-    Serial.println("[SAFE] servidor inacessível — desligar saídas");
+  if (lastOkContact && now - lastOkContact > 15000 && motorOn) {
+    Serial.println("[SAFE] servidor inacessivel — desligar saidas");
     allOutputsOff();
   }
 
-  if (now - lastSample >= SENSOR_SAMPLE_MS) { lastSample = now; sampleSensors(); }
+  if (now - lastSample >= SENSOR_SAMPLE_MS) { lastSample = now; sampleDht(); }
   if (now - lastPoll >= POLL_INTERVAL_MS) { lastPoll = now; pollOutputs(); }
   if (now - lastTelemetry >= TELEMETRY_INTERVAL_MS) { lastTelemetry = now; sendTelemetry(); }
 

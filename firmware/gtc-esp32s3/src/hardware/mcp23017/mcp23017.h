@@ -5,13 +5,25 @@
  * Camada única de acesso ao MCP23017. Nenhuma outra parte do firmware
  * fala I2C diretamente: toda a leitura/escrita de campo passa por aqui.
  *
- *   ESP32-S3 ── I2C ──► MCP23017 (GPA0-7 = entradas, GPB0-7 = saídas)
+ *   ESP32-S3 ── I2C ──► MCP23017 (GPA0-7 = saídas, GPB0 = saída, PB6/PB7 = entradas opto)
  *                             ▲
  *                             └── optoacopladores ── 24 VDC
  *
+ * Pinout do quadro GTC Rega:
+ *   PA0 (GPA0) — 9-E6  MOTOR ON                (saída)
+ *   PA1 (GPA1) — 9-D6  AUTO GTC                (saída)
+ *   PA2 (GPA2) — 8-E6  STO/EMERG GTC           (saída)
+ *   PA3 (GPA3) — 8-E6  ON GTC                  (saída)
+ *   PA4 (GPA4) — 8-E6  Temp. Tempo de Rega     (saída)
+ *   PA5 (GPA5) — 8-D6  Temp. Delay Bom/Val     (saída)
+ *   PA6 (GPA6) — 8-D6  Out Sensor 2            (saída)
+ *   PA7 (GPA7) —      Out Sensor 1             (saída)
+ *   PB0 (GPB0) — 9-E6  RELE TEMP-ON            (saída)
+ *   PB6 (GPB6) —      Sinal bomba ON           (entrada via opto)
+ *   PB7 (GPB7) —      Sinal Relé Temp ON       (entrada via opto)
+ *
  * Inicialização fail-safe: se o MCP23017 não responder no barramento,
- * `begin()` devolve false e todas as leituras retornam o valor seguro
- * (alarme térmico ativo => bomba bloqueada), para nunca operar às cegas.
+ * `begin()` devolve false e todas as leituras retornam o valor seguro.
  */
 
 #include <Arduino.h>
@@ -44,25 +56,28 @@ public:
       Serial.println("[MCP23017] NAO DETETADO no barramento I2C — modo fail-safe");
       return false;
     }
-    // GPA (0-7) = entradas; GPB (8-15) = saídas
-    _writeReg(MCP_IODIRA, 0xFF);
-    _writeReg(MCP_IODIRB, 0x00);
-    // Polaridade: mantém lógica normal (configurada em config.h na leitura)
+    // Conforme pinout real do quadro:
+    //   GPA (0-7) = TODAS saídas
+    //   GPB (0-7) = PB0 saída, PB1..PB5 reserva saída, PB6/PB7 entradas (opto)
+    _writeReg(MCP_IODIRA, 0x00);   // porto A: tudo saídas
+    _writeReg(MCP_IODIRB, 0xC0);   // porto B: 0b1100_0000 -> PB6/PB7 entradas, resto saída
+    // Polaridade: normal
     _writeReg(MCP_IPOLA, 0x00);
     _writeReg(MCP_IPOLB, 0x00);
-    // Pull-ups desativados (as entradas vêm de optoacopladores com nível definido)
+    // Pull-ups internos desativados nas duas portas — entradas opto têm
+    // pull-up externo no quadro.
     _writeReg(MCP_GPPUA, 0x00);
     _writeReg(MCP_GPPUB, 0x00);
     // Saídas em repouso: tudo desligado (polaridade em config.h)
     _writeReg(MCP_GPIOB, _idleOutputValue());
-    Serial.printf("[MCP23017] detetado em 0x%02X — entradas GPA=%02X saidas GPB=%02X\n",
+    Serial.printf("[MCP23017] detetado em 0x%02X — GPA=0x%02X GPB=0x%02X\n",
                   MCP23017_ADDRESS, _readReg(MCP_GPIOA), _readReg(MCP_GPIOB));
     return true;
   }
 
   bool present() const { return _present; }
 
-  // Lê um pino lógico (0..15). PINO_KM1/THERMAL usam optoacopladores.
+  // Lê um pino lógico (0..15). PB6/PB7 vêm dos optocopladores.
   // Devolve o valor de segurança quando o MCP não está presente.
   bool read(uint8_t pin, bool safeValue = false) {
     if (!_present) return safeValue;
@@ -72,23 +87,37 @@ public:
     return (bankB >> (pin - 8)) & 0x01;
   }
 
-  // Escreve num pino lógico de saída (8..15).
+  // Escreve num pino lógico (0..15).
   void write(uint8_t pin, bool on) {
     if (!_present) return;
-    uint8_t b = _readReg(MCP_GPIOB);
-    if (RELAY_ACTIVE_LOW) {
-      if (on) b &= ~(1u << (pin - 8));
-      else    b |=  (1u << (pin - 8));
+    if (pin < 8) {
+      uint8_t a = _readReg(MCP_GPIOA);
+      if (RELAY_ACTIVE_LOW) {
+        if (on) a &= ~(1u << pin);
+        else    a |=  (1u << pin);
+      } else {
+        if (on) a |=  (1u << pin);
+        else    a &= ~(1u << pin);
+      }
+      _writeReg(MCP_GPIOA, a);
     } else {
-      if (on) b |=  (1u << (pin - 8));
-      else    b &= ~(1u << (pin - 8));
+      uint8_t b = _readReg(MCP_GPIOB);
+      uint8_t p = pin - 8;
+      if (RELAY_ACTIVE_LOW) {
+        if (on) b &= ~(1u << p);
+        else    b |=  (1u << p);
+      } else {
+        if (on) b |=  (1u << p);
+        else    b &= ~(1u << p);
+      }
+      _writeReg(MCP_GPIOB, b);
     }
-    _writeReg(MCP_GPIOB, b);
   }
 
   // Desliga todas as saídas (política de repouso — usado no boot e em emergência).
   void allOff() {
     if (!_present) return;
+    _writeReg(MCP_GPIOA, _idleOutputValue());
     _writeReg(MCP_GPIOB, _idleOutputValue());
   }
 

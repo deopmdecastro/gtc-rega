@@ -3,16 +3,20 @@
  * Comunicação bidirecional com o backend real (Socket.IO + REST).
  *
  * Tudo o que a UI mostra vem daqui: estado do motor de controlo, telemetria
- * dos sensores, saúde de cada sensor, presença do controlador ESP32-S3 e
- * registo de eventos/alarmes. Não há dados simulados no frontend.
+ * DHT22 (temperatura/humidade), saídas do MCP23017, presença do controlador
+ * ESP32-S3 e registo de eventos/alarmes. Não há dados simulados no frontend.
  */
 
 import { io, type Socket } from 'socket.io-client';
 
 type ControllerState = {
   state: string;
+  motor: boolean;
   pump: boolean;
   autoMode: boolean;
+  pumpDelay: number;
+  dht1: { id: string; temperature: number; humidity: number; ok: boolean; lastSeen: number | null };
+  dht2: { id: string; temperature: number; humidity: number; ok: boolean; lastSeen: number | null };
   zones: ZoneState[];
   gpio: Record<number, number | boolean>;
   currentZoneIndex: number;
@@ -43,20 +47,32 @@ type ControllerEvent = {
   created_at: string;
 };
 
+export type DhtReading = {
+  id: string;
+  temperature: number;
+  humidity: number;
+  ok: boolean;
+  lastSeen?: number | null;
+};
+
 export type DeviceStatus = {
   deviceOnline: boolean;
   lastContact: string | null;
   deviceInfo: { deviceId?: string; firmware?: string; ip?: string; rssi?: number; uptime?: number; platform?: string; pumpRunning?: boolean; thermalAlarm?: boolean; mcpPresent?: boolean } | null;
-  sensors: { sensorId: string; lastSeen: number | null; stale: boolean }[];
+  dhts?: DhtReading[];
+  sensors?: { sensorId: string; lastSeen: number | null; stale: boolean }[];
   engine?: {
     state: string;
+    motorOn: boolean;
     pumpOn: boolean;
     autoMode: boolean;
     cycleActive: boolean;
     testCycleActive: boolean;
     currentZoneIndex: number;
     zones: number;
+    pumpDelay: number;
   };
+  gpio?: Record<number, number | boolean>;
 };
 
 export type HealthStatus = {
@@ -79,9 +95,7 @@ function apiUrl(path: string): string {
 export function createControllerClient() {
   let socket: Socket | null = null;
   const listeners: Map<string, Set<Function>> = new Map();
-  /** true = backend alcançável (socket ligado ou REST a responder) */
   let connected = false;
-  /** true = a receber por Socket.IO; false = a usar polling REST */
   let realtime = false;
 
   function on(event: string, callback: Function) {
@@ -102,7 +116,6 @@ export function createControllerClient() {
 
   function connect() {
     if (socket) return;
-
     socket = io(API_BASE || undefined, {
       transports: ['websocket', 'polling'],
       reconnection: true,
@@ -115,13 +128,11 @@ export function createControllerClient() {
       realtime = true;
       setConnected(true);
       stopPolling();
-      // Snapshot imediato por REST — garante dados reais no primeiro render
       void refreshAll();
     });
 
     socket.on('disconnect', () => {
       realtime = false;
-      // Continuamos a servir dados reais por REST enquanto o socket recupera
       startPolling();
     });
 
@@ -140,7 +151,6 @@ export function createControllerClient() {
     socket.on('wifi:config', (payload: unknown) => emit('wifi:config', payload));
     socket.on('wifi:scan-results', (payload: unknown) => emit('wifi:scan-results', payload));
 
-    // Polling de segurança: mesmo com socket ligado, sincronizamos device/health
     startStatusPolling();
   }
 
@@ -156,7 +166,6 @@ export function createControllerClient() {
     realtime = false;
   }
 
-  // ── Fallback REST (estado) ──
   let pollTimer: ReturnType<typeof setInterval> | null = null;
 
   function startPolling() {
@@ -180,7 +189,6 @@ export function createControllerClient() {
     }
   }
 
-  // ── Polling de estado do dispositivo/sensores (sempre ativo) ──
   let statusTimer: ReturnType<typeof setInterval> | null = null;
 
   function startStatusPolling() {
@@ -201,7 +209,7 @@ export function createControllerClient() {
     }
     setConnected(true);
     emit('controller:device', { online: status.deviceOnline, info: status.deviceInfo, lastContact: status.lastContact });
-    status.sensors?.forEach((s) => emit('sensor-health', s));
+    status.dhts?.forEach((d) => emit('dht', d));
     emit('device-status', status);
   }
 
@@ -209,7 +217,6 @@ export function createControllerClient() {
     await Promise.all([pollState(), refreshDevice()]);
   }
 
-  // ── REST helpers ──
   async function get<T>(path: string): Promise<T | null> {
     try {
       const res = await fetch(apiUrl(path));
@@ -249,17 +256,15 @@ export function createControllerClient() {
     refreshAll,
     get connected() { return connected; },
     get realtime() { return realtime; },
-    // ── Comandos ──
-    start: (pumpDelay?: number) => sendCommand('start', { pumpDelay }),
-    stop: () => sendCommand('stop'),
-    emergency: () => sendCommand('emergency'),
-    reset: () => sendCommand('reset'),
-    testCycle: () => sendCommand('test-cycle'),
-    toggleZone: (zoneId: string) => sendCommand('toggle-zone', { zoneId }),
-    togglePump: () => sendCommand('toggle-pump'),
-    setMode: (auto: boolean) => sendCommand('mode', { auto }),
+    start:       (pumpDelay?: number) => sendCommand('start', { pumpDelay }),
+    stop:        () => sendCommand('stop'),
+    emergency:   () => sendCommand('emergency'),
+    reset:       () => sendCommand('reset'),
+    testCycle:   () => sendCommand('test-cycle'),
+    toggleZone:  (zoneId: string) => sendCommand('toggle-zone', { zoneId }),
+    togglePump:  () => sendCommand('toggle-pump'),
+    setMode:     (auto: boolean) => sendCommand('mode', { auto }),
     updateZones: (zones: ZoneState[]) => { void post('/api/control/zones', { zones }); },
-    // ── Leituras REST ──
     fetchState,
     fetchDeviceStatus,
     fetchHealth: () => get<HealthStatus>('/api/health'),
@@ -270,7 +275,6 @@ export function createControllerClient() {
   };
 }
 
-// Singleton
 let clientInstance: ReturnType<typeof createControllerClient> | null = null;
 export function getControllerClient() {
   if (!clientInstance) clientInstance = createControllerClient();

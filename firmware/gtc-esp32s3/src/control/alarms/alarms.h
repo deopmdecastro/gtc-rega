@@ -4,10 +4,10 @@
  * ------------------------------------------------------------------
  * Representa o estado de alarme do sistema, em particular:
  *   NORMAL          — sem alarme
- *   ALARME TERMICO  — relé térmico disparado
+ *   ALARME TERMICO  — relé térmico de 24 V ON (PB7 do MCP, via opto)
  *
  * O reset do alarme térmico segue a lógica definida: só é permitido
- * quando o contacto do relé térmico regressa ao estado normal (o
+ * quando o sinal do relé térmico regressa ao estado normal (o
  * operador rearma o relé fisicamente). O firmware não "limpa" um
  * alarme térmico ativo por software.
  */
@@ -20,7 +20,7 @@ namespace alarms {
 enum class Kind : uint8_t {
   None,
   Thermal,     // alarme térmico
-  PumpMismatch,// KM1 não confirma a bomba
+  PumpMismatch,// bomba comandada mas KM1 (PB6 via opto) não confirma
 };
 
 struct AlarmState {
@@ -30,15 +30,15 @@ struct AlarmState {
   uint32_t resetAtMs;        // instante do último reset
 };
 
-// true se há alarme térmico ativo (relé disparado).
+// true se há alarme térmico ativo (PB7 via opto a conduzir).
 inline bool thermalActive() {
-  return signals24v::thermalAlarm();
+  return signals24v::releTempOn();
 }
 
 // Reset só é válido depois de o relé térmico ter sido rearmado fisicamente
-// (contacto regressou ao normal). Se ainda estiver disparado, o reset é rejeitado.
+// (sinal regressou ao normal). Se ainda estiver ON, o reset é rejeitado.
 inline bool tryResetThermal() {
-  if (signals24v::thermalAlarm()) return false; // continua disparado
+  if (signals24v::releTempOn()) return false;
   return true;
 }
 

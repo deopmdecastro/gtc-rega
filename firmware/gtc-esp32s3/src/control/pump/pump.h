@@ -4,7 +4,8 @@
  * ------------------------------------------------------------------
  * A bomba só é acionada se a segurança permitir (sem alarme térmico e
  * com MCP23017 presente). O estado "em funcionamento" que conta para a
- * lógica é o FEEDBACK REAL do contacto KM1, não o comando emitido.
+ * lógica é o FEEDBACK REAL do sinal de 24 V em PB6 do MCP (via
+ * optocoplador), não o comando emitido.
  */
 
 #include <Arduino.h>
@@ -14,21 +15,21 @@
 
 namespace pump {
 
-// Emite o comando de bomba respeitando a segurança.
+// Emite o comando de MOTOR ON (PA0) respeitando a segurança.
 // Devolve true se o comando foi efetivamente aplicado.
 inline bool set(bool on) {
   if (on && !safety::pumpAllowed()) {
-    // Segurança impede: garante que a bomba fica desligada.
-    io::writePump(false);
+    // Segurança impede: garante que o motor fica desligado.
+    io::writeMotorOn(false);
     return false;
   }
-  io::writePump(on);
+  io::writeMotorOn(on);
   return true;
 }
 
-// Estado REAL da bomba (feedback físico do contactor via KM1).
+// Estado REAL da bomba (feedback físico de 24 V em PB6 via optoacoplador).
 inline bool running() {
-  return signals24v::km1Running();
+  return signals24v::bombaRunning();
 }
 
 } // namespace pump
