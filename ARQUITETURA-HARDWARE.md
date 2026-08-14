@@ -174,9 +174,9 @@ Correspondência com o mapa de I/O do firmware:
 - `PB2 (GPB2)` → `MCP_OUTPUT_RELAY_AUTO` (automático K7);
 - `PB3…PB6 (GPB3…GPB6)` → válvulas de zona.
 
-Endereço I²C: `0x20` (A2:A1:A0 = 000, padrão de fábrica com os pinos de
-endereço a GND). Se A0/A1/A2 estiverem ligados a VCC, o endereço muda
-(0x21/0x22/0x23…), ajustável em `MCP23017_ADDRESS`.
+Endereço I²C: **`0x20`** (A2:A1:A0 = 000) — **confirmado no hardware**
+com os pinos de endereço A0/A1/A2 ligados a GND. Valor em
+`MCP23017_ADDRESS` no `config.h`.
 
 > **Em aberto**: o par de GPIOs **específico** do ESP32-S3 a usar para
 > SDA/SCL ainda não está confirmado no pinout da ES3N28P. O firmware usa

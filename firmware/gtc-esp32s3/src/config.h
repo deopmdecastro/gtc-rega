@@ -66,9 +66,8 @@
 #define MCP_RESET_PIN        -1
 
 // Endereço I²C do MCP23017 (A2:A1:A0 = 000 => 0x20).
-// Se os pinos de endereço A0/A1/A2 estiverem ligados a VCC, ajustar:
-//   A0=1 -> 0x21, A1=1 -> 0x22, A0=A1=1 -> 0x23, etc.
-#define MCP23017_ADDRESS      0x20    // A0=A1=A2=GND (padrão de fábrica)
+// CONFIRMADO NO HARDWARE: A0=A1=A2 ligados a GND => endereço 0x20.
+#define MCP23017_ADDRESS      0x20    // A0=A1=A2=GND (confirmado)
 
 // ─────────────────────────────────────────────────────────────
 // Mapeamento central de I/O — MCP23017-E/SS (16 GPIO: GPA0-7, GPB0-7)
