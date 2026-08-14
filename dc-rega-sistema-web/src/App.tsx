@@ -333,7 +333,7 @@ function App() {
   const [weather, setWeather] = useState({ temp: 24, desc: 'Parcialmente nublado', city: 'Amora', country: 'Portugal', icon: '⛅', humidity: 0, precipitation: 0, windSpeed: 0, rainChance: 0 });
   const [weatherLoading, setWeatherLoading] = useState(false);
   const [deviceOnline, setDeviceOnline] = useState(false);
-  const [deviceInfo, setDeviceInfo] = useState<{ deviceId?: string; firmware?: string; ip?: string; rssi?: number; uptime?: number } | null>(null);
+  const [deviceInfo, setDeviceInfo] = useState<{ deviceId?: string; firmware?: string; ip?: string; rssi?: number; uptime?: number; platform?: string; pumpRunning?: boolean; thermalAlarm?: boolean; mcpPresent?: boolean } | null>(null);
   const [sensorHealth, setSensorHealth] = useState<Record<string, { stale: boolean; lastSeen: number | null }>>({});
   // Ligação real ao backend (API/Socket.IO) — independente do ESP32 estar online
   const [backendOnline, setBackendOnline] = useState(false);
@@ -940,7 +940,7 @@ function App() {
 function Overview({ zones, pumpOn, autoMode, activeZones, onToggleZone, onTogglePump, onToggleMode, onOpenMap, isEmbedded, weather, language, deviceOnline, deviceInfo, sensorHealth, clock, dateStr, latestAlert, systemRunning, starting, startStep, onStart, onStop, onReset }: {
   zones: Zone[]; pumpOn: boolean; autoMode: boolean; activeZones: number; onToggleZone: (id: string) => void; onTogglePump: () => void; onToggleMode: () => void; onOpenMap: () => void; isEmbedded?: boolean; weather: { temp: number; desc: string; city: string; country: string; icon: string; humidity: number; precipitation: number; windSpeed: number; rainChance: number }; language: Language;
   deviceOnline: boolean;
-  deviceInfo: { deviceId?: string; firmware?: string; ip?: string; rssi?: number; uptime?: number } | null;
+  deviceInfo: { deviceId?: string; firmware?: string; ip?: string; rssi?: number; uptime?: number; platform?: string; pumpRunning?: boolean; thermalAlarm?: boolean; mcpPresent?: boolean } | null;
   sensorHealth: Record<string, { stale: boolean; lastSeen: number | null }>;
   clock: string;
   dateStr: string;
@@ -983,6 +983,17 @@ function Overview({ zones, pumpOn, autoMode, activeZones, onToggleZone, onToggle
           })}
         </div>
       </Panel>
+      {deviceOnline && deviceInfo?.thermalAlarm && (
+        <Panel className="alarm-banner" style={{ gridColumn: '1 / -1' }}>
+          <div className="alarm-banner-icon"><AlertTriangle size={22} /></div>
+          <div>
+            <span className="section-kicker">{language === 'PT' ? 'ALARME TÉRMICO' : 'THERMAL ALARM'}</span>
+            <h3>{language === 'PT' ? 'Relé térmico disparado' : 'Thermal relay tripped'}</h3>
+            <p>{language === 'PT' ? 'A bomba está bloqueada por segurança. Rearme o relé térmico (contacto 95-96) fisicamente antes de reiniciar.' : 'The pump is blocked for safety. Reset the thermal relay (contacts 95-96) physically before restarting.'}</p>
+          </div>
+          <StatusBadge tone="error">{language === 'PT' ? 'BLOQUEADO' : 'BLOCKED'}</StatusBadge>
+        </Panel>
+      )}
       <Panel className="summary-actions-panel">
         <PanelHeader eyebrow={language === 'PT' ? 'RESUMO' : 'SUMMARY'} title={language === 'PT' ? 'Comandos rápidos' : 'Quick commands'} />
         <div className="command-actions">
@@ -1023,7 +1034,7 @@ function Overview({ zones, pumpOn, autoMode, activeZones, onToggleZone, onToggle
         <Metric icon={<CalendarDays />} label="Data" value={dateStr || '—'} />
         <Metric icon={<TimerReset />} label="Hora" value={clock || '—'} />
         <Metric icon={<Droplets />} label="Última rega" value={zones[0]?.name ?? '—'} detail={zones[0]?.lastWatered ?? '—'} />
-        <Metric icon={<Cpu />} label="Controlador" value={deviceOnline ? (deviceInfo?.deviceId || 'ESP32-S3') : 'Offline'} detail={deviceOnline ? `Wi-Fi · fw ${deviceInfo?.firmware || '—'}` : 'Sem telemetria do controlador'} accent={deviceOnline} />
+        <Metric icon={<Cpu />} label="Controlador" value={deviceOnline ? (deviceInfo?.deviceId || 'ESP32-S3') : 'Offline'} detail={deviceOnline ? `Wi-Fi · fw ${deviceInfo?.firmware || '—'} · ${deviceInfo?.pumpRunning ? (language === 'PT' ? 'bomba ON' : 'pump ON') : (language === 'PT' ? 'bomba OFF' : 'pump OFF')}` : 'Sem telemetria do controlador'} accent={deviceOnline} />
       </Panel>
       <div className="quick-grid">
         <Panel className="quick-panel">
@@ -1142,7 +1153,7 @@ function BrandSelect<T extends string | number>({ value, options, onChange, clas
   );
 }
 
-function StateView({ zones, pumpOn, autoMode, onToggleMode, language, gpioConfig, editingGpio, setEditingGpio, handleGpioUpdate, saveGpioConfig, addGpioRow, removeGpioRow, handleGpioPinChange, getAvailableGpios, deviceOnline, deviceInfo, sensorHealth, engineState, gpioLive, systemRunning, alarmCount }: { zones: Zone[]; pumpOn: boolean; autoMode: boolean; onToggleMode: () => void; language: Language; gpioConfig: { id: string; gpio: number; direction: string; label: string; func: string; inChannel: string }[]; editingGpio: number | null; setEditingGpio: (v: number | null) => void; handleGpioUpdate: (id: string, key: string, value: string) => void; saveGpioConfig: () => void; addGpioRow: () => void; removeGpioRow: (id: string) => void; handleGpioPinChange: (id: string, newPin: number) => void; getAvailableGpios: (excludeId?: string) => number[]; deviceOnline: boolean; deviceInfo: { deviceId?: string; firmware?: string; ip?: string; rssi?: number; uptime?: number } | null; sensorHealth: Record<string, { stale: boolean; lastSeen: number | null }>; engineState: string; gpioLive: Record<number, number | boolean>; systemRunning: boolean; alarmCount: number; }) {
+function StateView({ zones, pumpOn, autoMode, onToggleMode, language, gpioConfig, editingGpio, setEditingGpio, handleGpioUpdate, saveGpioConfig, addGpioRow, removeGpioRow, handleGpioPinChange, getAvailableGpios, deviceOnline, deviceInfo, sensorHealth, engineState, gpioLive, systemRunning, alarmCount }: { zones: Zone[]; pumpOn: boolean; autoMode: boolean; onToggleMode: () => void; language: Language; gpioConfig: { id: string; gpio: number; direction: string; label: string; func: string; inChannel: string }[]; editingGpio: number | null; setEditingGpio: (v: number | null) => void; handleGpioUpdate: (id: string, key: string, value: string) => void; saveGpioConfig: () => void; addGpioRow: () => void; removeGpioRow: (id: string) => void; handleGpioPinChange: (id: string, newPin: number) => void; getAvailableGpios: (excludeId?: string) => number[]; deviceOnline: boolean; deviceInfo: { deviceId?: string; firmware?: string; ip?: string; rssi?: number; uptime?: number; platform?: string; pumpRunning?: boolean; thermalAlarm?: boolean; mcpPresent?: boolean } | null; sensorHealth: Record<string, { stale: boolean; lastSeen: number | null }>; engineState: string; gpioLive: Record<number, number | boolean>; systemRunning: boolean; alarmCount: number; }) {
   const isEmbedded = useIsEmbedded();
   const [gpioKb, setGpioKb] = useState<{ id: string; field: 'label' | 'func' | 'inChannel' } | null>(null);
   const toggleGpioKb = (id: string, field: 'label' | 'func' | 'inChannel') => {
@@ -1192,6 +1203,9 @@ function StateView({ zones, pumpOn, autoMode, onToggleMode, language, gpioConfig
           <div><span>{language === "PT" ? "Versão do controlador" : "Controller version"}</span><strong>{deviceOnline && deviceInfo?.firmware ? `fw ${deviceInfo.firmware} · ${deviceInfo.deviceId || "ESP32-S3"}` : "—"}</strong></div>
           <div><span>{language === 'PT' ? 'Endereço IP' : 'IP address'}</span><strong>{deviceOnline && deviceInfo?.ip ? deviceInfo.ip : '—'}</strong></div>
           <div><span>{language === 'PT' ? 'Sinal Wi-Fi' : 'Wi-Fi signal'}</span><strong>{deviceOnline && typeof deviceInfo?.rssi === 'number' ? `${deviceInfo.rssi} dBm` : '—'}</strong></div>
+          <div><span>{language === 'PT' ? 'Bomba em funcionamento (KM1)' : 'Pump running (KM1)'}</span><strong className={deviceInfo?.pumpRunning ? 'text-ok' : 'text-muted'}>{deviceOnline ? (deviceInfo?.pumpRunning ? (language === 'PT' ? 'Sim' : 'Yes') : (language === 'PT' ? 'Não' : 'No')) : '—'}</strong></div>
+          <div><span>{language === 'PT' ? 'Relé térmico' : 'Thermal relay'}</span><strong className={deviceInfo?.thermalAlarm ? 'text-alarm' : 'text-ok'}>{deviceOnline ? (deviceInfo?.thermalAlarm ? (language === 'PT' ? 'ALARME TÉRMICO' : 'THERMAL ALARM') : (language === 'PT' ? 'Normal' : 'Normal')) : '—'}</strong></div>
+          <div><span>{language === 'PT' ? 'Expansor I/O (MCP23017)' : 'I/O expander (MCP23017)'}</span><strong className={deviceInfo?.mcpPresent === false ? 'text-alarm' : 'text-ok'}>{deviceOnline ? (deviceInfo?.mcpPresent === false ? (language === 'PT' ? 'Ausente' : 'Missing') : (deviceInfo?.mcpPresent ? '0x20' : '—')) : '—'}</strong></div>
           <div><span>{language === 'PT' ? 'Sensores reconhecidos' : 'Recognized sensors'}</span><strong>{okSensorCount}/{zones.length}</strong></div>
         </div>
       </Panel>
@@ -3253,7 +3267,7 @@ function ScheduleEditor({ zone, onChange, language }: { zone: Zone; onChange: (s
 }
 
 /* ---------- Connection View (Wi-Fi + Bluetooth) ---------- */
-function ConnectionView({ language, deviceOnline, deviceInfo }: { language: Language; deviceOnline: boolean; deviceInfo: { deviceId?: string; firmware?: string; ip?: string; rssi?: number; uptime?: number } | null }) {
+function ConnectionView({ language, deviceOnline, deviceInfo }: { language: Language; deviceOnline: boolean; deviceInfo: { deviceId?: string; firmware?: string; ip?: string; rssi?: number; uptime?: number; platform?: string; pumpRunning?: boolean; thermalAlarm?: boolean; mcpPresent?: boolean } | null }) {
   const [connectionTab, setConnectionTab] = useState<'wifi' | 'bluetooth'>('wifi');
   const [savedNetworks, setSavedNetworks] = useState<{ ssid: string; password: string; hostname: string; createdAt?: string }[]>([]);
   const [scanResults, setScanResults] = useState<{ ssid: string; rssi: number; secure: boolean }[]>([]);
@@ -3509,6 +3523,9 @@ function ConnectionView({ language, deviceOnline, deviceInfo }: { language: Lang
           <div><span>{language === 'PT' ? 'Sinal Wi-Fi' : 'Wi-Fi signal'}</span><strong>{typeof deviceInfo?.rssi === 'number' ? `${deviceInfo.rssi} dBm` : '—'}</strong></div>
           <div><span>{language === 'PT' ? 'Hostname' : 'Hostname'}</span><strong>{deviceInfo?.deviceId || 'gtc-esp32s3'}.local</strong></div>
           <div><span>{language === 'PT' ? 'Tempo online' : 'Uptime'}</span><strong>{deviceOnline && deviceInfo?.uptime ? formatUptime(deviceInfo.uptime) || '—' : '—'}</strong></div>
+          <div><span>{language === 'PT' ? 'Bomba (KM1)' : 'Pump (KM1)'}</span><strong className={deviceInfo?.pumpRunning ? 'text-ok' : 'text-muted'}>{deviceInfo?.pumpRunning ? (language === 'PT' ? 'Em funcionamento' : 'Running') : (language === 'PT' ? 'Parada' : 'Stopped')}</strong></div>
+          <div><span>{language === 'PT' ? 'Relé térmico' : 'Thermal relay'}</span><strong className={deviceInfo?.thermalAlarm ? 'text-alarm' : 'text-ok'}>{deviceInfo?.thermalAlarm ? (language === 'PT' ? 'ALARME' : 'ALARM') : (language === 'PT' ? 'Normal' : 'Normal')}</strong></div>
+          <div><span>{language === 'PT' ? 'Expansor I/O' : 'I/O expander'}</span><strong className={deviceInfo?.mcpPresent === false ? 'text-alarm' : 'text-ok'}>{deviceInfo?.mcpPresent === false ? (language === 'PT' ? 'MCP23017 ausente' : 'MCP23017 missing') : 'MCP23017 @ 0x20'}</strong></div>
         </div>
       </Panel>
 

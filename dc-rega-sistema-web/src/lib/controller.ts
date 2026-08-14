@@ -46,7 +46,7 @@ type ControllerEvent = {
 export type DeviceStatus = {
   deviceOnline: boolean;
   lastContact: string | null;
-  deviceInfo: { deviceId?: string; firmware?: string; ip?: string; rssi?: number; uptime?: number } | null;
+  deviceInfo: { deviceId?: string; firmware?: string; ip?: string; rssi?: number; uptime?: number; platform?: string; pumpRunning?: boolean; thermalAlarm?: boolean; mcpPresent?: boolean } | null;
   sensors: { sensorId: string; lastSeen: number | null; stale: boolean }[];
   engine?: {
     state: string;

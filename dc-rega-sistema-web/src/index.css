@@ -234,6 +234,9 @@ textarea:focus-visible {
 .info-list div { display: flex; justify-content: space-between; gap: 12px; }
 .info-list span { color: #78909a; font-size: 10px; }
 .info-list strong { color: #becdd2; font-size: 10px; font-weight: 600; }
+.info-list strong.text-ok { color: #40d877; }
+.info-list strong.text-muted { color: #78909a; }
+.info-list strong.text-alarm { color: #ff5d5d; font-weight: 700; }
 
 /* ---------- Setpoints ---------- */
 .setpoint-value { display: flex; justify-content: space-between; align-items: flex-end; margin: 29px 0 24px; }
