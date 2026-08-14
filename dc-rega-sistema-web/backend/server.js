@@ -276,13 +276,18 @@ app.post('/api/device/hello', checkDeviceToken, (req, res) => {
 
 // POST /api/device/telemetry — recebe sensores e devolve saídas desejadas
 app.post('/api/device/telemetry', checkDeviceToken, (req, res) => {
-  const { deviceId, firmware, ip, rssi, uptime, emergency, sensors, gpio } = req.body || {};
+  const { deviceId, firmware, ip, rssi, uptime, emergency, sensors, gpio,
+          platform, pumpRunning, thermalAlarm, mcpPresent } = req.body || {};
   
   const wasOnline = deviceOnline;
   deviceOnline = true;
   everConnected = true;
   lastDeviceContact = Date.now();
-  deviceInfo = { ...deviceInfo, deviceId, firmware, ip, rssi, uptime, lastTelemetry: new Date().toISOString() };
+  deviceInfo = {
+    ...deviceInfo, deviceId, firmware, ip, rssi, uptime,
+    platform, pumpRunning, thermalAlarm, mcpPresent,
+    lastTelemetry: new Date().toISOString(),
+  };
 
   if (!wasOnline) {
     engine._log('device_reconnected', 'ESP32-S3',
