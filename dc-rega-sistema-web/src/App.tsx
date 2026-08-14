@@ -154,21 +154,71 @@ function eventToErrorEvent(ev: EventLogEntry): ErrorEvent {
   };
 }
 
-const SENSOR_GPIO_MAP: Record<string, number> = { B1: 4, B2: 5 };
-// Novo esquema: sensores B1/B2 não têm relés dedicados.
-// Os 8 relés (K3–K10) são todos funções do sistema:
-// GPIO 6→K3(Timer1), 7→K4(Timer2), 8→K5(START), 9→K6(STOP), 10→K7(AUTO), 11→K8(Reserva), 12→K9, 13→K10
-const VALVE_RELAY_MAP: Record<string, { relay: string; gpio: number; inChannel: string }> = {};
-const SYSTEM_RELAYS = [
-  { relay: 'K3', gpio: 6, inChannel: 'IN3', func: 'Temporizador 1' },
-  { relay: 'K4', gpio: 7, inChannel: 'IN4', func: 'Temporizador 2' },
-  { relay: 'K5', gpio: 8, inChannel: 'IN5', func: 'START GTC' },
-  { relay: 'K6', gpio: 9, inChannel: 'IN6', func: 'STOP / Emergência' },
-  { relay: 'K7', gpio: 10, inChannel: 'IN7', func: 'AUTOMÁTICO' },
-  { relay: 'K8', gpio: 11, inChannel: 'IN8', func: 'Reserva' },
-  { relay: 'K9', gpio: 12, inChannel: '', func: 'Reserva' },
-  { relay: 'K10', gpio: 13, inChannel: '', func: 'Reserva' },
+type GpioConfigRow = { id: string; gpio: number; direction: 'INPUT' | 'OUTPUT'; label: string; func: string; inChannel: string };
+
+const SENSOR_GPIO_MAP: Record<string, number> = { B1: 21, B2: 14 };
+const I2C_BUS_PINS = [
+  { label: 'SCL', gpio: 16, func: 'I2C → MCP23017' },
+  { label: 'SDA', gpio: 18, func: 'I2C → MCP23017' },
 ];
+const SYSTEM_RELAYS = [
+  { relay: 'PA0', gpio: 0, inChannel: '9-E6', func: 'MOTOR ON' },
+  { relay: 'PA1', gpio: 1, inChannel: '9-D6', func: 'AUTO GTC' },
+  { relay: 'PA2', gpio: 2, inChannel: '8-E6', func: 'STO/EMERG GTC' },
+  { relay: 'PA3', gpio: 3, inChannel: '8-E6', func: 'ON GTC' },
+  { relay: 'PA4', gpio: 4, inChannel: '8-E6', func: 'Temp. Tempo de Rega' },
+  { relay: 'PA5', gpio: 5, inChannel: '8-D6', func: 'Temp. Delay Bom/Val' },
+  { relay: 'PA6', gpio: 6, inChannel: '8-D6', func: 'Out Sensor 2' },
+  { relay: 'PA7', gpio: 7, inChannel: '', func: 'Out Sensor 1' },
+  { relay: 'PB0', gpio: 8, inChannel: '9-E6', func: 'RELÉ TEMP ON' },
+];
+const MCP_FEEDBACK_PINS = [
+  { relay: 'PB6', gpio: 14, inChannel: 'Opto', func: 'Sinal da bomba ON' },
+  { relay: 'PB7', gpio: 15, inChannel: 'Opto', func: 'Sinal do relé térmico ON' },
+];
+const DEFAULT_GPIO_CONFIG: GpioConfigRow[] = [
+  { id: 'row-1', gpio: 21, direction: 'INPUT', label: 'B1', func: 'DHT22 #1 · Temperatura / Humidade', inChannel: '' },
+  { id: 'row-2', gpio: 14, direction: 'INPUT', label: 'B2', func: 'DHT22 #2 · Temperatura / Humidade', inChannel: '' },
+  { id: 'row-3', gpio: 0, direction: 'OUTPUT', label: 'PA0', func: 'MOTOR ON', inChannel: '9-E6' },
+  { id: 'row-4', gpio: 1, direction: 'OUTPUT', label: 'PA1', func: 'AUTO GTC', inChannel: '9-D6' },
+  { id: 'row-5', gpio: 2, direction: 'OUTPUT', label: 'PA2', func: 'STO/EMERG GTC', inChannel: '8-E6' },
+  { id: 'row-6', gpio: 3, direction: 'OUTPUT', label: 'PA3', func: 'ON GTC', inChannel: '8-E6' },
+  { id: 'row-7', gpio: 4, direction: 'OUTPUT', label: 'PA4', func: 'Temp. Tempo de Rega', inChannel: '8-E6' },
+  { id: 'row-8', gpio: 5, direction: 'OUTPUT', label: 'PA5', func: 'Temp. Delay Bom/Val', inChannel: '8-D6' },
+  { id: 'row-9', gpio: 6, direction: 'OUTPUT', label: 'PA6', func: 'Out Sensor 2', inChannel: '8-D6' },
+  { id: 'row-10', gpio: 7, direction: 'OUTPUT', label: 'PA7', func: 'Out Sensor 1', inChannel: '' },
+  { id: 'row-11', gpio: 8, direction: 'OUTPUT', label: 'PB0', func: 'RELÉ TEMP ON', inChannel: '9-E6' },
+];
+
+function cloneDefaultGpioConfig(): GpioConfigRow[] {
+  return DEFAULT_GPIO_CONFIG.map((row) => ({ ...row }));
+}
+
+function normalizeGpioConfig(raw: unknown): GpioConfigRow[] {
+  if (!Array.isArray(raw) || raw.length === 0) return cloneDefaultGpioConfig();
+  const rows = raw
+    .map((item, index) => {
+      const row = (item ?? {}) as Partial<GpioConfigRow>;
+      const gpio = Number(row.gpio);
+      const direction = row.direction === 'INPUT' ? 'INPUT' : row.direction === 'OUTPUT' ? 'OUTPUT' : null;
+      if (!Number.isFinite(gpio) || !direction) return null;
+      return {
+        id: row.id || `row-${index + 1}`,
+        gpio,
+        direction,
+        label: String(row.label || ''),
+        func: String(row.func || ''),
+        inChannel: String(row.inChannel || ''),
+      } as GpioConfigRow;
+    })
+    .filter((row): row is GpioConfigRow => !!row);
+
+  if (!rows.length) return cloneDefaultGpioConfig();
+
+  const legacyLabels = new Set(['B1', 'B2', 'K3', 'K4', 'K5', 'K6', 'K7', 'K8', 'K9', 'K10']);
+  const looksLegacyDirectMap = rows.some((row) => legacyLabels.has(row.label) && row.gpio >= 4 && row.gpio <= 13);
+  return looksLegacyDirectMap ? cloneDefaultGpioConfig() : rows;
+}
 
 // Todos os GPIOs de uso geral disponíveis numa placa ESP32-S3-DevKitC-1
 // (exclui os pinos de flash/PSRAM interno 22–25/27–32 e os pinos USB
@@ -206,6 +256,13 @@ function pinSignal(gpioLive: Record<number, number | boolean>, gpio: number, dev
   const num = Number(raw);
   if (Number.isNaN(num)) return { known: false, active: false, value: null };
   return { known: true, active: num > 0, value: num };
+}
+
+function sensorPinSignal(sensorId: string, sensorHealth: Record<string, { stale: boolean; lastSeen: number | null }>, deviceOnline: boolean): PinSignal {
+  if (!deviceOnline) return { known: false, active: false, value: null };
+  const health = sensorHealth[sensorId];
+  if (health?.stale) return { known: true, active: false, value: 0 };
+  return { known: true, active: true, value: 1 };
 }
 
 function signalClass(sig: PinSignal): string {
@@ -297,19 +354,8 @@ function App() {
   const [startStep, setStartStep] = useState('');
   const [engineState, setEngineState] = useState('idle');
   const [currentWateringZone, setCurrentWateringZone] = useState(-1);
-  const [gpioConfig, setGpioConfig] = useState<{ id: string; gpio: number; direction: 'INPUT' | 'OUTPUT'; label: string; func: string; inChannel: string }[]>([
-    { id: 'row-1', gpio: 4, direction: 'INPUT', label: 'B1', func: 'Sensor B1', inChannel: '' },
-    { id: 'row-2', gpio: 5, direction: 'INPUT', label: 'B2', func: 'Sensor B2', inChannel: '' },
-    { id: 'row-3', gpio: 6, direction: 'OUTPUT', label: 'K3', func: 'Temporizador 1', inChannel: 'IN3' },
-    { id: 'row-4', gpio: 7, direction: 'OUTPUT', label: 'K4', func: 'Temporizador 2', inChannel: 'IN4' },
-    { id: 'row-5', gpio: 8, direction: 'OUTPUT', label: 'K5', func: 'START GTC', inChannel: 'IN5' },
-    { id: 'row-6', gpio: 9, direction: 'OUTPUT', label: 'K6', func: 'STOP / Emergência', inChannel: 'IN6' },
-    { id: 'row-7', gpio: 10, direction: 'OUTPUT', label: 'K7', func: 'AUTOMÁTICO', inChannel: 'IN7' },
-    { id: 'row-8', gpio: 11, direction: 'OUTPUT', label: 'K8', func: 'Reserva', inChannel: 'IN8' },
-    { id: 'row-9', gpio: 12, direction: 'OUTPUT', label: 'K9', func: 'Reserva', inChannel: '' },
-    { id: 'row-10', gpio: 13, direction: 'OUTPUT', label: 'K10', func: 'Reserva', inChannel: '' },
-  ]);
-  const gpioRowCounter = useRef(11);
+  const [gpioConfig, setGpioConfig] = useState<GpioConfigRow[]>(cloneDefaultGpioConfig());
+  const gpioRowCounter = useRef(DEFAULT_GPIO_CONFIG.length + 1);
   const [editingGpio, setEditingGpio] = useState<number | null>(null);
   // Estado elétrico real de cada pino (vindo da telemetria do ESP32-S3 via
   // backend): INPUT = valor lido no pino, OUTPUT = 1 quando o pino emite sinal.
@@ -797,16 +843,55 @@ function App() {
     persistGpioLocale();
   };
 
-  const persistGpioLocale = () => {
-    localStorage.setItem('gtc-gpio-config', JSON.stringify(gpioConfig));
+  const persistGpioLocale = (config: GpioConfigRow[] = gpioConfig) => {
+    localStorage.setItem('gtc-gpio-config', JSON.stringify(config));
   };
 
-  const loadGpioLocale = () => {
+  const loadGpioLocale = (): GpioConfigRow[] | null => {
     try {
       const raw = localStorage.getItem('gtc-gpio-config');
-      if (raw) setGpioConfig(JSON.parse(raw));
+      if (raw) return normalizeGpioConfig(JSON.parse(raw));
     } catch {}
+    return null;
   };
+
+  useEffect(() => {
+    let active = true;
+    const ctrl = getControllerClient();
+    const applyConfig = (config: unknown) => {
+      const normalized = normalizeGpioConfig(config);
+      if (!active) return;
+      setGpioConfig(normalized);
+      persistGpioLocale(normalized);
+    };
+
+    const unsubGpioConfig = ctrl.on('gpio:config', (payload: Record<string, unknown>) => {
+      applyConfig((payload as { config?: unknown }).config ?? []);
+    });
+
+    const loadInitialConfig = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/gpio-config`);
+        if (res.ok) {
+          const data = await res.json() as { config?: unknown };
+          if (Array.isArray(data.config) && data.config.length > 0) {
+            applyConfig(data.config);
+            return;
+          }
+        }
+      } catch {}
+
+      const local = loadGpioLocale();
+      if (local?.length) applyConfig(local);
+      else applyConfig(cloneDefaultGpioConfig());
+    };
+
+    void loadInitialConfig();
+    return () => {
+      active = false;
+      unsubGpioConfig();
+    };
+  }, []);
 
   const handleGpioUpdate = (id: string, key: string, value: string) => {
     setGpioConfig(prev => prev.map(g => g.id === id ? { ...g, [key]: value } : g));
@@ -1153,7 +1238,7 @@ function BrandSelect<T extends string | number>({ value, options, onChange, clas
   );
 }
 
-function StateView({ zones, pumpOn, autoMode, onToggleMode, language, gpioConfig, editingGpio, setEditingGpio, handleGpioUpdate, saveGpioConfig, addGpioRow, removeGpioRow, handleGpioPinChange, getAvailableGpios, deviceOnline, deviceInfo, sensorHealth, engineState, gpioLive, systemRunning, alarmCount }: { zones: Zone[]; pumpOn: boolean; autoMode: boolean; onToggleMode: () => void; language: Language; gpioConfig: { id: string; gpio: number; direction: string; label: string; func: string; inChannel: string }[]; editingGpio: number | null; setEditingGpio: (v: number | null) => void; handleGpioUpdate: (id: string, key: string, value: string) => void; saveGpioConfig: () => void; addGpioRow: () => void; removeGpioRow: (id: string) => void; handleGpioPinChange: (id: string, newPin: number) => void; getAvailableGpios: (excludeId?: string) => number[]; deviceOnline: boolean; deviceInfo: { deviceId?: string; firmware?: string; ip?: string; rssi?: number; uptime?: number; platform?: string; pumpRunning?: boolean; thermalAlarm?: boolean; mcpPresent?: boolean } | null; sensorHealth: Record<string, { stale: boolean; lastSeen: number | null }>; engineState: string; gpioLive: Record<number, number | boolean>; systemRunning: boolean; alarmCount: number; }) {
+function StateView({ zones, pumpOn, autoMode, onToggleMode, language, gpioConfig, editingGpio, setEditingGpio, handleGpioUpdate, saveGpioConfig, addGpioRow, removeGpioRow, handleGpioPinChange, getAvailableGpios, deviceOnline, deviceInfo, sensorHealth, engineState, gpioLive, systemRunning, alarmCount }: { zones: Zone[]; pumpOn: boolean; autoMode: boolean; onToggleMode: () => void; language: Language; gpioConfig: GpioConfigRow[]; editingGpio: number | null; setEditingGpio: (v: number | null) => void; handleGpioUpdate: (id: string, key: string, value: string) => void; saveGpioConfig: () => void; addGpioRow: () => void; removeGpioRow: (id: string) => void; handleGpioPinChange: (id: string, newPin: number) => void; getAvailableGpios: (excludeId?: string) => number[]; deviceOnline: boolean; deviceInfo: { deviceId?: string; firmware?: string; ip?: string; rssi?: number; uptime?: number; platform?: string; pumpRunning?: boolean; thermalAlarm?: boolean; mcpPresent?: boolean } | null; sensorHealth: Record<string, { stale: boolean; lastSeen: number | null }>; engineState: string; gpioLive: Record<number, number | boolean>; systemRunning: boolean; alarmCount: number; }) {
   const isEmbedded = useIsEmbedded();
   const [gpioKb, setGpioKb] = useState<{ id: string; field: 'label' | 'func' | 'inChannel' } | null>(null);
   const toggleGpioKb = (id: string, field: 'label' | 'func' | 'inChannel') => {
@@ -1161,10 +1246,15 @@ function StateView({ zones, pumpOn, autoMode, onToggleMode, language, gpioConfig
   };
   const inputPins = gpioConfig.filter((g) => g.direction === 'INPUT');
   const outputPins = gpioConfig.filter((g) => g.direction === 'OUTPUT');
+  const sensorById = new Map(zones.map((z) => [z.sensorId, z] as const));
+  const inputZones = inputPins.map((g, index) => sensorById.get(g.label) ?? zones[index] ?? null);
   const okSensorCount = zones.filter((z) => deviceOnline && !sensorHealth[z.sensorId]?.stale).length;
-  // Sinal real por pino — INPUT (a receber) e OUTPUT (a emitir)
+  // Sinal real por pino — INPUT (sensores DHT22) e OUTPUT (índices lógicos do MCP23017)
   const inSig: Record<number, PinSignal> = {};
-  inputPins.forEach((g) => { inSig[g.gpio] = pinSignal(gpioLive, g.gpio, deviceOnline); });
+  inputPins.forEach((g, index) => {
+    const zone = inputZones[index];
+    inSig[g.gpio] = zone ? sensorPinSignal(zone.sensorId, sensorHealth, deviceOnline) : pinSignal(gpioLive, g.gpio, deviceOnline);
+  });
   const outSig: Record<number, PinSignal> = {};
   outputPins.forEach((g) => { outSig[g.gpio] = pinSignal(gpioLive, g.gpio, deviceOnline); });
   const activeInputs = inputPins.filter((g) => inSig[g.gpio].active).length;
@@ -1216,8 +1306,8 @@ function StateView({ zones, pumpOn, autoMode, onToggleMode, language, gpioConfig
           <div className="hw3-header">
             <div className="hw3-header-titles">
               <span className="section-kicker">HARDWARE</span>
-              <h3>ESP32-S3</h3>
-              <span className="hw3-subtitle">{language === 'PT' ? 'Mapa de Ligações GPIO' : 'GPIO Connection Map'}</span>
+              <h3>ESP32-S3 + MCP23017</h3>
+              <span className="hw3-subtitle">{language === 'PT' ? 'Mapa real de I/O do controlador' : 'Real controller I/O map'}</span>
             </div>
             <button className="gpio-edit-btn" onClick={() => setEditingGpio(editingGpio === null ? -1 : null)}>
               <Settings2 size={15} /> {editingGpio === null ? (language === 'PT' ? 'Editar GPIO' : 'Edit GPIO') : (language === 'PT' ? 'Concluído' : 'Done')}
@@ -1439,8 +1529,8 @@ function StateView({ zones, pumpOn, autoMode, onToggleMode, language, gpioConfig
               </button>
               <p className="gpio-reserved-note">
                 {language === 'PT'
-                  ? `Pinos reservados pelo firmware (não disponíveis): GPIO 0 (Botão BOOT / Emergência), GPIO 48 (LED de estado).`
-                  : `Pins reserved by the firmware (not available): GPIO 0 (BOOT button / Emergency), GPIO 48 (status LED).`}
+                  ? `Referência do hardware: GPIO 21/14 = DHT22, GPIO 16/18 = I2C do MCP23017, GPIO 0 = botão BOOT / emergência, GPIO 48 = LED de estado. As saídas PA0..PA7/PB0 são índices lógicos do MCP23017.`
+                  : `Hardware reference: GPIO 21/14 = DHT22, GPIO 16/18 = MCP23017 I2C, GPIO 0 = BOOT / emergency button, GPIO 48 = status LED. Outputs PA0..PA7/PB0 are MCP23017 logical indices.`}
               </p>
               <button className="save-btn" onClick={saveGpioConfig}>
                 <Save size={15} /> {language === 'PT' ? 'Guardar configuração GPIO' : 'Save GPIO configuration'}
@@ -2227,7 +2317,7 @@ function MapView({ zones, pumpOn, onAddZone, onDuplicateZone, onDragZone, onRena
             {selectedPart === 'valve'
               ? <span className="gpio-chip"><CircuitBoard size={13} /> Comutação por relés do sistema</span>
               : (SENSOR_GPIO_MAP[selectedZone.sensorId]
-                ? <span className="gpio-chip"><CircuitBoard size={13} /> GPIO {SENSOR_GPIO_MAP[selectedZone.sensorId]} · INPUT</span>
+                ? <span className="gpio-chip"><CircuitBoard size={13} /> ESP32 GPIO {SENSOR_GPIO_MAP[selectedZone.sensorId]} · DHT22</span>
                 : <span className="gpio-chip gpio-unassigned"><CircuitBoard size={13} /> Sem GPIO atribuído</span>)}
           </div>
           <button className={`map-sel-btn ${selectedZone.on ? 'valve-open-btn' : 'valve-closed-btn'}`} onClick={() => onToggleZone(selectedZone.id)}>
@@ -2261,7 +2351,7 @@ function MapView({ zones, pumpOn, onAddZone, onDuplicateZone, onDragZone, onRena
       {showPinout && (
         <div className="pinout-panel">
           <div className="pinout-header">
-            <div><span className="section-kicker">HARDWARE</span><h3>ESP32-S3 · Mapa de pinos GPIO</h3></div>
+            <div><span className="section-kicker">HARDWARE</span><h3>ESP32-S3 + MCP23017 · Mapa de I/O</h3></div>
             <button className="pinout-close" onClick={() => setShowPinout(false)} aria-label="Fechar"><X size={16} /></button>
           </div>
           <div className="pinout-grid">
@@ -2276,20 +2366,30 @@ function MapView({ zones, pumpOn, onAddZone, onDuplicateZone, onDragZone, onRena
               ))}
             </div>
             <div className="pinout-section">
-              <div className="pinout-section-title"><Droplets size={14} /> Sensores (INPUT)</div>
-              {zones.map((z) => (
-                <div key={z.sensorId} className="pinout-row">
-                  <span className="pinout-pin">GPIO {SENSOR_GPIO_MAP[z.sensorId] ?? '—'}</span>
-                  <span className="pinout-label">{z.sensorId}</span>
-                  <span className="pinout-desc">{z.name} · Humidade {z.moisture}%</span>
+              <div className="pinout-section-title"><CircuitBoard size={14} /> Barramento I2C (ESP32 → MCP)</div>
+              {I2C_BUS_PINS.map((bus) => (
+                <div key={bus.label} className="pinout-row">
+                  <span className="pinout-pin">GPIO {bus.gpio}</span>
+                  <span className="pinout-label">{bus.label}</span>
+                  <span className="pinout-desc">{bus.func}</span>
                 </div>
               ))}
             </div>
             <div className="pinout-section">
-              <div className="pinout-section-title"><Cpu size={14} /> Relés do sistema (OUTPUT)</div>
+              <div className="pinout-section-title"><Cpu size={14} /> Saídas via MCP23017</div>
               {SYSTEM_RELAYS.map((r) => (
                 <div key={r.relay} className="pinout-row">
-                  <span className="pinout-pin">GPIO {r.gpio}</span>
+                  <span className="pinout-pin">IDX {r.gpio}</span>
+                  <span className="pinout-label">{r.relay}{r.inChannel ? ` · ${r.inChannel}` : ''}</span>
+                  <span className="pinout-desc">{r.func}</span>
+                </div>
+              ))}
+            </div>
+            <div className="pinout-section">
+              <div className="pinout-section-title"><AlertTriangle size={14} /> Feedbacks / Segurança</div>
+              {MCP_FEEDBACK_PINS.map((r) => (
+                <div key={r.relay} className="pinout-row">
+                  <span className="pinout-pin">IDX {r.gpio}</span>
                   <span className="pinout-label">{r.relay} · {r.inChannel}</span>
                   <span className="pinout-desc">{r.func}</span>
                 </div>
