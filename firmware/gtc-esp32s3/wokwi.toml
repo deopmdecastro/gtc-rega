@@ -3,6 +3,12 @@ version = 1
 firmware = '.pio/build/esp32-s3-wokwi/firmware.bin'
 elf = '.pio/build/esp32-s3-wokwi/firmware.elf'
 
-# GTC_SERVER_HOST em src/config.h tem de ser o IP real do PC na rede local
-# (ex.: 192.168.1.50) para o ESP32 simulado conseguir chegar ao backend
+# Ambiente correto para o simulador Wokwi (VS Code) — define -DWOKWI_SIM=1.
+# Compila com:
+#   pio run -e esp32-s3-wokwi
+# O firmware liga-se à rede virtual "Wokwi-GUEST" (sem password) em vez do
+# portal cativo WiFiManager (inacessível no simulador).
+#
+# Em src/config.h define GTC_SERVER_HOST com o IP real do PC na rede local
+# (ex.: 192.168.1.50) para que o ESP32 simulado consiga chegar ao backend
 # através do Private IoT Gateway da extensão Wokwi.
