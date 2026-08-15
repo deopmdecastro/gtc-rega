@@ -47,6 +47,11 @@
 
 #include "communication/web/web.h"
 
+// ── Forward declarations (necessárias porque applyLocalCommand referencia tudo) ──
+static void applyOutputs(JsonDocument& doc);
+void sendTelemetryNow();
+void applyLocalCommand(const String& body);
+
 // ── Estado ──
 static String baseUrl;
 static uint32_t lastPoll = 0, lastTelemetry = 0, lastSample = 0, lastOkContact = 0, lastBleNotify = 0;
@@ -173,7 +178,8 @@ void gtcLocalEmergency() {
 
 // ── Aplicar comando direto (simulação/teste) ──
 // action: start, stop, reset, auto_on, auto_off, setpoint
-static void applyLocalCommand(const String& body) {
+void applyLocalCommand(const String& body); // forward já declarado acima
+inline void _applyLocalCommand(const String& body) {
   String b = body; b.trim(); b.toLowerCase();
   Serial.printf("[CMD] %s\n", b.c_str());
 
@@ -398,6 +404,8 @@ static void sendTelemetry() {
 // Variante "sendTelemetryNow" — invocada pelos comandos locais para forçar
 // telemetría imediatamente em vez de esperar o TELEMETRY_INTERVAL_MS.
 void sendTelemetryNow() { sendTelemetry(); }
+
+void applyLocalCommand(const String& body) { _applyLocalCommand(body); }
 
 static void pollOutputs() {
   // Variáveis dummy para evitar warning de "set mas não usado"

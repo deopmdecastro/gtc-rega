@@ -37,8 +37,8 @@
 namespace io {
 
 #ifdef WOKWI_SIM
-inline constexpr int SIM_OUT_PINS[9] = { 4, 5, 6, 7, 8, 9, 10, 11, 12 };
-inline constexpr int SIM_IN_PINS[2]  = { 13, 15 };
+static const int SIM_OUT_PINS[9] = { 4, 5, 6, 7, 8, 9, 10, 11, 12 };
+static const int SIM_IN_PINS[2]  = { 13, 15 };
 #endif
 
 inline io::Mcp23017& mcp() {
