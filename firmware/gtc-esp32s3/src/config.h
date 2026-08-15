@@ -154,6 +154,7 @@
 // Tipos DHT (id semântico)
 #define SENSOR_DHT_ID_1    "DHT1"
 #define SENSOR_DHT_ID_2    "DHT2"
+#define ZONE_COUNT         2
 
 // Entrada de segurança (botão físico de emergência — botão BOOT)
 #define PIN_EMERGENCY_BTN  0    // botão BOOT (INPUT_PULLUP)

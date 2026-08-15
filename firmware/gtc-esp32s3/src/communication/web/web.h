@@ -22,7 +22,7 @@ struct FieldState {
 
 inline FieldState fieldState() {
   const auto s = signals24v::snapshot();
-  return { s.mcpPresent, s.km1, s.thermal };
+  return { s.mcpPresent, s.bomba, s.releTemp };
 }
 
 } // namespace communication::web
