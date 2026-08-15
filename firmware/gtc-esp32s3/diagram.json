@@ -1,0 +1,90 @@
+{
+  "version": 1,
+  "author": "Deogracia de Castro",
+  "editor": "wokwi",
+  "parts": [
+    { "id": "esp32s3", "type": "board-esp32-s3-devkitc-1", "left": 0, "top": 0, "attrs": {} },
+
+    { "id": "dht1", "type": "wokwi-dht22", "left": -260, "top": -160, "attrs": {} },
+    { "id": "dht2", "type": "wokwi-dht22", "left": -260, "top": -60, "attrs": {} },
+
+    { "id": "btn_emerg", "type": "wokwi-pushbutton", "left": -260, "top": 40, "attrs": { "color": "red" } },
+
+    { "id": "led_status", "type": "wokwi-led", "left": -260, "top": 140, "attrs": { "color": "blue", "label": "STATUS" } },
+
+    { "id": "led_motor_on", "type": "wokwi-led", "left": 300, "top": -260, "attrs": { "color": "green", "label": "MOTOR_ON" } },
+    { "id": "relay_motor", "type": "wokwi-relay-module", "left": 420, "top": -260, "attrs": {} },
+
+    { "id": "led_auto_gtc", "type": "wokwi-led", "left": 300, "top": -190, "attrs": { "color": "yellow", "label": "AUTO_GTC" } },
+    { "id": "led_sto_emerg", "type": "wokwi-led", "left": 300, "top": -120, "attrs": { "color": "red", "label": "STO_EMERG" } },
+    { "id": "led_on_gtc", "type": "wokwi-led", "left": 300, "top": -50, "attrs": { "color": "green", "label": "ON_GTC" } },
+    { "id": "led_time_reg", "type": "wokwi-led", "left": 300, "top": 20, "attrs": { "color": "cyan", "label": "T_REGA" } },
+    { "id": "led_time_delay", "type": "wokwi-led", "left": 300, "top": 90, "attrs": { "color": "cyan", "label": "T_DELAY" } },
+    { "id": "led_sensor2", "type": "wokwi-led", "left": 300, "top": 160, "attrs": { "color": "white", "label": "OUT_SENSOR2" } },
+    { "id": "led_sensor1", "type": "wokwi-led", "left": 300, "top": 230, "attrs": { "color": "white", "label": "OUT_SENSOR1" } },
+
+    { "id": "led_rele_temp", "type": "wokwi-led", "left": 300, "top": 300, "attrs": { "color": "orange", "label": "RELE_TEMP_ON" } },
+    { "id": "relay_temp", "type": "wokwi-relay-module", "left": 420, "top": 300, "attrs": {} },
+
+    { "id": "sw_bomba_fb", "type": "wokwi-slide-switch", "left": 420, "top": 400, "attrs": { "label": "FB_BOMBA_ON" } },
+    { "id": "sw_temp_fb", "type": "wokwi-slide-switch", "left": 420, "top": 460, "attrs": { "label": "FB_RELE_TEMP" } },
+
+    { "id": "note_mcp", "type": "wokwi-text", "left": -260, "top": 220, "attrs": { "text": "MCP23017 real (I2C 0x20, SCL=16 SDA=18) sem parte\nnativa no Wokwi. Os LEDs/reles a direita espelham\nPA0..PA7 e PB0 em GPIOs livres (4,5,6,7,8,9,10,11,12).\nOs switches espelham as entradas isoladas PB6/PB7.\nPara acenderem de verdade e' preciso um mirror opcional\nno driver do MCP23017 sob #ifdef WOKWI_SIM." } }
+  ],
+  "connections": [
+    ["esp32s3:3V3", "dht1:VCC", "red", ["v-20", "h-40"]],
+    ["esp32s3:GND.1", "dht1:GND", "black", ["v-10", "h-30"]],
+    ["esp32s3:21", "dht1:SDA", "green", []],
+
+    ["esp32s3:3V3", "dht2:VCC", "red", ["v-10", "h-40"]],
+    ["esp32s3:GND.2", "dht2:GND", "black", ["v10", "h-30"]],
+    ["esp32s3:14", "dht2:SDA", "green", []],
+
+    ["esp32s3:0", "btn_emerg:1.l", "yellow", []],
+    ["esp32s3:GND.1", "btn_emerg:2.l", "black", []],
+
+    ["esp32s3:48", "led_status:A", "blue", []],
+    ["esp32s3:GND.1", "led_status:C", "black", []],
+
+    ["esp32s3:4", "led_motor_on:A", "green", []],
+    ["esp32s3:GND.1", "led_motor_on:C", "black", []],
+    ["esp32s3:4", "relay_motor:IN", "green", ["h20"]],
+    ["esp32s3:5V", "relay_motor:VCC", "red", []],
+    ["esp32s3:GND.1", "relay_motor:GND", "black", []],
+
+    ["esp32s3:5", "led_auto_gtc:A", "yellow", []],
+    ["esp32s3:GND.1", "led_auto_gtc:C", "black", []],
+
+    ["esp32s3:6", "led_sto_emerg:A", "red", []],
+    ["esp32s3:GND.1", "led_sto_emerg:C", "black", []],
+
+    ["esp32s3:7", "led_on_gtc:A", "green", []],
+    ["esp32s3:GND.1", "led_on_gtc:C", "black", []],
+
+    ["esp32s3:8", "led_time_reg:A", "cyan", []],
+    ["esp32s3:GND.1", "led_time_reg:C", "black", []],
+
+    ["esp32s3:9", "led_time_delay:A", "cyan", []],
+    ["esp32s3:GND.1", "led_time_delay:C", "black", []],
+
+    ["esp32s3:10", "led_sensor2:A", "white", []],
+    ["esp32s3:GND.1", "led_sensor2:C", "black", []],
+
+    ["esp32s3:11", "led_sensor1:A", "white", []],
+    ["esp32s3:GND.1", "led_sensor1:C", "black", []],
+
+    ["esp32s3:12", "led_rele_temp:A", "orange", []],
+    ["esp32s3:GND.1", "led_rele_temp:C", "black", []],
+    ["esp32s3:12", "relay_temp:IN", "orange", ["h20"]],
+    ["esp32s3:5V", "relay_temp:VCC", "red", []],
+    ["esp32s3:GND.1", "relay_temp:GND", "black", []],
+
+    ["esp32s3:13", "sw_bomba_fb:SIG", "magenta", []],
+    ["esp32s3:3V3", "sw_bomba_fb:VCC", "red", []],
+    ["esp32s3:GND.1", "sw_bomba_fb:GND", "black", []],
+
+    ["esp32s3:15", "sw_temp_fb:SIG", "magenta", []],
+    ["esp32s3:3V3", "sw_temp_fb:VCC", "red", []],
+    ["esp32s3:GND.1", "sw_temp_fb:GND", "black", []]
+  ]
+}
