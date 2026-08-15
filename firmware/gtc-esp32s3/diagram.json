@@ -11,17 +11,18 @@
       "attrs": { "wifi": true }
     },
 
-    { "type": "wokwi-text", "id": "title",     "left": 360,  "top": 600, "attrs": { "text": "GTC Rega — Plataforma ES3N28P (ESP32-S3)\nMCP23017 espelhado nos GPIO 4..12 (saídas) e GPIO 13/15 (entradas PB6/PB7)" } },
-    { "type": "wokwi-text", "id": "legend_sen", "left": -380, "top": -230, "attrs": { "text": "SENSORES no ESP32-S3" } },
-    { "type": "wokwi-text", "id": "legend_in",  "left": -380, "top":  270, "attrs": { "text": "ENTRADAS (MCP PB6/PB7 espelhados em GPIO 13/15)" } },
-    { "type": "wokwi-text", "id": "legend_out", "left":   360, "top": -380, "attrs": { "text": "SAÍDAS (MCP PA0..PA7 + PB0 espelhados em GPIO 4..12)" } },
+    { "type": "wokwi-text", "id": "title",     "left": 360,  "top": -440, "attrs": { "text": "GTC Rega — Plataforma ES3N28P (ESP32-S3)\nMCP23017 espelhado em GPIO 4..12 (saídas)\nEntradas PB6/PB7 espelhadas em GPIO 13/15\nDHT22 em GPIO 21 (T/H1) e GPIO 14 (T/H2)\nStatus LED em GPIO 48" } },
+    { "type": "wokwi-text", "id": "legend_sen",  "left": -380, "top": -240, "attrs": { "text": "SENSORES no ESP32-S3 (DHT22)" } },
+    { "type": "wokwi-text", "id": "legend_in",   "left": -380, "top":  270, "attrs": { "text": "ENTRADAS PB6/PB7 (feedback 24V isolado)\nespelhadas em GPIO 13 e 15" } },
+    { "type": "wokwi-text", "id": "legend_out",  "left":   360, "top": -380, "attrs": { "text": "SAÍDAS (MCP PA0..PA7 + PB0)\nespelhadas em GPIO 4..12 — LEDs + relés" } },
+    { "type": "wokwi-text", "id": "legend_test", "left":  -380, "top":  600, "attrs": { "text": "BOTÕES DE TESTE\nEMERG (BOOT GPIO 0) → paragem imediata\nSW KM1 (GPIO 13) → simula contacto auxiliar do contator\nSW TEMP (GPIO 15) → simula relé térmico ON (bloqueia motor)" } },
 
     { "type": "wokwi-dht22",      "id": "dht1",  "left": -380, "top": -180, "attrs": { "temperature": "24", "humidity": "55", "color": "blue" } },
     { "type": "wokwi-dht22",      "id": "dht2",  "left": -380, "top":  -90, "attrs": { "temperature": "25", "humidity": "60", "color": "blue" } },
 
     { "type": "wokwi-pushbutton", "id": "btn_emerg", "left": -180, "top":  370, "attrs": { "color": "red", "label": "EMERGENCY (BOOT GPIO 0)" } },
 
-    { "type": "wokwi-led",        "id": "led_status", "left":   80, "top":  370, "attrs": { "color": "blue",  "label": "STATUS GPIO 48" } },
+    { "type": "wokwi-led",        "id": "led_status", "left":   80, "top":  370, "attrs": { "color": "blue",  "label": "STATUS GPIO 48 (a piscar = MQTT/Backend OFF)" } },
     { "type": "wokwi-resistor",   "id": "r_status",   "left":   20, "top":  400, "attrs": { "value": "220" } },
 
     { "type": "wokwi-led", "id": "led_motor",       "left": 360, "top": -340, "attrs": { "color": "red",    "label": "PA0 MOTOR_ON (GPIO 4)" } },
@@ -52,10 +53,10 @@
     { "type": "wokwi-relay-module", "id": "relay_temp",  "left": 660, "top":  220, "attrs": { "transistor": "npn" } },
 
     { "type": "wokwi-slide-switch", "id": "sw_bomba_fb", "left": -380, "top": 320, "attrs": { "label": "PB6 FB BOMBA (GPIO 13)" } },
-    { "type": "wokwi-slide-switch", "id": "sw_temp_fb",  "left": -380, "top": 430, "attrs": { "label": "PB7 FB TERMICO (GPIO 15)" } },
+    { "type": "wokwi-slide-switch", "id": "sw_temp_fb",  "left": -380, "top": 430, "attrs": { "label": "PB7 FB TÉRMICO (GPIO 15)" } },
 
     { "type": "wokwi-led",      "id": "led_fb_bomba", "left": -100, "top": 320, "attrs": { "color": "lime", "label": "LED KM1" } },
-    { "type": "wokwi-led",      "id": "led_fb_temp",  "left": -100, "top": 430, "attrs": { "color": "red",  "label": "LED TERMICO" } },
+    { "type": "wokwi-led",      "id": "led_fb_temp",  "left": -100, "top": 430, "attrs": { "color": "red",  "label": "LED TÉRMICO" } },
 
     { "type": "wokwi-resistor", "id": "r_fb_bomba",   "left":  -30, "top": 350, "attrs": { "value": "220" } },
     { "type": "wokwi-resistor", "id": "r_fb_temp",    "left":  -30, "top": 460, "attrs": { "value": "220" } }

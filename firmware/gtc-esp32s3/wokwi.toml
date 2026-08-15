@@ -1,14 +1,16 @@
 [wokwi]
 version = 1
-firmware = '.pio/build/esp32-s3-wokwi/firmware.bin'
-elf = '.pio/build/esp32-s3-wokwi/firmware.elf'
+# A extensão Wokwi procura o firmware.bin em .pio/build/<env>/. O env default
+# é esp32-s3-devkitc-1 (que já inclui WOKWI_SIM=1 e define o isWokwiSim em
+# runtime). Se você compilar com `pio run -e esp32-s3-wokwi` o caminho muda.
+firmware = '.pio/build/esp32-s3-devkitc-1/firmware.bin'
+elf     = '.pio/build/esp32-s3-devkitc-1/firmware.elf'
 
-# Ambiente correto para o simulador Wokwi (VS Code) — define -DWOKWI_SIM=1.
-# Compila com:
-#   pio run -e esp32-s3-wokwi
-# O firmware liga-se à rede virtual "Wokwi-GUEST" (sem password) em vez do
-# portal cativo WiFiManager (inacessível no simulador).
+# Compilar antes de iniciar o simulador:
+#   pio run                          # gera esp32-s3-devkitc-1/firmware.bin
+#   pio run -t upload                # grava na placa real
 #
-# Em src/config.h define GTC_SERVER_HOST com o IP real do PC na rede local
-# (ex.: 192.168.1.50) para que o ESP32 simulado consiga chegar ao backend
-# através do Private IoT Gateway da extensão Wokwi.
+# A firmware detecta automaticamente o simulador (tentativa de ligação à
+# rede virtual "Wokwi-GUEST") e ativa o espelho MCP23017 -> GPIO 4..12/13/15
+# para que LEDs/relés/switches do diagram.json sejam operados em tempo real.
+# Em hardware real entra no portal cativo WiFiManager (AP "GTC-Rega-Setup").
