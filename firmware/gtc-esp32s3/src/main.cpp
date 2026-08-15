@@ -351,12 +351,30 @@ void setup() {
   touch::init();
   audio::init();
 
+#ifdef WOKWI_SIM
+  // Build de simulação: o portal cativo do WiFiManager não é alcançável
+  // dentro do Wokwi, por isso ligamos diretamente à rede virtual aberta
+  // "Wokwi-GUEST" (fornecida pelo simulador, sem password).
+  Serial.println("[WIFI] WOKWI_SIM ativo — a ligar a Wokwi-GUEST");
+  WiFi.mode(WIFI_STA);
+  WiFi.begin("Wokwi-GUEST", "", 6);
+  uint32_t wifiStart = millis();
+  while (WiFi.status() != WL_CONNECTED && millis() - wifiStart < 15000) {
+    delay(200);
+    Serial.print(".");
+  }
+  Serial.println();
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("[WIFI] Falha a ligar a Wokwi-GUEST — a repetir em loop()");
+  }
+#else
   WiFiManager wm;
   wm.setConfigPortalTimeout(180);
   if (!wm.autoConnect(GTC_AP_SSID, GTC_AP_PASS)) {
     Serial.println("[WIFI] Portal expirou — reiniciar");
     ESP.restart();
   }
+#endif
   Serial.printf("[WIFI] ligado: %s\n", WiFi.localIP().toString().c_str());
 
   webuiBegin();
