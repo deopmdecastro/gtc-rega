@@ -463,6 +463,16 @@ void setup() {
   sampleDht();
   allOutputsOff();
 
+#if defined(WOKWI_SIM)
+  // Botões manuais de controlo (apenas no simulador Wokwi / GPIO 34..37)
+  // INPUT_PULLUP: botão pressiona ao GND → ativo em LOW
+  pinMode(PIN_BTN_START, INPUT_PULLUP);
+  pinMode(PIN_BTN_STOP,  INPUT_PULLUP);
+  pinMode(PIN_BTN_RESET, INPUT_PULLUP);
+  pinMode(PIN_BTN_AUTO,  INPUT_PULLUP);
+  Serial.println("[BTN] Botões manuais inicializados (GPIO 34/35/36/37)");
+#endif
+
   display::init();
   touch::init();
   audio::init();
@@ -498,10 +508,59 @@ void setup() {
   }
 }
 
+// ── Debounce dos botões físicos (Wokwi) ──
+static uint32_t lastBtnStart = 0, lastBtnStop = 0, lastBtnReset = 0, lastBtnAuto = 0;
+static bool prevBtnStart = HIGH, prevBtnStop = HIGH, prevBtnReset = HIGH, prevBtnAuto = HIGH;
+#define BTN_DEBOUNCE_MS 80
+
 // ── Loop ──
 void loop() {
   esp_task_wdt_reset();
   uint32_t now = millis();
+
+#if defined(WOKWI_SIM)
+  // ── Botões manuais (Wokwi) — debounce simples ─────────────────────────
+  {
+    bool curStart = digitalRead(PIN_BTN_START);
+    if (curStart == LOW && prevBtnStart == HIGH && now - lastBtnStart > BTN_DEBOUNCE_MS) {
+      lastBtnStart = now;
+      Serial.println("[BTN] START pressionado");
+      JsonDocument out; out["pump"] = true; out["auto"] = true; out["stop"] = false;
+      applyOutputs(out);
+      sendTelemetryNow();
+    }
+    prevBtnStart = curStart;
+
+    bool curStop = digitalRead(PIN_BTN_STOP);
+    if (curStop == LOW && prevBtnStop == HIGH && now - lastBtnStop > BTN_DEBOUNCE_MS) {
+      lastBtnStop = now;
+      Serial.println("[BTN] STOP pressionado");
+      gtcLocalEmergency();
+      sendTelemetryNow();
+    }
+    prevBtnStop = curStop;
+
+    bool curReset = digitalRead(PIN_BTN_RESET);
+    if (curReset == LOW && prevBtnReset == HIGH && now - lastBtnReset > BTN_DEBOUNCE_MS) {
+      lastBtnReset = now;
+      Serial.println("[BTN] RESET pressionado");
+      emergencyLatched = false;
+      sendTelemetryNow();
+    }
+    prevBtnReset = curReset;
+
+    bool curAuto = digitalRead(PIN_BTN_AUTO);
+    if (curAuto == LOW && prevBtnAuto == HIGH && now - lastBtnAuto > BTN_DEBOUNCE_MS) {
+      lastBtnAuto = now;
+      autoModeOn = !autoModeOn;
+      irrigation::setAuto(autoModeOn);
+      Serial.printf("[BTN] AUTO %s\n", autoModeOn ? "ON" : "OFF");
+      sendTelemetryNow();
+    }
+    prevBtnAuto = curAuto;
+  }
+  // ───────────────────────────────────────────────────────────────────────
+#endif
 
   // Segurança: relé térmico ON => desligar motor imediatamente
   if (alarms::thermalActive()) {
