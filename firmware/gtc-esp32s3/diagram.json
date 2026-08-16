@@ -9,7 +9,8 @@
       "left": -200,
       "top": 0,
       "attrs": {
-        "wifi": true
+        "flash": "8",
+        "psram": "none"
       }
     },
     {
@@ -18,7 +19,7 @@
       "left": 360,
       "top": -440,
       "attrs": {
-        "text": "GTC Rega — Plataforma ES3N28P (ESP32-S3)\nMCP23017 espelhado em GPIO 4..12 (saídas)\nEntradas PB6/PB7 espelhadas em GPIO 13/15\nDHT22 em GPIO 21 (T/H1) e GPIO 14 (T/H2)\nStatus LED em GPIO 48"
+        "text": "GTC Rega — Plataforma ES3N28P (ESP32-S3)\nMCP23017 espelhado em GPIO 4..12 (saídas)\nEntradas PB6/PB7 espelhadas em GPIO 13/15\nDHT22 em GPIO 21 (T/H1) e GPIO 14 (T/H2)\nBotões manuais em GPIO 38/39/40/41 (safe pins S3)\nStatus LED em GPIO 48"
       }
     },
     {
@@ -26,9 +27,7 @@
       "id": "legend_sen",
       "left": -380,
       "top": -240,
-      "attrs": {
-        "text": "SENSORES no ESP32-S3 (DHT22)"
-      }
+      "attrs": { "text": "SENSORES no ESP32-S3 (DHT22)" }
     },
     {
       "type": "wokwi-text",
@@ -36,7 +35,7 @@
       "left": -380,
       "top": 270,
       "attrs": {
-        "text": "ENTRADAS PB6/PB7 — feedback 24V isolado\nespelhadas em GPIO 13 e 15 (INPUT_PULLUP)\nSwitch UP  = 3V3 (força bomba/térmico ON)\nSwitch DOWN = GND (força bomba/térmico OFF)"
+        "text": "SWITCHES DE OVERRIDE MANUAL\n(feedback 24V isolado — PB6/PB7)\nSW MOTOR LIGADO  → GPIO 13\nSW RELÉ TEMPORIZADOR → GPIO 15\nUP  = 3V3 (força feedback ON)\nDOWN = GND (força feedback OFF)"
       }
     },
     {
@@ -54,7 +53,7 @@
       "left": -380,
       "top": 600,
       "attrs": {
-        "text": "BOTÕES DE TESTE\nEMERG (BOOT GPIO 0) → paragem imediata\nSW KM1 (GPIO 13) → simula contacto auxiliar do contator\nSW TEMP (GPIO 15) → simula relé térmico ON (bloqueia motor)"
+        "text": "BOTÕES DE TESTE\nEMERG (BOOT GPIO 0) → paragem imediata\nSTART/STOP/RESET/AUTO → GPIO 38/39/40/41"
       }
     },
     {
@@ -62,923 +61,181 @@
       "id": "dht1",
       "left": -380,
       "top": -180,
-      "attrs": {
-        "temperature": "24",
-        "humidity": "55",
-        "color": "blue"
-      }
+      "attrs": { "temperature": "24", "humidity": "55", "color": "blue" }
     },
     {
       "type": "wokwi-dht22",
       "id": "dht2",
       "left": -380,
       "top": -90,
-      "attrs": {
-        "temperature": "25",
-        "humidity": "60",
-        "color": "blue"
-      }
+      "attrs": { "temperature": "25", "humidity": "60", "color": "blue" }
     },
     {
       "type": "wokwi-pushbutton",
       "id": "btn_emerg",
       "left": -180,
       "top": 370,
-      "attrs": {
-        "color": "red",
-        "label": "EMERGENCY (BOOT GPIO 0)"
-      }
+      "attrs": { "color": "red", "label": "EMERGENCY (BOOT GPIO 0)" }
     },
     {
       "type": "wokwi-led",
       "id": "led_status",
       "left": 80,
       "top": 370,
-      "attrs": {
-        "color": "blue",
-        "label": "STATUS GPIO 48 (a piscar = MQTT/Backend OFF)"
-      }
+      "attrs": { "color": "blue", "label": "STATUS GPIO 48 (piscando = MQTT/Backend OFF)" }
     },
-    {
-      "type": "wokwi-resistor",
-      "id": "r_status",
-      "left": 20,
-      "top": 400,
-      "attrs": {
-        "value": "220"
-      }
-    },
-    {
-      "type": "wokwi-led",
-      "id": "led_motor",
-      "left": 360,
-      "top": -340,
-      "attrs": {
-        "color": "red",
-        "label": "PA0 MOTOR_ON (GPIO 4)"
-      }
-    },
-    {
-      "type": "wokwi-led",
-      "id": "led_auto",
-      "left": 360,
-      "top": -270,
-      "attrs": {
-        "color": "yellow",
-        "label": "PA1 AUTO_GTC (GPIO 5)"
-      }
-    },
-    {
-      "type": "wokwi-led",
-      "id": "led_sto",
-      "left": 360,
-      "top": -200,
-      "attrs": {
-        "color": "orange",
-        "label": "PA2 STO/EMERG (GPIO 6)"
-      }
-    },
-    {
-      "type": "wokwi-led",
-      "id": "led_on",
-      "left": 360,
-      "top": -130,
-      "attrs": {
-        "color": "green",
-        "label": "PA3 ON_GTC (GPIO 7)"
-      }
-    },
-    {
-      "type": "wokwi-led",
-      "id": "led_time_reg",
-      "left": 360,
-      "top": -60,
-      "attrs": {
-        "color": "cyan",
-        "label": "PA4 TIME_REG (GPIO 8)"
-      }
-    },
-    {
-      "type": "wokwi-led",
-      "id": "led_time_delay",
-      "left": 360,
-      "top": 10,
-      "attrs": {
-        "color": "cyan",
-        "label": "PA5 TIME_DELAY (GPIO 9)"
-      }
-    },
-    {
-      "type": "wokwi-led",
-      "id": "led_sensor2",
-      "left": 360,
-      "top": 80,
-      "attrs": {
-        "color": "white",
-        "label": "PA6 OUT_S2 Z2 (GPIO 10)"
-      }
-    },
-    {
-      "type": "wokwi-led",
-      "id": "led_sensor1",
-      "left": 360,
-      "top": 150,
-      "attrs": {
-        "color": "white",
-        "label": "PA7 OUT_S1 Z1 (GPIO 11)"
-      }
-    },
-    {
-      "type": "wokwi-led",
-      "id": "led_temp",
-      "left": 360,
-      "top": 220,
-      "attrs": {
-        "color": "purple",
-        "label": "PB0 RELE_TEMP (GPIO 12)"
-      }
-    },
-    {
-      "type": "wokwi-resistor",
-      "id": "r_motor",
-      "left": 460,
-      "top": -340,
-      "attrs": {
-        "value": "220"
-      }
-    },
-    {
-      "type": "wokwi-resistor",
-      "id": "r_auto",
-      "left": 460,
-      "top": -270,
-      "attrs": {
-        "value": "220"
-      }
-    },
-    {
-      "type": "wokwi-resistor",
-      "id": "r_sto",
-      "left": 460,
-      "top": -200,
-      "attrs": {
-        "value": "220"
-      }
-    },
-    {
-      "type": "wokwi-resistor",
-      "id": "r_on",
-      "left": 460,
-      "top": -130,
-      "attrs": {
-        "value": "220"
-      }
-    },
-    {
-      "type": "wokwi-resistor",
-      "id": "r_time_reg",
-      "left": 460,
-      "top": -60,
-      "attrs": {
-        "value": "220"
-      }
-    },
-    {
-      "type": "wokwi-resistor",
-      "id": "r_time_delay",
-      "left": 460,
-      "top": 10,
-      "attrs": {
-        "value": "220"
-      }
-    },
-    {
-      "type": "wokwi-resistor",
-      "id": "r_sensor2",
-      "left": 460,
-      "top": 80,
-      "attrs": {
-        "value": "220"
-      }
-    },
-    {
-      "type": "wokwi-resistor",
-      "id": "r_sensor1",
-      "left": 460,
-      "top": 150,
-      "attrs": {
-        "value": "220"
-      }
-    },
-    {
-      "type": "wokwi-resistor",
-      "id": "r_temp",
-      "left": 460,
-      "top": 220,
-      "attrs": {
-        "value": "220"
-      }
-    },
-    {
-      "type": "wokwi-relay-module",
-      "id": "relay_motor",
-      "left": 660,
-      "top": -340,
-      "attrs": {
-        "transistor": "npn"
-      }
-    },
-    {
-      "type": "wokwi-relay-module",
-      "id": "relay_auto",
-      "left": 660,
-      "top": -270,
-      "attrs": {
-        "transistor": "npn"
-      }
-    },
-    {
-      "type": "wokwi-relay-module",
-      "id": "relay_stop",
-      "left": 660,
-      "top": -200,
-      "attrs": {
-        "transistor": "npn"
-      }
-    },
-    {
-      "type": "wokwi-relay-module",
-      "id": "relay_z2",
-      "left": 660,
-      "top": 80,
-      "attrs": {
-        "transistor": "npn"
-      }
-    },
-    {
-      "type": "wokwi-relay-module",
-      "id": "relay_z1",
-      "left": 660,
-      "top": 150,
-      "attrs": {
-        "transistor": "npn"
-      }
-    },
-    {
-      "type": "wokwi-relay-module",
-      "id": "relay_temp",
-      "left": 660,
-      "top": 220,
-      "attrs": {
-        "transistor": "npn"
-      }
-    },
+    { "type": "wokwi-resistor", "id": "r_status", "left": 20, "top": 400, "attrs": { "value": "220" } },
+    { "type": "wokwi-led",   "id": "led_motor",       "left": 360, "top": -340, "attrs": { "color": "red",    "label": "PA0 MOTOR_ON (GPIO 4)" } },
+    { "type": "wokwi-led",   "id": "led_auto",        "left": 360, "top": -270, "attrs": { "color": "yellow", "label": "PA1 AUTO_GTC (GPIO 5)" } },
+    { "type": "wokwi-led",   "id": "led_sto",         "left": 360, "top": -200, "attrs": { "color": "orange", "label": "PA2 STO/EMERG (GPIO 6)" } },
+    { "type": "wokwi-led",   "id": "led_on",          "left": 360, "top": -130, "attrs": { "color": "green",  "label": "PA3 ON_GTC (GPIO 7)" } },
+    { "type": "wokwi-led",   "id": "led_time_reg",    "left": 360, "top": -60,  "attrs": { "color": "cyan",   "label": "PA4 TIME_REG (GPIO 8)" } },
+    { "type": "wokwi-led",   "id": "led_time_delay",  "left": 360, "top": 10,   "attrs": { "color": "cyan",   "label": "PA5 TIME_DELAY (GPIO 9)" } },
+    { "type": "wokwi-led",   "id": "led_sensor2",     "left": 360, "top": 80,   "attrs": { "color": "white",  "label": "PA6 OUT_S2 Z2 (GPIO 10)" } },
+    { "type": "wokwi-led",   "id": "led_sensor1",     "left": 360, "top": 150,  "attrs": { "color": "white",  "label": "PA7 OUT_S1 Z1 (GPIO 11)" } },
+    { "type": "wokwi-led",   "id": "led_temp",        "left": 360, "top": 220,  "attrs": { "color": "purple", "label": "PB0 RELE_TEMP (GPIO 12)" } },
+    { "type": "wokwi-resistor", "id": "r_motor",      "left": 460, "top": -340, "attrs": { "value": "220" } },
+    { "type": "wokwi-resistor", "id": "r_auto",       "left": 460, "top": -270, "attrs": { "value": "220" } },
+    { "type": "wokwi-resistor", "id": "r_sto",        "left": 460, "top": -200, "attrs": { "value": "220" } },
+    { "type": "wokwi-resistor", "id": "r_on",         "left": 460, "top": -130, "attrs": { "value": "220" } },
+    { "type": "wokwi-resistor", "id": "r_time_reg",   "left": 460, "top": -60,  "attrs": { "value": "220" } },
+    { "type": "wokwi-resistor", "id": "r_time_delay", "left": 460, "top": 10,   "attrs": { "value": "220" } },
+    { "type": "wokwi-resistor", "id": "r_sensor2",    "left": 460, "top": 80,   "attrs": { "value": "220" } },
+    { "type": "wokwi-resistor", "id": "r_sensor1",    "left": 460, "top": 150,  "attrs": { "value": "220" } },
+    { "type": "wokwi-resistor", "id": "r_temp",       "left": 460, "top": 220,  "attrs": { "value": "220" } },
+    { "type": "wokwi-relay-module", "id": "relay_motor", "left": 660, "top": -340, "attrs": { "transistor": "npn" } },
+    { "type": "wokwi-relay-module", "id": "relay_auto",  "left": 660, "top": -270, "attrs": { "transistor": "npn" } },
+    { "type": "wokwi-relay-module", "id": "relay_stop",  "left": 660, "top": -200, "attrs": { "transistor": "npn" } },
+    { "type": "wokwi-relay-module", "id": "relay_z2",    "left": 660, "top": 80,   "attrs": { "transistor": "npn" } },
+    { "type": "wokwi-relay-module", "id": "relay_z1",    "left": 660, "top": 150,  "attrs": { "transistor": "npn" } },
+    { "type": "wokwi-relay-module", "id": "relay_temp",  "left": 660, "top": 220,  "attrs": { "transistor": "npn" } },
     {
       "type": "wokwi-slide-switch",
       "id": "sw_bomba_fb",
       "left": -380,
       "top": 320,
-      "attrs": {
-        "label": "SW MOTOR LIGADO (GPIO 13)\nUP=ON  DOWN=OFF"
-      }
+      "attrs": { "label": "SW MOTOR LIGADO (GPIO 13)  UP=ON  DOWN=OFF" }
     },
     {
       "type": "wokwi-slide-switch",
       "id": "sw_temp_fb",
       "left": -380,
       "top": 430,
-      "attrs": {
-        "label": "SW RELÉ TEMPORIZADOR (GPIO 15)\nUP=ON  DOWN=OFF"
-      }
+      "attrs": { "label": "SW RELÉ TEMPORIZADOR (GPIO 15)  UP=ON  DOWN=OFF" }
     },
-    {
-      "type": "wokwi-led",
-      "id": "led_fb_bomba",
-      "left": -100,
-      "top": 320,
-      "attrs": {
-        "color": "lime",
-        "label": "LED KM1"
-      }
-    },
-    {
-      "type": "wokwi-led",
-      "id": "led_fb_temp",
-      "left": -100,
-      "top": 430,
-      "attrs": {
-        "color": "red",
-        "label": "LED TÉRMICO"
-      }
-    },
-    {
-      "type": "wokwi-resistor",
-      "id": "r_fb_bomba",
-      "left": -30,
-      "top": 350,
-      "attrs": {
-        "value": "220"
-      }
-    },
-    {
-      "type": "wokwi-resistor",
-      "id": "r_fb_temp",
-      "left": -30,
-      "top": 460,
-      "attrs": {
-        "value": "220"
-      }
-    },
-    {
-      "type": "wokwi-pushbutton",
-      "id": "btn_start",
-      "left": -180,
-      "top": 490,
-      "attrs": {
-        "color": "green",
-        "label": "START (GPIO 34)"
-      }
-    },
-    {
-      "type": "wokwi-pushbutton",
-      "id": "btn_stop",
-      "left": -60,
-      "top": 490,
-      "attrs": {
-        "color": "red",
-        "label": "STOP (GPIO 35)"
-      }
-    },
-    {
-      "type": "wokwi-pushbutton",
-      "id": "btn_reset",
-      "left": 60,
-      "top": 490,
-      "attrs": {
-        "color": "blue",
-        "label": "RESET (GPIO 36)"
-      }
-    },
-    {
-      "type": "wokwi-pushbutton",
-      "id": "btn_auto",
-      "left": 180,
-      "top": 490,
-      "attrs": {
-        "color": "yellow",
-        "label": "AUTO (GPIO 37)"
-      }
-    },
-    {
-      "type": "wokwi-resistor",
-      "id": "r_btn_start",
-      "left": -180,
-      "top": 560,
-      "attrs": {
-        "value": "10000"
-      }
-    },
-    {
-      "type": "wokwi-resistor",
-      "id": "r_btn_stop",
-      "left": -60,
-      "top": 560,
-      "attrs": {
-        "value": "10000"
-      }
-    },
-    {
-      "type": "wokwi-resistor",
-      "id": "r_btn_reset",
-      "left": 60,
-      "top": 560,
-      "attrs": {
-        "value": "10000"
-      }
-    },
-    {
-      "type": "wokwi-resistor",
-      "id": "r_btn_auto",
-      "left": 180,
-      "top": 560,
-      "attrs": {
-        "value": "10000"
-      }
-    },
+    { "type": "wokwi-led", "id": "led_fb_bomba", "left": -100, "top": 320, "attrs": { "color": "lime", "label": "LED KM1" } },
+    { "type": "wokwi-led", "id": "led_fb_temp",  "left": -100, "top": 430, "attrs": { "color": "red",  "label": "LED TÉRMICO" } },
+    { "type": "wokwi-resistor", "id": "r_fb_bomba", "left": -30, "top": 350, "attrs": { "value": "220" } },
+    { "type": "wokwi-resistor", "id": "r_fb_temp",  "left": -30, "top": 460, "attrs": { "value": "220" } },
+    { "type": "wokwi-pushbutton", "id": "btn_start", "left": -180, "top": 490, "attrs": { "color": "green",  "label": "START (GPIO 38)" } },
+    { "type": "wokwi-pushbutton", "id": "btn_stop",  "left": -60,  "top": 490, "attrs": { "color": "red",    "label": "STOP  (GPIO 39)" } },
+    { "type": "wokwi-pushbutton", "id": "btn_reset", "left": 60,   "top": 490, "attrs": { "color": "blue",   "label": "RESET (GPIO 40)" } },
+    { "type": "wokwi-pushbutton", "id": "btn_auto",  "left": 180,  "top": 490, "attrs": { "color": "yellow", "label": "AUTO  (GPIO 41)" } },
     {
       "type": "wokwi-text",
       "id": "legend_btns",
       "left": -380,
       "top": 480,
       "attrs": {
-        "text": "BOTÕES DE CONTROLO MANUAL\nSTART → GPIO 34   STOP → GPIO 35\nRESET → GPIO 36   AUTO  → GPIO 37"
+        "text": "BOTÕES DE CONTROLO MANUAL\nSTART → 38   STOP → 39\nRESET → 40   AUTO → 41\n(safe pins ESP32-S3, evita PSRAM 33..37)"
       }
     }
   ],
   "connections": [
-    [
-      "esp32s3:3V3",
-      "dht1:VCC",
-      "red",
-      []
-    ],
-    [
-      "esp32s3:GND.1",
-      "dht1:GND",
-      "black",
-      []
-    ],
-    [
-      "esp32s3:21",
-      "dht1:SDA",
-      "green",
-      []
-    ],
-    [
-      "esp32s3:3V3",
-      "dht2:VCC",
-      "red",
-      []
-    ],
-    [
-      "esp32s3:GND.2",
-      "dht2:GND",
-      "black",
-      []
-    ],
-    [
-      "esp32s3:14",
-      "dht2:SDA",
-      "green",
-      []
-    ],
-    [
-      "esp32s3:0",
-      "btn_emerg:1.l",
-      "yellow",
-      []
-    ],
-    [
-      "esp32s3:GND.2",
-      "btn_emerg:2.l",
-      "black",
-      []
-    ],
-    [
-      "esp32s3:48",
-      "r_status:1",
-      "blue",
-      []
-    ],
-    [
-      "r_status:2",
-      "led_status:A",
-      "blue",
-      []
-    ],
-    [
-      "esp32s3:GND.1",
-      "led_status:C",
-      "black",
-      []
-    ],
-    [
-      "esp32s3:4",
-      "r_motor:1",
-      "red",
-      []
-    ],
-    [
-      "r_motor:2",
-      "led_motor:A",
-      "red",
-      []
-    ],
-    [
-      "esp32s3:GND.1",
-      "led_motor:C",
-      "black",
-      []
-    ],
-    [
-      "esp32s3:4",
-      "relay_motor:IN",
-      "red",
-      []
-    ],
-    [
-      "esp32s3:5V",
-      "relay_motor:VCC",
-      "red",
-      []
-    ],
-    [
-      "esp32s3:GND.1",
-      "relay_motor:GND",
-      "black",
-      []
-    ],
-    [
-      "esp32s3:5",
-      "r_auto:1",
-      "yellow",
-      []
-    ],
-    [
-      "r_auto:2",
-      "led_auto:A",
-      "yellow",
-      []
-    ],
-    [
-      "esp32s3:GND.1",
-      "led_auto:C",
-      "black",
-      []
-    ],
-    [
-      "esp32s3:5",
-      "relay_auto:IN",
-      "yellow",
-      []
-    ],
-    [
-      "esp32s3:5V",
-      "relay_auto:VCC",
-      "red",
-      []
-    ],
-    [
-      "esp32s3:GND.1",
-      "relay_auto:GND",
-      "black",
-      []
-    ],
-    [
-      "esp32s3:6",
-      "r_sto:1",
-      "orange",
-      []
-    ],
-    [
-      "r_sto:2",
-      "led_sto:A",
-      "orange",
-      []
-    ],
-    [
-      "esp32s3:GND.1",
-      "led_sto:C",
-      "black",
-      []
-    ],
-    [
-      "esp32s3:6",
-      "relay_stop:IN",
-      "orange",
-      []
-    ],
-    [
-      "esp32s3:5V",
-      "relay_stop:VCC",
-      "red",
-      []
-    ],
-    [
-      "esp32s3:GND.1",
-      "relay_stop:GND",
-      "black",
-      []
-    ],
-    [
-      "esp32s3:7",
-      "r_on:1",
-      "green",
-      []
-    ],
-    [
-      "r_on:2",
-      "led_on:A",
-      "green",
-      []
-    ],
-    [
-      "esp32s3:GND.1",
-      "led_on:C",
-      "black",
-      []
-    ],
-    [
-      "esp32s3:8",
-      "r_time_reg:1",
-      "cyan",
-      []
-    ],
-    [
-      "r_time_reg:2",
-      "led_time_reg:A",
-      "cyan",
-      []
-    ],
-    [
-      "esp32s3:GND.1",
-      "led_time_reg:C",
-      "black",
-      []
-    ],
-    [
-      "esp32s3:9",
-      "r_time_delay:1",
-      "cyan",
-      []
-    ],
-    [
-      "r_time_delay:2",
-      "led_time_delay:A",
-      "cyan",
-      []
-    ],
-    [
-      "esp32s3:GND.1",
-      "led_time_delay:C",
-      "black",
-      []
-    ],
-    [
-      "esp32s3:10",
-      "r_sensor2:1",
-      "white",
-      []
-    ],
-    [
-      "r_sensor2:2",
-      "led_sensor2:A",
-      "white",
-      []
-    ],
-    [
-      "esp32s3:GND.1",
-      "led_sensor2:C",
-      "black",
-      []
-    ],
-    [
-      "esp32s3:10",
-      "relay_z2:IN",
-      "white",
-      []
-    ],
-    [
-      "esp32s3:5V",
-      "relay_z2:VCC",
-      "red",
-      []
-    ],
-    [
-      "esp32s3:GND.1",
-      "relay_z2:GND",
-      "black",
-      []
-    ],
-    [
-      "esp32s3:11",
-      "r_sensor1:1",
-      "white",
-      []
-    ],
-    [
-      "r_sensor1:2",
-      "led_sensor1:A",
-      "white",
-      []
-    ],
-    [
-      "esp32s3:GND.1",
-      "led_sensor1:C",
-      "black",
-      []
-    ],
-    [
-      "esp32s3:11",
-      "relay_z1:IN",
-      "white",
-      []
-    ],
-    [
-      "esp32s3:5V",
-      "relay_z1:VCC",
-      "red",
-      []
-    ],
-    [
-      "esp32s3:GND.1",
-      "relay_z1:GND",
-      "black",
-      []
-    ],
-    [
-      "esp32s3:12",
-      "r_temp:1",
-      "purple",
-      []
-    ],
-    [
-      "r_temp:2",
-      "led_temp:A",
-      "purple",
-      []
-    ],
-    [
-      "esp32s3:GND.1",
-      "led_temp:C",
-      "black",
-      []
-    ],
-    [
-      "esp32s3:12",
-      "relay_temp:IN",
-      "purple",
-      []
-    ],
-    [
-      "esp32s3:5V",
-      "relay_temp:VCC",
-      "red",
-      []
-    ],
-    [
-      "esp32s3:GND.1",
-      "relay_temp:GND",
-      "black",
-      []
-    ],
-    [
-      "esp32s3:13",
-      "r_fb_bomba:1",
-      "lime",
-      []
-    ],
-    [
-      "r_fb_bomba:2",
-      "led_fb_bomba:A",
-      "lime",
-      []
-    ],
-    [
-      "esp32s3:GND.1",
-      "led_fb_bomba:C",
-      "black",
-      []
-    ],
-    [
-      "esp32s3:15",
-      "r_fb_temp:1",
-      "red",
-      []
-    ],
-    [
-      "r_fb_temp:2",
-      "led_fb_temp:A",
-      "red",
-      []
-    ],
-    [
-      "esp32s3:GND.1",
-      "led_fb_temp:C",
-      "black",
-      []
-    ],
-    [
-      "esp32s3:34",
-      "btn_start:1.l",
-      "green",
-      []
-    ],
-    [
-      "esp32s3:GND.1",
-      "btn_start:2.l",
-      "black",
-      []
-    ],
-    [
-      "esp32s3:3V3",
-      "r_btn_start:1",
-      "red",
-      []
-    ],
-    [
-      "r_btn_start:2",
-      "btn_start:1.l",
-      "green",
-      []
-    ],
-    [
-      "esp32s3:35",
-      "btn_stop:1.l",
-      "red",
-      []
-    ],
-    [
-      "esp32s3:GND.1",
-      "btn_stop:2.l",
-      "black",
-      []
-    ],
-    [
-      "esp32s3:3V3",
-      "r_btn_stop:1",
-      "red",
-      []
-    ],
-    [
-      "r_btn_stop:2",
-      "btn_stop:1.l",
-      "red",
-      []
-    ],
-    [
-      "esp32s3:36",
-      "btn_reset:1.l",
-      "blue",
-      []
-    ],
-    [
-      "esp32s3:GND.1",
-      "btn_reset:2.l",
-      "black",
-      []
-    ],
-    [
-      "esp32s3:3V3",
-      "r_btn_reset:1",
-      "red",
-      []
-    ],
-    [
-      "r_btn_reset:2",
-      "btn_reset:1.l",
-      "blue",
-      []
-    ],
-    [
-      "esp32s3:37",
-      "btn_auto:1.l",
-      "yellow",
-      []
-    ],
-    [
-      "esp32s3:GND.1",
-      "btn_auto:2.l",
-      "black",
-      []
-    ],
-    [
-      "esp32s3:3V3",
-      "r_btn_auto:1",
-      "red",
-      []
-    ],
-    [
-      "r_btn_auto:2",
-      "btn_auto:1.l",
-      "yellow",
-      []
-    ],
-    [
-      "esp32s3:13",
-      "sw_bomba_fb:2",
-      "magenta",
-      []
-    ],
-    [
-      "esp32s3:15",
-      "sw_temp_fb:2",
-      "magenta",
-      []
-    ],
-    [
-      "esp32s3:3V3",
-      "sw_bomba_fb:1",
-      "red",
-      []
-    ],
-    [
-      "esp32s3:GND.1",
-      "sw_bomba_fb:3",
-      "black",
-      []
-    ],
-    [
-      "esp32s3:3V3",
-      "sw_temp_fb:1",
-      "red",
-      []
-    ],
-    [
-      "esp32s3:GND.1",
-      "sw_temp_fb:3",
-      "black",
-      []
-    ]
+    [ "esp32s3:3V3",   "dht1:VCC", "red",   [] ],
+    [ "esp32s3:GND.1", "dht1:GND", "black", [] ],
+    [ "esp32s3:21",    "dht1:SDA", "green", [] ],
+    [ "esp32s3:3V3",   "dht2:VCC", "red",   [] ],
+    [ "esp32s3:GND.2", "dht2:GND", "black", [] ],
+    [ "esp32s3:14",    "dht2:SDA", "green", [] ],
+
+    [ "esp32s3:0",     "btn_emerg:1.l", "yellow", [] ],
+    [ "esp32s3:GND.2", "btn_emerg:2.l", "black",  [] ],
+
+    [ "esp32s3:48",    "r_status:1",   "blue",  [] ],
+    [ "r_status:2",    "led_status:A", "blue",  [] ],
+    [ "esp32s3:GND.1", "led_status:C", "black", [] ],
+
+    [ "esp32s3:4",     "r_motor:1",       "red",   [] ],
+    [ "r_motor:2",     "led_motor:A",     "red",   [] ],
+    [ "esp32s3:GND.1", "led_motor:C",     "black", [] ],
+    [ "esp32s3:4",     "relay_motor:IN",  "red",   [] ],
+    [ "esp32s3:5V",    "relay_motor:VCC", "red",   [] ],
+    [ "esp32s3:GND.1", "relay_motor:GND", "black", [] ],
+
+    [ "esp32s3:5",     "r_auto:1",       "yellow", [] ],
+    [ "r_auto:2",      "led_auto:A",     "yellow", [] ],
+    [ "esp32s3:GND.1", "led_auto:C",     "black",  [] ],
+    [ "esp32s3:5",     "relay_auto:IN",  "yellow", [] ],
+    [ "esp32s3:5V",    "relay_auto:VCC", "red",    [] ],
+    [ "esp32s3:GND.1", "relay_auto:GND", "black",  [] ],
+
+    [ "esp32s3:6",     "r_sto:1",        "orange", [] ],
+    [ "r_sto:2",       "led_sto:A",      "orange", [] ],
+    [ "esp32s3:GND.1", "led_sto:C",      "black",  [] ],
+    [ "esp32s3:6",     "relay_stop:IN",  "orange", [] ],
+    [ "esp32s3:5V",    "relay_stop:VCC", "red",    [] ],
+    [ "esp32s3:GND.1", "relay_stop:GND", "black",  [] ],
+
+    [ "esp32s3:7",     "r_on:1",   "green", [] ],
+    [ "r_on:2",        "led_on:A", "green", [] ],
+    [ "esp32s3:GND.1", "led_on:C", "black", [] ],
+
+    [ "esp32s3:8",     "r_time_reg:1",   "cyan",  [] ],
+    [ "r_time_reg:2",  "led_time_reg:A", "cyan",  [] ],
+    [ "esp32s3:GND.1", "led_time_reg:C", "black", [] ],
+
+    [ "esp32s3:9",       "r_time_delay:1",   "cyan",  [] ],
+    [ "r_time_delay:2",  "led_time_delay:A", "cyan",  [] ],
+    [ "esp32s3:GND.1",   "led_time_delay:C", "black", [] ],
+
+    [ "esp32s3:10",    "r_sensor2:1",    "white", [] ],
+    [ "r_sensor2:2",   "led_sensor2:A",  "white", [] ],
+    [ "esp32s3:GND.1", "led_sensor2:C",  "black", [] ],
+    [ "esp32s3:10",    "relay_z2:IN",    "white", [] ],
+    [ "esp32s3:5V",    "relay_z2:VCC",   "red",   [] ],
+    [ "esp32s3:GND.1", "relay_z2:GND",   "black", [] ],
+
+    [ "esp32s3:11",    "r_sensor1:1",   "white", [] ],
+    [ "r_sensor1:2",   "led_sensor1:A", "white", [] ],
+    [ "esp32s3:GND.1", "led_sensor1:C", "black", [] ],
+    [ "esp32s3:11",    "relay_z1:IN",   "white", [] ],
+    [ "esp32s3:5V",    "relay_z1:VCC",  "red",   [] ],
+    [ "esp32s3:GND.1", "relay_z1:GND",  "black", [] ],
+
+    [ "esp32s3:12",    "r_temp:1",       "purple", [] ],
+    [ "r_temp:2",      "led_temp:A",     "purple", [] ],
+    [ "esp32s3:GND.1", "led_temp:C",     "black",  [] ],
+    [ "esp32s3:12",    "relay_temp:IN",  "purple", [] ],
+    [ "esp32s3:5V",    "relay_temp:VCC", "red",    [] ],
+    [ "esp32s3:GND.1", "relay_temp:GND", "black",  [] ],
+
+    [ "esp32s3:13",    "r_fb_bomba:1",   "lime",  [ "v-10", "h20" ] ],
+    [ "r_fb_bomba:2",  "led_fb_bomba:A", "lime",  [] ],
+    [ "esp32s3:GND.1", "led_fb_bomba:C", "black", [] ],
+
+    [ "esp32s3:15",    "r_fb_temp:1",   "red",   [ "v-10", "h20" ] ],
+    [ "r_fb_temp:2",   "led_fb_temp:A", "red",   [] ],
+    [ "esp32s3:GND.1", "led_fb_temp:C", "black", [] ],
+
+    [ "esp32s3:38",    "btn_start:1.l", "green", [] ],
+    [ "esp32s3:GND.1", "btn_start:2.l", "black", [] ],
+
+    [ "esp32s3:39",    "btn_stop:1.l",  "red",   [] ],
+    [ "esp32s3:GND.1", "btn_stop:2.l",  "black", [] ],
+
+    [ "esp32s3:40",    "btn_reset:1.l", "blue",  [] ],
+    [ "esp32s3:GND.1", "btn_reset:2.l", "black", [] ],
+
+    [ "esp32s3:41",    "btn_auto:1.l",  "yellow", [] ],
+    [ "esp32s3:GND.1", "btn_auto:2.l",  "black",  [] ],
+
+    [ "esp32s3:13",    "sw_bomba_fb:2", "magenta", [] ],
+    [ "esp32s3:3V3",   "sw_bomba_fb:1", "red",     [] ],
+    [ "esp32s3:GND.1", "sw_bomba_fb:3", "black",   [] ],
+
+    [ "esp32s3:15",    "sw_temp_fb:2", "magenta", [] ],
+    [ "esp32s3:3V3",   "sw_temp_fb:1", "red",     [] ],
+    [ "esp32s3:GND.1", "sw_temp_fb:3", "black",   [] ]
   ]
 }

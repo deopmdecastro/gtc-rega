@@ -464,13 +464,16 @@ void setup() {
   allOutputsOff();
 
 #if defined(WOKWI_SIM)
-  // Botões manuais de controlo (apenas no simulador Wokwi / GPIO 34..37)
+  // Botões manuais de controlo (apenas no simulador Wokwi / GPIO 38..41)
+  // Movidos de 34..37 para 38..41 porque 33..37 estão reservados ao OSPI
+  // PSRAM nas variantes ES3N28P/N8R8/N16R8V — usá-los como INPUT_PULLUP
+  // provoca boot-loop e faz o simulador Wokwi ficar cinzento.
   // INPUT_PULLUP: botão pressiona ao GND → ativo em LOW
   pinMode(PIN_BTN_START, INPUT_PULLUP);
   pinMode(PIN_BTN_STOP,  INPUT_PULLUP);
   pinMode(PIN_BTN_RESET, INPUT_PULLUP);
   pinMode(PIN_BTN_AUTO,  INPUT_PULLUP);
-  Serial.println("[BTN] Botões manuais inicializados (GPIO 34/35/36/37)");
+  Serial.println("[BTN] Botões manuais inicializados (GPIO 38/39/40/41)");
 #endif
 
   display::init();

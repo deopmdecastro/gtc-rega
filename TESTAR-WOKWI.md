@@ -42,9 +42,10 @@ Wokwi (ESP32-S3), o backend Node.js e o frontend React.
 | 1 | ESP32 não alcançava o backend | Host `10.0.0.2` inacessível no Wokwi | `firmware/src/config.h` → `host.wokwi.internal` em modo `WOKWI_SIM` |
 | 2 | Frontend sem proxy em dev | Vite não redirecionava `/api` nem `/socket.io` | `dc-rega-sistema-web/vite.config.ts` com proxy para `localhost:3000` |
 | 3 | Switches "motor ligado" / "relé temporizador" pareciam desconectados | Terminais 1/3 ligados ao contacto NO do relé (feedback indireto) | Ligados diretamente a **3V3** (UP) e **GND** (DOWN) → override manual óbvio |
-| 4 | Falta de botões manuais no diagrama | Diagrama não tinha START/STOP/RESET/AUTO | 4 push-buttons em GPIO **34/35/36/37** (pull-up externo 10 kΩ) |
-| 5 | Botões sem handler no firmware | GPIO 34..37 não eram lidos | `firmware/src/main.cpp` faz `digitalRead` com debounce em `WOKWI_SIM` |
-| 6 | Logs obsoletos versionados | `frontend.log` / `frontend.err.log` no repositório | Removidos e adicionados ao `.gitignore` |
+| 4 | Falta de botões manuais no diagrama | Diagrama não tinha START/STOP/RESET/AUTO | 4 push-buttons em GPIO **38/39/40/41** |
+| 5 | Botões sem handler no firmware | GPIO 38..41 não eram lidos | `firmware/src/main.cpp` faz `digitalRead` com debounce em `WOKWI_SIM` |
+| 6 | **Simulador Wokwi cinzento / não renderizava** | GPIO 34..37 são reservados para OSPI PSRAM na S3 N8R8/N16R8V → boot-loop | Botões movidos para GPIO 38..41 (safe pins em TODAS as variantes) |
+| 7 | Logs obsoletos versionados | `frontend.log` / `frontend.err.log` no repositório | Removidos e adicionados ao `.gitignore` |
 
 ---
 
@@ -99,7 +100,7 @@ Abre `http://localhost:5173` no browser. A barra superior deve mostrar
    [WIFI] Wokwi-GUEST conectado → modo simulação ativado
    [WIFI] IP: 10.0.0.1
    [GTC] handshake ok
-   [BTN] Botões manuais inicializados (GPIO 34/35/36/37)
+   [BTN] Botões manuais inicializados (GPIO 38/39/40/41)
    ```
 7. No frontend (`localhost:5173`) o estado do dispositivo passa a
    **online** e os LEDs do MCP23017 atualizam em tempo real.
@@ -125,10 +126,10 @@ alcançar `host.wokwi.internal:3000`.
 
 | Botão | GPIO | Ação esperada no ESP32 e no frontend |
 |-------|------|--------------------------------------|
-| 🟢 START | 34 | `pump=true`, `auto=true` → LED `led_motor` (vermelho) + `led_auto` (amarelo) acendem; frontend mostra motor ON |
-| 🔴 STOP | 35 | Emergência local: todas as saídas OFF, `emergencyLatched=true` |
-| 🔵 RESET | 36 | Limpa o latch de emergência (`emergencyLatched=false`) |
-| 🟡 AUTO | 37 | Toggle do modo automático → LED `led_auto` alterna |
+| 🟢 START | 38 | `pump=true`, `auto=true` → LED `led_motor` (vermelho) + `led_auto` (amarelo) acendem; frontend mostra motor ON |
+| 🔴 STOP | 39 | Emergência local: todas as saídas OFF, `emergencyLatched=true` |
+| 🔵 RESET | 40 | Limpa o latch de emergência (`emergencyLatched=false`) |
+| 🟡 AUTO | 41 | Toggle do modo automático → LED `led_auto` alterna |
 | 🔴 EMERG | 0 (BOOT) | Igual ao STOP mas força imediato + telemetria |
 
 ### 4.2 Switches de feedback (override manual)
@@ -196,6 +197,7 @@ curl 'http://localhost:3000/api/events?limit=20'
 
 | Sintoma | Verificar |
 |---------|-----------|
+| **Simulador Wokwi todo cinzento / não renderiza os componentes** | Falta o `firmware.bin`. Corra `pio run` em `firmware/gtc-esp32s3/` ANTES de iniciar a simulação. A extensão Wokwi só desenha os pinos e cores depois de conseguir carregar um binário válido em `.pio/build/esp32-s3-devkitc-1/firmware.bin`. Confirme também que os pinos dos botões (GPIO 38..41) não colidem com PSRAM — na versão anterior estavam em 34..37 e provocavam boot-loop em ESP32-S3 N8R8/N16R8V. |
 | Frontend mostra "Backend Offline" | O `node server.js` está a correr? `curl http://localhost:3000/api/health` responde? |
 | Frontend online mas "ESP32 Offline" | O Private Wokwi IoT Gateway está ativo? O Serial do Wokwi mostra "[GTC] handshake ok"? |
 | "Wokwi-GUEST não encontrada" | Compilar com `pio run` (não com `-e esp32-s3-wokwi`). O env `esp32-s3-devkitc-1` já define `-D WOKWI_SIM=1` |
