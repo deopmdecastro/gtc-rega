@@ -166,15 +166,21 @@
 #define PIN_EMERGENCY_BTN  0    // botão BOOT (INPUT_PULLUP)
 
 // ─────────────────────────────────────────────────────────────
-// Botões manuais de controlo (Wokwi diagram.json — GPIO 34..37)
+// Botões manuais de controlo (Wokwi diagram.json — GPIO 38..41)
+// ------------------------------------------------------------------
+// IMPORTANTE: as GPIOs 33..37 do ESP32-S3 estão RESERVADAS para o
+// OSPI PSRAM nas variantes N8R8/N16R8V (as mais comuns da ES3N28P).
+// Usá-las como INPUT_PULLUP pode causar boot-loop e faz o simulador
+// Wokwi ficar "cinzento" (firmware trava no arranque). Foram movidas
+// para GPIO 38..41, seguras em TODAS as variantes do ESP32-S3.
 // Ligados com INPUT_PULLUP; ativo em LOW (botão pull-down no Wokwi).
 // Em hardware real não são necessários (os comandos vêm do frontend),
 // mas são úteis para testes físicos / debug no simulador.
 // ─────────────────────────────────────────────────────────────
-#define PIN_BTN_START   34   // GPIO 34 — Botão START (inicia motor + auto)
-#define PIN_BTN_STOP    35   // GPIO 35 — Botão STOP (paragem normal)
-#define PIN_BTN_RESET   36   // GPIO 36 — Botão RESET (limpa emergência)
-#define PIN_BTN_AUTO    37   // GPIO 37 — Botão AUTO ON/OFF (toggle)
+#define PIN_BTN_START   38   // GPIO 38 — Botão START (inicia motor + auto)
+#define PIN_BTN_STOP    39   // GPIO 39 — Botão STOP (paragem normal)
+#define PIN_BTN_RESET   40   // GPIO 40 — Botão RESET (limpa emergência)
+#define PIN_BTN_AUTO    41   // GPIO 41 — Botão AUTO ON/OFF (toggle)
 
 // LED de estado (ajustar ao LED disponível na ES3N28P)
 #define PIN_STATUS_LED     48
