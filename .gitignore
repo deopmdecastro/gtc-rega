@@ -1,3 +1,7 @@
 node_modules/
 dist/
 .pio/
+*.log
+*.err.log
+.env
+dc-rega-sistema-web/data/

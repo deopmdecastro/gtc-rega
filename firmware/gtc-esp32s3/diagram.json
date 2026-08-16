@@ -36,7 +36,7 @@
       "left": -380,
       "top": 270,
       "attrs": {
-        "text": "ENTRADAS PB6/PB7 (feedback 24V isolado)\nespelhadas em GPIO 13 e 15"
+        "text": "ENTRADAS PB6/PB7 — feedback 24V isolado\nespelhadas em GPIO 13 e 15 (INPUT_PULLUP)\nSwitch UP  = 3V3 (força bomba/térmico ON)\nSwitch DOWN = GND (força bomba/térmico OFF)"
       }
     },
     {
@@ -339,7 +339,7 @@
       "left": -380,
       "top": 320,
       "attrs": {
-        "label": "PB6 FB BOMBA (GPIO 13)"
+        "label": "SW MOTOR LIGADO (GPIO 13)\nUP=ON  DOWN=OFF"
       }
     },
     {
@@ -348,7 +348,7 @@
       "left": -380,
       "top": 430,
       "attrs": {
-        "label": "PB7 FB TÉRMICO (GPIO 15)"
+        "label": "SW RELÉ TEMPORIZADOR (GPIO 15)\nUP=ON  DOWN=OFF"
       }
     },
     {
@@ -958,14 +958,8 @@
     ],
     [
       "esp32s3:3V3",
-      "relay_motor:COM",
-      "red",
-      []
-    ],
-    [
-      "relay_motor:NO",
       "sw_bomba_fb:1",
-      "magenta",
+      "red",
       []
     ],
     [
@@ -976,14 +970,8 @@
     ],
     [
       "esp32s3:3V3",
-      "relay_temp:COM",
-      "red",
-      []
-    ],
-    [
-      "relay_temp:NO",
       "sw_temp_fb:1",
-      "magenta",
+      "red",
       []
     ],
     [
