@@ -43,10 +43,10 @@
 // ─────────────────────────────────────────────────────────────
 // Servidor (backend Node/Express do GTC Rega)
 // ─────────────────────────────────────────────────────────────
-// Em modo Wokwi o gateway virtual é sempre 10.0.0.2 (host machine).
+// Em modo Wokwi, o host local requer o Private Wokwi IoT Gateway.
 // Em hardware real substitua pelo IP real do servidor backend.
 #ifdef WOKWI_SIM
-#define GTC_SERVER_HOST   "10.0.0.2"     // gateway Wokwi (host machine)
+#define GTC_SERVER_HOST   "host.wokwi.internal" // host via Private Wokwi IoT Gateway
 #else
 #define GTC_SERVER_HOST   "192.168.1.50" // IP real do backend em produção
 #endif

@@ -814,24 +814,6 @@
     ],
     [
       "esp32s3:13",
-      "sw_bomba_fb:SIG",
-      "magenta",
-      []
-    ],
-    [
-      "esp32s3:3V3",
-      "sw_bomba_fb:VCC",
-      "red",
-      []
-    ],
-    [
-      "esp32s3:GND.1",
-      "sw_bomba_fb:GND",
-      "black",
-      []
-    ],
-    [
-      "esp32s3:13",
       "r_fb_bomba:1",
       "lime",
       []
@@ -845,24 +827,6 @@
     [
       "esp32s3:GND.1",
       "led_fb_bomba:C",
-      "black",
-      []
-    ],
-    [
-      "esp32s3:15",
-      "sw_temp_fb:SIG",
-      "magenta",
-      []
-    ],
-    [
-      "esp32s3:3V3",
-      "sw_temp_fb:VCC",
-      "red",
-      []
-    ],
-    [
-      "esp32s3:GND.1",
-      "sw_temp_fb:GND",
       "black",
       []
     ],
@@ -981,15 +945,51 @@
       []
     ],
     [
-      "sw_bomba_fb:SIG",
-      "relay_motor:COM",
+      "esp32s3:13",
+      "sw_bomba_fb:2",
       "magenta",
       []
     ],
     [
-      "sw_temp_fb:SIG",
-      "relay_temp:COM",
+      "esp32s3:15",
+      "sw_temp_fb:2",
       "magenta",
+      []
+    ],
+    [
+      "esp32s3:3V3",
+      "relay_motor:COM",
+      "red",
+      []
+    ],
+    [
+      "relay_motor:NO",
+      "sw_bomba_fb:1",
+      "magenta",
+      []
+    ],
+    [
+      "esp32s3:GND.1",
+      "sw_bomba_fb:3",
+      "black",
+      []
+    ],
+    [
+      "esp32s3:3V3",
+      "relay_temp:COM",
+      "red",
+      []
+    ],
+    [
+      "relay_temp:NO",
+      "sw_temp_fb:1",
+      "magenta",
+      []
+    ],
+    [
+      "esp32s3:GND.1",
+      "sw_temp_fb:3",
+      "black",
       []
     ]
   ]
