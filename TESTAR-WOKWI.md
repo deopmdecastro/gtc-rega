@@ -3,7 +3,7 @@
 ## 🔗 Arquitetura de Comunicação
 
 ```
-[Wokwi Simulator]  ←──── rede virtual "Wokwi-GUEST" ────→  [Gateway 10.0.0.2]
+[Wokwi Simulator]  ←──── Wokwi-GUEST + Private Gateway ────→  [host.wokwi.internal]
   ESP32-S3 firmware                                              │
   POST /api/device/hello                                         │ porta 3000
   POST /api/device/telemetry                              [Backend Node.js]
@@ -20,7 +20,7 @@
 
 | # | Problema | Causa | Ficheiro |
 |---|----------|-------|----------|
-| 1 | ESP32 não alcançava o backend | IP hardcoded `192.168.1.50` em vez do gateway Wokwi `10.0.0.2` | `firmware/src/config.h` |
+| 1 | ESP32 não alcançava o backend | host incorreto (`10.0.0.2`); para backend local usar `host.wokwi.internal` + Private Wokwi IoT Gateway | `firmware/src/config.h` |
 | 2 | Frontend não comunicava em dev | Sem proxy Vite para `/api` e `/socket.io` | `dc-rega-sistema-web/vite.config.ts` |
 | 3 | Switches desconectados | `sw_bomba_fb` e `sw_temp_fb` não tinham ligação de feedback aos relés | `firmware/diagram.json` |
 | 4 | Sem botões físicos | Diagrama não tinha botões START/STOP/RESET/AUTO | `firmware/diagram.json` |
@@ -52,7 +52,7 @@ npm run dev
 1. Abre `firmware/gtc-esp32s3/` no VS Code com extensão Wokwi instalada
 2. Compila: `pio run`
 3. Clica ▶ no `diagram.json` → simulação arranca
-4. O ESP32 liga à rede virtual `Wokwi-GUEST` e faz `POST http://10.0.0.2:3000/api/device/hello`
+4. Ativa o **Private Wokwi IoT Gateway** (Wokwi CLI/desktop), confirma que está a escutar, e o ESP32 faz `POST http://host.wokwi.internal:3000/api/device/hello`
 5. O frontend em `localhost:5173` recebe via Socket.IO o estado `deviceOnline: true`
 
 ---
@@ -67,8 +67,7 @@ docker-compose up --build
 # Frontend: http://localhost:8080
 ```
 
-> ⚠️ No Wokwi com Docker: o backend corre em `localhost:3000` na tua máquina,
-> logo o gateway Wokwi `10.0.0.2:3000` aponta corretamente para ele.
+> ⚠️ Para o Wokwi alcançar um backend local, o **Private Wokwi IoT Gateway** é obrigatório; o gateway público não expõe a tua rede local. O hostname usado pela firmware é `host.wokwi.internal`.
 
 ---
 
@@ -84,7 +83,7 @@ Com o simulador a correr, clica nos botões no `diagram.json`:
 | 🟡 **AUTO** | GPIO 37 | Toggle AUTO ON/OFF → LED `led_auto` acende/apaga |
 | 🔴 **EMERGENCY** | GPIO 0 | Igual ao STOP mas físico (botão BOOT) |
 
-### Switches de Feedback
+### Switches de Feedback (ligados aos contactos dos relés)
 
 | Switch | GPIO | Função |
 |--------|------|--------|
@@ -92,6 +91,7 @@ Com o simulador a correr, clica nos botões no `diagram.json`:
 | `sw_temp_fb`  | GPIO 15 | Simula relé térmico ON (protecção disparada) → LED vermelho `led_fb_temp` |
 
 > **Como testar o relé térmico:** Liga o `sw_temp_fb` enquanto o motor está ON.
+> Em posição automática, o contacto `NO` do `relay_temp` também alimenta o feedback; em posição manual, o switch força o sinal.
 > O motor deve desligar automaticamente (vês o LED vermelho `led_motor` apagar).
 
 ---
