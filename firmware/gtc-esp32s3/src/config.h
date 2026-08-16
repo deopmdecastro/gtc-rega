@@ -43,7 +43,13 @@
 // ─────────────────────────────────────────────────────────────
 // Servidor (backend Node/Express do GTC Rega)
 // ─────────────────────────────────────────────────────────────
-#define GTC_SERVER_HOST   "192.168.1.50"   // IP ou hostname do backend
+// Em modo Wokwi o gateway virtual é sempre 10.0.0.2 (host machine).
+// Em hardware real substitua pelo IP real do servidor backend.
+#ifdef WOKWI_SIM
+#define GTC_SERVER_HOST   "10.0.0.2"     // gateway Wokwi (host machine)
+#else
+#define GTC_SERVER_HOST   "192.168.1.50" // IP real do backend em produção
+#endif
 #define GTC_SERVER_PORT   3000
 #define GTC_DEVICE_TOKEN  ""               // igual a DEVICE_TOKEN no backend ("" = sem token)
 #define GTC_DEVICE_ID     "gtc-es3n28p-01"
@@ -158,6 +164,17 @@
 
 // Entrada de segurança (botão físico de emergência — botão BOOT)
 #define PIN_EMERGENCY_BTN  0    // botão BOOT (INPUT_PULLUP)
+
+// ─────────────────────────────────────────────────────────────
+// Botões manuais de controlo (Wokwi diagram.json — GPIO 34..37)
+// Ligados com INPUT_PULLUP; ativo em LOW (botão pull-down no Wokwi).
+// Em hardware real não são necessários (os comandos vêm do frontend),
+// mas são úteis para testes físicos / debug no simulador.
+// ─────────────────────────────────────────────────────────────
+#define PIN_BTN_START   34   // GPIO 34 — Botão START (inicia motor + auto)
+#define PIN_BTN_STOP    35   // GPIO 35 — Botão STOP (paragem normal)
+#define PIN_BTN_RESET   36   // GPIO 36 — Botão RESET (limpa emergência)
+#define PIN_BTN_AUTO    37   // GPIO 37 — Botão AUTO ON/OFF (toggle)
 
 // LED de estado (ajustar ao LED disponível na ES3N28P)
 #define PIN_STATUS_LED     48
